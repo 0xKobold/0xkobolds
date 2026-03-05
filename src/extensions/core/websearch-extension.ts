@@ -260,6 +260,48 @@ export default function webSearchExtension(pi: ExtensionAPI) {
     }
   });
 
+  pi.registerCommand("fetch", {
+    description: "Fetch and display text content from a URL",
+    args: [
+      { name: "url", description: "URL to fetch (must start with http:// or https://)", required: true },
+      { name: "max", description: "Maximum characters (default: 5000)", required: false }
+    ],
+    handler: async (args, ctx) => {
+      const { url, max } = args;
+      const maxLength = parseInt(String(max)) || 5000;
+
+      if (!url?.startsWith("http")) {
+        ctx.ui?.notify?.("URL must start with http:// or https://", "error");
+        return;
+      }
+
+      ctx.ui?.notify?.(`📥 Fetching ${url}...`, "info");
+      
+      const result = await fetchUrlContent(url, maxLength);
+
+      if (!result) {
+        ctx.ui?.notify?.(`Failed to fetch ${url}`, "error");
+        return;
+      }
+
+      // Format output
+      const lines = [
+        `📄 ${result.title}`,
+        `Source: ${url}`,
+        "─────────────────────────────────────────",
+        "",
+        result.content.slice(0, maxLength),
+        "",
+        "─────────────────────────────────────────",
+        result.content.length > maxLength 
+          ? `... (${result.content.length - maxLength} more characters)` 
+          : ""
+      ];
+
+      ctx.ui?.notify?.(lines.join("\n"), "info");
+    }
+  });
+
   // ═══════════════════════════════════════════════════════════════
   // TOOLS
   // ═══════════════════════════════════════════════════════════════
