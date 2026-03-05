@@ -34,6 +34,7 @@ async function main(): Promise<void> {
   return piMain([
     '--extension', resolve(packageRoot, 'src/extensions/core/ollama-provider-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/persona-loader-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/context-aware-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/onboarding-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/mode-manager-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/gateway-extension.ts'),

@@ -21,6 +21,7 @@ export const config: Config = {
   extensions: [
     './src/extensions/core/ollama-provider-extension.ts', // Register Ollama models
     './src/extensions/core/persona-loader-extension.ts', // Load identity files
+    './src/extensions/core/context-aware-extension.ts', // Local mode context
     './src/extensions/core/onboarding-extension.ts', // First-run setup
     './src/extensions/core/mode-manager-extension.ts',    // Plan/Build mode switching
     './src/extensions/core/gateway-extension.ts',          // WebSocket gateway
