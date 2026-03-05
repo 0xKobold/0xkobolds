@@ -68,6 +68,7 @@ export function createKoboldExtensionAPI(baseApi: ExtensionAPI): ExtensionAPI {
         name: tool.name,
         description: tool.description,
         parameters: tool.parameters,
+        // @ts-ignore Tool execute signature
         execute: tool.execute,
       });
     },
@@ -86,7 +87,7 @@ export interface KoboldTool {
   name: string;
   description: string;
   // @ts-ignore TSchema mismatch
-    parameters: {
+  parameters: {
     type: 'object';
     properties: Record<string, unknown>;
     required?: string[];

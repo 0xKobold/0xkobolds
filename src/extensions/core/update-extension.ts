@@ -425,7 +425,7 @@ export default function updateExtension(pi: ExtensionAPI) {
   // Register update:skip command (skip pending update)
   pi.registerCommand('update:skip', {
     description: 'Skip the pending update',
-    execute: async () => {
+    handler: async () => {
       const pending = await readPendingUpdate();
       if (pending) {
         await clearPendingUpdate();
