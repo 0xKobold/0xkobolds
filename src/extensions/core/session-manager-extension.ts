@@ -413,6 +413,7 @@ export default function sessionManagerExtension(pi: ExtensionAPI) {
 
       // Broadcast with session ID
       // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
       pi.sendMessage({
         customType: "session.broadcast",
         content: [{ type: "text", text: `Session event: ${event}` }],

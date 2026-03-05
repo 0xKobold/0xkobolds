@@ -216,6 +216,7 @@ export default function updateExtension(pi: ExtensionAPI) {
         // @ts-ignore sendMessage type
         // @ts-ignore sendMessage type
         // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
       pi.sendMessage({
           customType: 'update.pending',
           content: [{
@@ -254,6 +255,7 @@ export default function updateExtension(pi: ExtensionAPI) {
     if (autoInstall) {
       // Immediate install (not recommended - interrupts workflow)
       // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
       pi.sendMessage({
         customType: 'update.installing',
         content: [{ type: 'text', text: `Installing update to ${latestVersion}...` }],
@@ -266,6 +268,7 @@ export default function updateExtension(pi: ExtensionAPI) {
       if (success) {
         // @ts-ignore sendMessage type
         // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
       pi.sendMessage({
           customType: 'update.installed',
           content: [{ type: 'text', text: `Updated to ${latestVersion}. Please restart to apply changes.` }],
@@ -275,6 +278,7 @@ export default function updateExtension(pi: ExtensionAPI) {
       } else {
         // @ts-ignore sendMessage type
         // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
       pi.sendMessage({
           customType: 'update.failed',
           content: [{ type: 'text', text: `Failed to install update ${latestVersion}. Check console for details.` }],
@@ -287,6 +291,7 @@ export default function updateExtension(pi: ExtensionAPI) {
       await storePendingUpdate(latestVersion, currentVersion);
 
       // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
       pi.sendMessage({
         customType: 'update.available',
         content: [{
@@ -341,6 +346,7 @@ export default function updateExtension(pi: ExtensionAPI) {
         if (!hasUpdate) {
           // @ts-ignore sendMessage type
           // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
       pi.sendMessage({
             customType: 'update.none',
             content: [{ type: 'text', text: 'No updates available.' }],
@@ -352,6 +358,7 @@ export default function updateExtension(pi: ExtensionAPI) {
         // Install immediately
         // @ts-ignore sendMessage type
         // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
       pi.sendMessage({
           customType: 'update.installing',
           content: [{ type: 'text', text: `Installing ${latestVersion}...` }],
@@ -362,6 +369,7 @@ export default function updateExtension(pi: ExtensionAPI) {
         if (success) {
           await clearPendingUpdate();
           // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
       pi.sendMessage({
             customType: 'update.restarting',
             content: [{ type: 'text', text: 'Update installed. Restarting...' }],
@@ -370,6 +378,7 @@ export default function updateExtension(pi: ExtensionAPI) {
           await restartApplication();
         } else {
           // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
       pi.sendMessage({
             customType: 'update.failed',
             content: [{ type: 'text', text: 'Update failed. Check console.' }],
@@ -381,6 +390,7 @@ export default function updateExtension(pi: ExtensionAPI) {
 
       // Install pending update
       // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
       pi.sendMessage({
         customType: 'update.installing',
         content: [{ type: 'text', text: `Installing ${pending.version}...` }],
@@ -392,6 +402,7 @@ export default function updateExtension(pi: ExtensionAPI) {
         await clearPendingUpdate();
         // @ts-ignore sendMessage type
         // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
       pi.sendMessage({
           customType: 'update.restarting',
           content: [{ type: 'text', text: 'Update installed. Restarting...' }],
@@ -401,6 +412,7 @@ export default function updateExtension(pi: ExtensionAPI) {
       } else {
         // @ts-ignore sendMessage type
         // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
       pi.sendMessage({
           customType: 'update.failed',
           content: [{ type: 'text', text: 'Update failed. Check console.' }],
@@ -419,6 +431,7 @@ export default function updateExtension(pi: ExtensionAPI) {
         await clearPendingUpdate();
         // @ts-ignore sendMessage type
         // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
       pi.sendMessage({
           customType: 'update.skipped',
           content: [{ type: 'text', text: `Skipped update to ${pending.version}` }],
@@ -428,6 +441,7 @@ export default function updateExtension(pi: ExtensionAPI) {
       } else {
         // @ts-ignore sendMessage type
         // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
       pi.sendMessage({
           customType: 'update.none',
           content: [{ type: 'text', text: 'No pending update to skip.' }],

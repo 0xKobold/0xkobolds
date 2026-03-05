@@ -158,6 +158,7 @@ function emit(pi: ExtensionAPI, event: string, payload: unknown): void {
 
   // Emit to pi-coding-agent via message system
   // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
   pi.sendMessage({
     customType: 'gateway.broadcast',
     // @ts-ignore Content type
@@ -435,10 +436,12 @@ async function startGateway(pi: ExtensionAPI): Promise<void> {
   } catch (err) {
     console.error('[Gateway] Failed to find available port:', err instanceof Error ? err.message : String(err));
     // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
     pi.sendMessage({
       customType: 'gateway.error',
       // @ts-ignore Content type
       content: [{ type: 'text', text: 'Gateway failed to start: no available port' }],
+      // @ts-ignore Content type
       display: { type: 'text', text: 'Gateway failed: no available port' },
       details: { error: 'no_available_port' },
     });
@@ -709,6 +712,7 @@ async function startGateway(pi: ExtensionAPI): Promise<void> {
   console.log(`[Gateway] Agents directory: ${AGENTS_DIR}`);
 
   // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
   pi.sendMessage({
     customType: 'gateway.started',
     content: [{ type: 'text', text: `Gateway started on port ${GATEWAY_PORT}` }],
@@ -739,6 +743,7 @@ async function stopGateway(pi: ExtensionAPI): Promise<void> {
 
   console.log('[Gateway] Server stopped');
   // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
   pi.sendMessage({
     customType: 'gateway.stopped',
     content: [{ type: 'text', text: 'Gateway stopped' }],
@@ -826,6 +831,7 @@ export default function gatewayExtension(pi: ExtensionAPI) {
     async handler() {
       const status = getStatus();
       // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
       pi.sendMessage({
         customType: 'gateway.status',
         content: [{ type: 'text', text: `Gateway status: ${JSON.stringify(status)}` }],

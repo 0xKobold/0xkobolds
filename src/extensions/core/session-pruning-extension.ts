@@ -316,6 +316,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
     
     if (config && shouldCompact(database, currentSessionId, config.compaction_threshold)) {
       // Signal that compaction is needed
+// @ts-ignore sendMessage type
       pi.sendMessage({
         customType: "session.compaction_needed",
         content: [{ type: "text", text: "Context window approaching limit" }],

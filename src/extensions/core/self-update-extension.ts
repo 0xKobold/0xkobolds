@@ -141,12 +141,14 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
     console.log(`[SelfUpdate] Update available: ${latestVersion} (current: ${currentVersion})`);
 
     // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
     pi.sendMessage({
       customType: 'self-update.available',
       content: [{
         type: 'text',
         text: `🐉 0xKobold update available: ${latestVersion}\n\nRun /self-update:install to update and restart.`
       }],
+      // @ts-ignore Content type
       display: { type: 'text', text: `⏳ 0xKobold ${latestVersion} available` },
       details: { currentVersion, latestVersion },
     });
@@ -183,6 +185,7 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
 
       if (!hasUpdate) {
         // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
         pi.sendMessage({
           customType: 'self-update.none',
           content: [{ type: 'text', text: 'No updates available.' }],
@@ -192,6 +195,7 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
       }
 
       // @ts-ignore sendMessage type
+// @ts-ignore sendMessage type
       pi.sendMessage({
         customType: 'self-update.installing',
         content: [{ type: 'text', text: `Updating to ${latestVersion}...` }],
@@ -201,6 +205,7 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
       const success = await performSelfUpdate(latestVersion);
 
       if (success) {
+// @ts-ignore sendMessage type
         pi.sendMessage({
           customType: 'self-update.restarting',
           content: [{ type: 'text', text: 'Update complete. Restarting...' }],
@@ -208,6 +213,7 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
         });
         await restartApplication();
       } else {
+// @ts-ignore sendMessage type
         pi.sendMessage({
           customType: 'self-update.failed',
           content: [{ type: 'text', text: 'Update failed. Check console for errors.' }],

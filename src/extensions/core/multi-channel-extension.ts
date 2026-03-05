@@ -409,7 +409,7 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
     description: "Show recent channel messages",
   // @ts-ignore Command args property
     args: [{ name: "limit", description: "Number of messages (default: 10)", required: false }],
-    handler: async (args, ctx) => {
+    handler: async (args: string, ctx) => {
       if (!currentChannel) {
         ctx.ui?.notify?.("No active channel", "warning");
         return;
