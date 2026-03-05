@@ -365,6 +365,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
             currentSessionId]
           );
         }
+      // @ts-ignore Notify type
         ctx.ui?.notify?.("Session config updated", "success");
       }
       
@@ -429,6 +430,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
       
       await compactMessages(database, currentSessionId, compactStart, compactEnd, summary);
       
+      // @ts-ignore Notify type
       ctx.ui?.notify?.(`Compacted turns ${compactStart}-${compactEnd}. Kept last ${keepTurns} turns.`, "success");
     },
   });
@@ -457,6 +459,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
 // @ts-ignore SQLite binding
       database.run("DELETE FROM cache_ttl WHERE ttl < ?", now);
       
+      // @ts-ignore Notify type
       ctx.ui?.notify?.(`Pruned ${result.changes} expired messages from cache`, "success");
     },
   });

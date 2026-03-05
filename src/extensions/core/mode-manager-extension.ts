@@ -266,6 +266,7 @@ export default function modeManagerExtension(pi: ExtensionAPI) {
         const modeId = args[0];
         if (setMode(modeId)) {
           // @ts-ignore ExtensionAPI type
+      // @ts-ignore Notify type
           pi.ui.notify?.(`Switched to ${currentMode.icon} ${currentMode.name} mode`, "success");
         } else {
           const available = Object.keys(getAllModes(config)).join(", ");
@@ -317,6 +318,7 @@ export default function modeManagerExtension(pi: ExtensionAPI) {
       const newMode = currentMode.id === "plan" ? "build" : "plan";
       if (setMode(newMode)) {
         // @ts-ignore Notify type
+      // @ts-ignore Notify type
         ctx.ui?.notify?.(`Switched to ${currentMode.icon} ${currentMode.name} mode`, "success");
       }
     });

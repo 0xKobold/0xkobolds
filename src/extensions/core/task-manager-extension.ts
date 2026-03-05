@@ -558,6 +558,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       }
 
       updateTaskStatus(task.id, status);
+      // @ts-ignore Notify type
       ctx.ui?.notify?.(`Moved "${task.title.slice(0, 30)}..." to ${status}`, "success");
     },
   });
@@ -617,6 +618,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       }
 
       addComment(task.id, content);
+      // @ts-ignore Notify type
       ctx.ui?.notify?.(`Comment added to "${task.title.slice(0, 30)}..."`, "success");
     },
   });
@@ -639,6 +641,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
 
 // @ts-ignore SQLite binding
       database.run("DELETE FROM tasks WHERE id = ?", task.id);
+      // @ts-ignore Notify type
       // @ts-ignore Notify type
       ctx.ui?.notify?.(`Deleted: ${task.title}`, "success");
     },

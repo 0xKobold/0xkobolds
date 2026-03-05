@@ -122,6 +122,7 @@ export default function onboardingExtension(pi: ExtensionAPI) {
         const { unlinkSync } = await import("fs");
         if (existsSync(ONBOARDING_FLAG)) {
           unlinkSync(ONBOARDING_FLAG);
+      // @ts-ignore Notify type
           ctx.ui?.notify?.("Onboarding reset. Restart to run again.", "success");
         } else {
           ctx.ui?.notify?.("Not yet onboarded.", "info");

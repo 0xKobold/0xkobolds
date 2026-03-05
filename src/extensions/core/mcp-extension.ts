@@ -414,6 +414,7 @@ export default function mcpExtension(pi: ExtensionAPI) {
       connections.delete(name);
 
       // @ts-ignore Notify type
+      // @ts-ignore Notify type
       ctx.ui?.notify?.(`Disabled ${name}`, "success");
     },
   });
@@ -450,6 +451,7 @@ export default function mcpExtension(pi: ExtensionAPI) {
         `Added MCP server: ${name}\\nCommand: ${command}\\nRun /mcp-enable ${name} to activate.`,
         "success"
       ); */
+      // @ts-ignore Notify type
       // @ts-ignore Notify type
       ctx.ui?.notify?.(`Added MCP server: ${name}`, "success");
     },

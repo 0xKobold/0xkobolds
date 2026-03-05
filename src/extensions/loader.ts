@@ -75,7 +75,7 @@ export function createKoboldExtensionAPI(baseApi: ExtensionAPI): ExtensionAPI {
     registerKoboldCommand: (name: string, command: KoboldCommand) => {
       baseApi.registerCommand(name, {
         description: command.description,
-        execute: command.execute,
+        handler: command.handler || command.execute,
       });
     },
   } as ExtensionAPI;
@@ -99,7 +99,8 @@ export interface KoboldTool {
 
 export interface KoboldCommand {
   description: string;
-  execute: (args?: Record<string, unknown>) => Promise<void>;
+  handler?: (args?: string) => Promise<void>;
+  execute?: (args?: Record<string, unknown>) => Promise<void>; // Deprecated, use handler
 }
 
 // Re-export ExtensionAPI type
