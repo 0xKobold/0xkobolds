@@ -72,9 +72,17 @@ export default function contextAwareExtension(pi: ExtensionAPI) {
   pi.on("session_start", async (_event, ctx) => {
     activeContext = loadContext();
 
+    // Only apply local context if:
+    // 1. Context file says it's local
+    // 2. KOBOLD_WORKING_DIR env var is set (confirms --local was used)
     if (!activeContext?.isLocal) {
-      return; // Not in local mode, use default behavior
+      return; // Not in local mode
     }
+
+    const envWorkingDir = process.env.KOBOLD_WORKING_DIR;
+    if (!envWorkingDir || envWorkingDir === process.cwd()) {
+      return; // Not actually in local mode (env var missing or matches cwd)
+    };
 
     const { workingDir } = activeContext;
     const gitBranch = getGitBranch(workingDir);

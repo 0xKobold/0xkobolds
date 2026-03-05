@@ -3,7 +3,7 @@ import { spawn } from "child_process";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import { homedir } from "os";
-import { writeFileSync, existsSync, mkdirSync } from "fs";
+import { writeFileSync, existsSync, mkdirSync, unlinkSync } from "fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -21,34 +21,47 @@ export const tuiCommand = new Command()
     const globalWorkspace = resolve(homedir(), ".0xkobold");
     const cwd = options.local ? process.cwd() : globalWorkspace;
 
-    // Write context file so Claude knows where we're working
-    const contextFile = resolve(globalWorkspace, ".active-context");
-    try {
-      if (!existsSync(globalWorkspace)) {
-        mkdirSync(globalWorkspace, { recursive: true });
-      }
-      writeFileSync(contextFile, JSON.stringify({
-        workingDir: cwd,
-        isLocal: options.local || false,
-        timestamp: Date.now(),
-      }, null, 2));
-
-      // Broadcast to gateway if available
+    // Write context file ONLY when using --local mode
+    // This prevents regular runs from showing wrong directory
+    if (options.local) {
+      const contextFile = resolve(globalWorkspace, ".active-context");
       try {
-        await fetch("http://127.0.0.1:18789/event", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "tui.context_changed",
-            workingDir: cwd,
-            isLocal: options.local || false,
-          }),
-        });
+        if (!existsSync(globalWorkspace)) {
+          mkdirSync(globalWorkspace, { recursive: true });
+        }
+        writeFileSync(contextFile, JSON.stringify({
+          workingDir: cwd,
+          isLocal: true,
+          timestamp: Date.now(),
+        }, null, 2));
+
+        // Broadcast to gateway if available
+        try {
+          await fetch("http://127.0.0.1:18789/event", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "tui.context_changed",
+              workingDir: cwd,
+              isLocal: true,
+            }),
+          });
+        } catch {
+          // Gateway not running, ignore
+        }
       } catch {
-        // Gateway not running, ignore
+        // Ignore write errors
       }
-    } catch {
-      // Ignore write errors
+    } else {
+      // Clear any stale local context when running in global mode
+      const contextFile = resolve(globalWorkspace, ".active-context");
+      try {
+        if (existsSync(contextFile)) {
+          unlinkSync(contextFile);
+        }
+      } catch {
+        // Ignore errors
+      }
     }
 
     try {
