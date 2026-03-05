@@ -20,6 +20,7 @@ export const config: Config = {
   // Order matters: provider should be first, then other extensions
   extensions: [
     './src/extensions/core/ollama-provider-extension.ts', // Register Ollama models
+    './src/extensions/core/persona-loader-extension.ts', // Load identity files
     './src/extensions/core/mode-manager-extension.ts',    // Plan/Build mode switching
     './src/extensions/core/gateway-extension.ts',          // WebSocket gateway
     './src/extensions/core/update-extension.ts',           // Framework update functionality

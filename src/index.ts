@@ -33,6 +33,7 @@ async function main(): Promise<void> {
   // Use absolute paths so extensions load correctly regardless of cwd
   return piMain([
     '--extension', resolve(packageRoot, 'src/extensions/core/ollama-provider-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/persona-loader-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/mode-manager-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/gateway-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/update-extension.ts'),

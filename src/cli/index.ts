@@ -9,6 +9,7 @@ import { statusCommand } from "./commands/status.js";
 import { gatewayCommand } from "./commands/gateway.js";
 import { updateCommand } from "./commands/update.js";
 import { modeCommand } from "./commands/mode.js";
+import { personaCommand } from "./commands/persona.js";
 import { tuiCommand } from "./commands/tui.js";
 import { startRepl } from "./repl.js";
 
@@ -46,6 +47,7 @@ program.addCommand(chatCommand);
 program.addCommand(agentCommand);
 program.addCommand(statusCommand);
 program.addCommand(modeCommand);
+program.addCommand(personaCommand);
 program.addCommand(updateCommand);
 program.addCommand(tuiCommand);
 
