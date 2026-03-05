@@ -35,6 +35,12 @@ export const config: Config = {
     './src/extensions/core/multi-channel-extension.ts', // Unified channel management
     './src/extensions/core/discord-extension.ts',        // Discord bot integration
     
+    // pi-mono safety extensions
+    './src/extensions/core/protected-paths.ts', // Block writes to sensitive paths
+    './src/extensions/core/confirm-destructive.ts', // Confirm clear/switch/fork
+    './src/extensions/core/dirty-repo-guard.ts', // Prevent losing uncommitted work
+    './src/extensions/core/git-checkpoint.ts', // Git stash checkpoints for fork
+
     // Integrations
     './src/extensions/core/mcp-extension.ts', // Model Context Protocol support
     './src/extensions/core/gateway-extension.ts',          // WebSocket gateway

@@ -13,10 +13,25 @@ Best of both worlds:
 - **Multi-provider LLM** (Ollama default, Anthropic supported)
 - **Subagents** for parallel work
 
-## Quick Start
+## Installation
+
+### Via NPM (Recommended)
 
 ```bash
-# Install dependencies
+# Install globally
+npm install -g 0xkobold
+
+# Or use with npx
+npx 0xkobold init
+npx 0xkobold start
+```
+
+### From Source
+
+```bash
+# Clone and install
+git clone https://github.com/yourusername/0xkobold.git
+cd 0xkobold
 bun install
 
 # Start Ollama (in another terminal)

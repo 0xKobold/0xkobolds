@@ -11,6 +11,7 @@ import { updateCommand } from "./commands/update.js";
 import { modeCommand } from "./commands/mode.js";
 import { personaCommand } from "./commands/persona.js";
 import { tuiCommand } from "./commands/tui.js";
+import { koboldCommand } from "./commands/kobold.js";
 import { startRepl } from "./repl.js";
 
 // Check for active --local context
@@ -50,5 +51,8 @@ program.addCommand(modeCommand);
 program.addCommand(personaCommand);
 program.addCommand(updateCommand);
 program.addCommand(tuiCommand);
+
+// Fun easter egg commands
+program.addCommand(koboldCommand);
 
 program.parse();

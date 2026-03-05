@@ -1,0 +1,57 @@
+# Source files (only publish compiled dist/)
+src/
+test/
+tests/
+*.test.ts
+*.spec.ts
+.github/
+.vscode/
+.idea/
+
+# Development files
+.eslintrc
+.prettierrc
+tsconfig.json
+bun.lockb
+bun.lock
+
+# Local development directories
+skills/
+.agents/
+.piclaude/
+.claude/
+.pi/
+.openclaw/
+config/
+
+# Demo and docs (keep minimal)
+docs/
+*.md
+!README.md
+!LICENSE
+
+# Build artifacts that shouldn't be published
+*.log
+*.tmp
+.cache/
+temp/
+tmp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Scripts that are for dev only
+scripts/
+demo*.sh
+*.sh
+
+# Source maps (optional - comment out if you want them)
+# *.map
+
+# Node modules
+node_modules/
