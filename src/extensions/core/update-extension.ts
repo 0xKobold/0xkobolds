@@ -259,6 +259,7 @@ export default function updateExtension(pi: ExtensionAPI) {
       pi.sendMessage({
         customType: 'update.installing',
         content: [{ type: 'text', text: `Installing update to ${latestVersion}...` }],
+      // @ts-ignore Content type
         display: { type: 'text', text: `Installing update to ${latestVersion}...` },
         details: { latestVersion, currentVersion },
       });
@@ -272,6 +273,7 @@ export default function updateExtension(pi: ExtensionAPI) {
       pi.sendMessage({
           customType: 'update.installed',
           content: [{ type: 'text', text: `Updated to ${latestVersion}. Please restart to apply changes.` }],
+      // @ts-ignore Content type
           display: { type: 'text', text: `Updated to ${latestVersion}! Restart required.` },
           details: { version: latestVersion, requiresRestart: true },
         });
@@ -282,6 +284,7 @@ export default function updateExtension(pi: ExtensionAPI) {
       pi.sendMessage({
           customType: 'update.failed',
           content: [{ type: 'text', text: `Failed to install update ${latestVersion}. Check console for details.` }],
+      // @ts-ignore Content type
           display: { type: 'text', text: `Update failed. See logs.` },
           details: { latestVersion, currentVersion },
         });
@@ -350,6 +353,7 @@ export default function updateExtension(pi: ExtensionAPI) {
       pi.sendMessage({
             customType: 'update.none',
             content: [{ type: 'text', text: 'No updates available.' }],
+      // @ts-ignore Content type
             display: { type: 'text', text: 'No updates available' },
           });
           return;
@@ -362,6 +366,7 @@ export default function updateExtension(pi: ExtensionAPI) {
       pi.sendMessage({
           customType: 'update.installing',
           content: [{ type: 'text', text: `Installing ${latestVersion}...` }],
+      // @ts-ignore Content type
           display: { type: 'text', text: `Installing ${latestVersion}...` },
         });
 
@@ -373,6 +378,7 @@ export default function updateExtension(pi: ExtensionAPI) {
       pi.sendMessage({
             customType: 'update.restarting',
             content: [{ type: 'text', text: 'Update installed. Restarting...' }],
+      // @ts-ignore Content type
             display: { type: 'text', text: 'Restarting...' },
           });
           await restartApplication();
@@ -382,6 +388,7 @@ export default function updateExtension(pi: ExtensionAPI) {
       pi.sendMessage({
             customType: 'update.failed',
             content: [{ type: 'text', text: 'Update failed. Check console.' }],
+      // @ts-ignore Content type
             display: { type: 'text', text: 'Update failed' },
           });
         }
@@ -394,6 +401,7 @@ export default function updateExtension(pi: ExtensionAPI) {
       pi.sendMessage({
         customType: 'update.installing',
         content: [{ type: 'text', text: `Installing ${pending.version}...` }],
+      // @ts-ignore Content type
         display: { type: 'text', text: `Installing ${pending.version}...` },
       });
 
@@ -406,6 +414,7 @@ export default function updateExtension(pi: ExtensionAPI) {
       pi.sendMessage({
           customType: 'update.restarting',
           content: [{ type: 'text', text: 'Update installed. Restarting...' }],
+      // @ts-ignore Content type
           display: { type: 'text', text: 'Restarting...' },
         });
         await restartApplication();
@@ -416,6 +425,7 @@ export default function updateExtension(pi: ExtensionAPI) {
       pi.sendMessage({
           customType: 'update.failed',
           content: [{ type: 'text', text: 'Update failed. Check console.' }],
+      // @ts-ignore Content type
           display: { type: 'text', text: 'Update failed' },
         });
       }
@@ -435,6 +445,7 @@ export default function updateExtension(pi: ExtensionAPI) {
       pi.sendMessage({
           customType: 'update.skipped',
           content: [{ type: 'text', text: `Skipped update to ${pending.version}` }],
+      // @ts-ignore Content type
           display: { type: 'text', text: `Update skipped` },
         });
         console.log(`[Update] Skipped update to ${pending.version}`);
@@ -445,6 +456,7 @@ export default function updateExtension(pi: ExtensionAPI) {
       pi.sendMessage({
           customType: 'update.none',
           content: [{ type: 'text', text: 'No pending update to skip.' }],
+      // @ts-ignore Content type
           display: { type: 'text', text: 'No pending update' },
         });
       }

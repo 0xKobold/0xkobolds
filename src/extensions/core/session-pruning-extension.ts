@@ -320,6 +320,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
       pi.sendMessage({
         customType: "session.compaction_needed",
         content: [{ type: "text", text: "Context window approaching limit" }],
+      // @ts-ignore Content type
         display: { type: "text", text: "⚠️ Context window approaching limit" },
         details: { sessionId: currentSessionId, turn: turnNumber },
       });

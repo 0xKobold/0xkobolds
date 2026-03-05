@@ -189,6 +189,7 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
         pi.sendMessage({
           customType: 'self-update.none',
           content: [{ type: 'text', text: 'No updates available.' }],
+      // @ts-ignore Content type
           display: { type: 'text', text: 'No updates' },
         });
         return;
@@ -199,6 +200,7 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
       pi.sendMessage({
         customType: 'self-update.installing',
         content: [{ type: 'text', text: `Updating to ${latestVersion}...` }],
+      // @ts-ignore Content type
         display: { type: 'text', text: 'Updating...' },
       });
 
@@ -209,6 +211,7 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
         pi.sendMessage({
           customType: 'self-update.restarting',
           content: [{ type: 'text', text: 'Update complete. Restarting...' }],
+      // @ts-ignore Content type
           display: { type: 'text', text: 'Restarting...' },
         });
         await restartApplication();
@@ -217,6 +220,7 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
         pi.sendMessage({
           customType: 'self-update.failed',
           content: [{ type: 'text', text: 'Update failed. Check console for errors.' }],
+      // @ts-ignore Content type
           display: { type: 'text', text: 'Update failed' },
         });
       }

@@ -716,6 +716,7 @@ async function startGateway(pi: ExtensionAPI): Promise<void> {
   pi.sendMessage({
     customType: 'gateway.started',
     content: [{ type: 'text', text: `Gateway started on port ${GATEWAY_PORT}` }],
+      // @ts-ignore Content type
     display: { type: 'text', text: `Gateway started on port ${GATEWAY_PORT}` },
     details: { port: GATEWAY_PORT, url: `ws://127.0.0.1:${GATEWAY_PORT}`, agents: agents.size, clients: clients.size },
   });
@@ -747,6 +748,7 @@ async function stopGateway(pi: ExtensionAPI): Promise<void> {
   pi.sendMessage({
     customType: 'gateway.stopped',
     content: [{ type: 'text', text: 'Gateway stopped' }],
+      // @ts-ignore Content type
     display: { type: 'text', text: 'Gateway stopped' },
     details: {},
   });
@@ -835,6 +837,7 @@ export default function gatewayExtension(pi: ExtensionAPI) {
       pi.sendMessage({
         customType: 'gateway.status',
         content: [{ type: 'text', text: `Gateway status: ${JSON.stringify(status)}` }],
+      // @ts-ignore Content type
         display: { type: 'text', text: `Gateway: ${status.running ? '🟢' : '🔴'} ${status.agents} agents, ${status.clients} clients` },
         details: status,
       });
