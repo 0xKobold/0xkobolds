@@ -432,6 +432,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       const task = createTask(title, description, {
         sessionId: currentSessionId || undefined,
       });
+      // @ts-ignore Notify type
 
       ctx.ui?.notify?.(
         `✅ Created task: ${task.title}\nID: ${task.id.slice(0, 20)}...\nStatus: ${task.status}`,
