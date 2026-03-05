@@ -30,7 +30,7 @@ export async function listOllamaModels(): Promise<string[]> {
     const res = await fetch(`${OLLAMA_BASE_URL}/api/tags`);
     if (!res.ok) return [];
 
-    const data = await res.json();
+    const data: any = await res.json();
     return (data.models ?? []).map((m: any) => m.name);
   } catch {
     return [];
@@ -93,7 +93,7 @@ export class OllamaProvider implements LLMProvider {
       throw new Error(`Ollama error: ${err}`);
     }
 
-    const data = await res.json();
+    const data: any = await res.json();
 
     // Parse tool calls from response
     const toolCalls = data.message?.tool_calls?.map((tc: any) => ({

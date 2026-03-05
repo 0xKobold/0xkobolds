@@ -61,7 +61,7 @@ export class AnthropicProvider implements LLMProvider {
       throw new Error(`Anthropic error: ${err}`);
     }
 
-    const data = await res.json();
+    const data: any = await res.json();
 
     // Parse content blocks
     let content = '';

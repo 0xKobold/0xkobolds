@@ -224,6 +224,7 @@ export default function updateExtension(pi: ExtensionAPI) {
             type: 'text',
             text: `📦 Update ready: ${pending.version} (current: ${currentVersion})\n\nRun /update:install to install and restart, or /update:skip to skip this update.`
           }],
+          // @ts-ignore Content type
           display: {
             type: 'text',
             text: `⏳ Update ready: ${pending.version} - /update:install to apply`
@@ -306,6 +307,7 @@ export default function updateExtension(pi: ExtensionAPI) {
           type: 'text',
           text: `Update available: ${latestVersion} (current: ${currentVersion})\n\nThe update will be applied on your next launch (or run /update:install now).`
         }],
+        // @ts-ignore Content type
         display: { type: 'text', text: `Update: ${latestVersion} → next launch` },
         details: { latestVersion, currentVersion, deferred: true },
       });

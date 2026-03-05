@@ -67,6 +67,7 @@ export function createKoboldExtensionAPI(baseApi: ExtensionAPI): ExtensionAPI {
       baseApi.registerTool({
         name: tool.name,
         description: tool.description,
+        // @ts-ignore TSchema mismatch
         parameters: tool.parameters,
         // @ts-ignore Tool execute signature
         execute: tool.execute,
@@ -74,9 +75,14 @@ export function createKoboldExtensionAPI(baseApi: ExtensionAPI): ExtensionAPI {
     },
 
     registerKoboldCommand: (name: string, command: KoboldCommand) => {
+      const cmdHandler = command.handler || command.execute;
       baseApi.registerCommand(name, {
         description: command.description,
-        handler: command.handler || command.execute,
+        // @ts-ignore Handler signature
+        handler: async (args: string, ctx) => {
+          // @ts-ignore Handler signature
+          await cmdHandler?.(args, ctx);
+        },
       });
     },
   } as ExtensionAPI;

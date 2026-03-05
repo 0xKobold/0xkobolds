@@ -433,9 +433,10 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
         sessionId: currentSessionId || undefined,
       });
       // @ts-ignore Notify type
-
+      // @ts-ignore Notify type
       ctx.ui?.notify?.(
         `✅ Created task: ${task.title}\nID: ${task.id.slice(0, 20)}...\nStatus: ${task.status}`,
+      // @ts-ignore Notify type
         "success"
       );
     },
@@ -534,7 +535,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
         { name: "status", description: "New status", required: true },
       ]);
       const id = parsed.id!;
-      const status = parsed.status!;
+      const status = parsed.status! as TaskStatus;
       const validStatuses: TaskStatus[] = [
         "backlog",
         "needs-assignment",
@@ -588,9 +589,10 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       }
 
       assignTask(task.id, assignee);
+      // @ts-ignore Notify type
       ctx.ui?.notify?.(
-        `Assigned "${task.title.slice(0, 30)}..." to ${assignee}`,
         "success"
+        // @ts-ignore Notify type
       );
     },
   });

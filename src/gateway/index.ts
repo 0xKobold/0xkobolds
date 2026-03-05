@@ -90,7 +90,7 @@ export async function startGateway(config: GatewayConfig): Promise<void> {
     port: config.port,
     hostname: config.host,
 
-    fetch(req, server) {
+    async fetch(req, server) {
       const url = new URL(req.url);
 
       // Health check

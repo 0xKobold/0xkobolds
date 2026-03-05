@@ -10,6 +10,7 @@ import { Database } from "bun:sqlite";
 import { join } from "path";
 import { homedir } from "os";
 import { existsSync, mkdirSync } from "fs";
+import { parseArgs } from "../command-args.js";
 
 type ChannelType = "tui" | "discord" | "web" | "slack" | "telegram";
 
@@ -384,7 +385,7 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
         return;
       }
       
-      const grouped = rows.reduce((acc, r) => {
+      const grouped: Record<string, any[]> = rows.reduce((acc, r) => {
         if (!acc[r.type]) acc[r.type] = [];
         acc[r.type].push(r);
         return acc;
@@ -415,7 +416,8 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
         return;
       }
       
-      const limit = parseInt(String(args.limit)) || 10;
+      const parsed = parseArgs(args, [{ name: "limit", required: false }]);
+      const limit = parseInt(String(parsed.limit)) || 10;
       const history = getChannelHistory(currentChannel.id, limit);
       
       if (history.length === 0) {

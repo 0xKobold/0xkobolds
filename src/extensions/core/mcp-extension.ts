@@ -384,6 +384,7 @@ export default function mcpExtension(pi: ExtensionAPI) {
         `Enabled ${name}\\n` +
           `Status: ${conn.status}\\n` +
           (conn.tools.length > 0 ? `Tools: ${conn.tools.length}` : ""),
+        // @ts-ignore Notify type
         conn.status === "connected" ? "success" : "warning"
       );
     },

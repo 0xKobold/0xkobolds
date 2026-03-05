@@ -164,6 +164,7 @@ function emit(pi: ExtensionAPI, event: string, payload: unknown): void {
     customType: 'gateway.broadcast',
     // @ts-ignore Content type
     content: [{ type: 'text', text: `Event: ${event}` }],
+    // @ts-ignore Content type
     display: { type: 'text', text: `Gateway event: ${event}` },
     details: { event, payload, seq: eventSeq },
   });

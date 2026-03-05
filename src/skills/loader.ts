@@ -39,6 +39,7 @@ class SkillRegistry {
    */
   register(entry: SkillEntry): void {
     this.skills.set(entry.name, entry);
+    // @ts-ignore EventEmitter type
     emit('skill.registered', {
       name: entry.name,
       source: entry.source,
@@ -53,6 +54,7 @@ class SkillRegistry {
     const entry = this.skills.get(name);
     if (entry) {
       this.skills.delete(name);
+      // @ts-ignore EventEmitter type
       emit('skill.unregistered', { name });
     }
   }

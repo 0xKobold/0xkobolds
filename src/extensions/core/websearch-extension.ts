@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { $ } from "bun";
+import { parseArgs } from "../command-args.js";
 
 /**
  * Web Search Tool - Ollama Integration
@@ -101,7 +102,7 @@ Important: Only include real, factual results.`;
       throw new Error("Ollama request failed");
     }
 
-    const data = await ollamaResponse.json();
+    const data: any = await ollamaResponse.json();
     const content = data.response || "";
 
     // Parse results from Ollama response
@@ -232,8 +233,13 @@ export default function webSearchExtension(pi: ExtensionAPI) {
       { name: "query", description: "Search query", required: true },
       { name: "limit", description: "Number of results (default: 5)", required: false }
     ],
-    handler: async (args, ctx) => {
-      const { query, limit } = args;
+    handler: async (args: string, ctx) => {
+      const parsed = parseArgs(args, [
+        { name: "query", description: "Search query", required: true },
+        { name: "limit", description: "Number of results", required: false }
+      ]);
+      const query = parsed.query!;
+      const limit = parsed.limit;
       const resultLimit = parseInt(String(limit)) || 5;
 
       ctx.ui?.notify?.(`🔍 Searching for: ${query}`, "info");
@@ -268,8 +274,13 @@ export default function webSearchExtension(pi: ExtensionAPI) {
       { name: "url", description: "URL to fetch (must start with http:// or https://)", required: true },
       { name: "max", description: "Maximum characters (default: 5000)", required: false }
     ],
-    handler: async (args, ctx) => {
-      const { url, max } = args;
+    handler: async (args: string, ctx) => {
+      const parsed = parseArgs(args, [
+        { name: "url", description: "URL to fetch", required: true },
+        { name: "max", description: "Maximum characters", required: false }
+      ]);
+      const url = parsed.url!;
+      const max = parsed.max;
       const maxLength = parseInt(String(max)) || 5000;
 
       if (!url?.startsWith("http")) {
