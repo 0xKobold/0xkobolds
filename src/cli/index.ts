@@ -12,6 +12,14 @@ import { modeCommand } from "./commands/mode.js";
 import { tuiCommand } from "./commands/tui.js";
 import { startRepl } from "./repl.js";
 
+// Check for active --local context
+const context = await import("../context-detector.js").then(m => m.detectLocalContext());
+if (context?.isLocal && process.cwd() !== context.workingDir) {
+  console.log(`🐉 Note: TUI running with --local in: ${context.workingDir}`);
+  console.log(`   Current directory: ${process.cwd()}`);
+  console.log(`   Use 'cd "${context.workingDir}"' to work there, or use --local flag.\n`);
+}
+
 // Dynamically get version from package.json
 const packageJson = await Bun.file(new URL("../../package.json", import.meta.url)).json();
 const VERSION = packageJson.version;
