@@ -200,13 +200,13 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
     database.run(
       `INSERT INTO task_history (id, task_id, from_status, to_status, changed_by, timestamp, note)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      `hist-${Date.now()}`,
+      [`hist-${Date.now()}`,
       task.id,
       null,
       task.status,
       currentSessionId || "system",
       now,
-      "Task created"
+      "Task created"]
     );
 
     return task;
@@ -557,7 +557,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
         return;
       }
 
-      updateTaskStatus(task.id, status);
+      updateTaskStatus(task.id, status as TaskStatus);
       // @ts-ignore Notify type
       ctx.ui?.notify?.(`Moved "${task.title.slice(0, 30)}..." to ${status}`, "success");
     },
