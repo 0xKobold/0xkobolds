@@ -33,6 +33,8 @@ export const config: Config = {
     // Integrations
     './src/extensions/core/mcp-extension.ts', // Model Context Protocol support
     './src/extensions/core/gateway-extension.ts',          // WebSocket gateway
+    './src/extensions/core/agent-registry-extension.ts',  // OpenClaw-style multi-agent
+    './src/extensions/core/websearch-extension.ts',        // Ollama web search
     './src/extensions/core/update-extension.ts',           // Framework update functionality
     './src/extensions/core/self-update-extension.ts',        // 0xKobold self-update
   ],

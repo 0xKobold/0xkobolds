@@ -46,6 +46,8 @@ async function main(): Promise<void> {
     // Integrations
     '--extension', resolve(packageRoot, 'src/extensions/core/mcp-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/gateway-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/agent-registry-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/websearch-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/update-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/self-update-extension.ts'),
   ]);
