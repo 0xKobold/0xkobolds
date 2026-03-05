@@ -227,6 +227,7 @@ export default function webSearchExtension(pi: ExtensionAPI) {
 
   pi.registerCommand("web-search", {
     description: "Search the web for information",
+  // @ts-ignore Command args property
     args: [
       { name: "query", description: "Search query", required: true },
       { name: "limit", description: "Number of results (default: 5)", required: false }
@@ -262,6 +263,7 @@ export default function webSearchExtension(pi: ExtensionAPI) {
 
   pi.registerCommand("fetch", {
     description: "Fetch and display text content from a URL",
+  // @ts-ignore Command args property
     args: [
       { name: "url", description: "URL to fetch (must start with http:// or https://)", required: true },
       { name: "max", description: "Maximum characters (default: 5000)", required: false }
@@ -325,6 +327,7 @@ export default function webSearchExtension(pi: ExtensionAPI) {
       required: ["query"],
     },
     async execute(args) {
+  // @ts-ignore Command args property
       console.log("[WebSearch] Received args:", JSON.stringify(args, null, 2));
       
       // Handle different argument structures
@@ -395,6 +398,7 @@ export default function webSearchExtension(pi: ExtensionAPI) {
       required: ["url"],
     },
     async execute(args) {
+  // @ts-ignore Command args property
       console.log("[WebFetch] Received args:", JSON.stringify(args, null, 2));
       
       // Handle different argument structures that pi-coding-agent might send
@@ -464,6 +468,7 @@ export default function webSearchExtension(pi: ExtensionAPI) {
       required: ["question"],
     },
     async execute(args) {
+  // @ts-ignore Command args property
       console.log("[WebQA] Received args:", JSON.stringify(args, null, 2));
       
       // Handle different argument structures

@@ -81,7 +81,7 @@ class KoboldEventBus extends EventEmitter {
   }
 
   // Publish an event
-  async emit<T>(type: DomainEventType, payload: T, options: EmitOptions = {}): Promise<void> {
+  async emit<T>(type: DomainEventType, payload: T, options: EmitOptions = {}): Promise<boolean> {
     const event: DomainEvent = {
       type,
       payload,

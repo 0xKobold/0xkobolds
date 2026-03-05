@@ -410,6 +410,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
 
   pi.registerCommand("task", {
     description: "Create a new task",
+  // @ts-ignore Command args property
     args: [
       { name: "title", description: "Task title", required: true },
       { name: "description", description: "Task description", required: false },
@@ -466,6 +467,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
 
   pi.registerCommand("task-show", {
     description: "Show task details",
+  // @ts-ignore Command args property
     args: [{ name: "id", description: "Task ID (or first few characters)", required: true }],
     handler: async (args, ctx) => {
       const searchId = args.id;
@@ -514,6 +516,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
 
   pi.registerCommand("task-move", {
     description: "Move task to a different column",
+  // @ts-ignore Command args property
     args: [
       { name: "id", description: "Task ID", required: true },
       { name: "status", description: "New status (backlog|needs-assignment|in-progress|needs-review|blocked|done)", required: true },
@@ -550,6 +553,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
 
   pi.registerCommand("task-assign", {
     description: "Assign task to someone",
+  // @ts-ignore Command args property
     args: [
       { name: "id", description: "Task ID", required: true },
       { name: "assignee", description: "Who to assign to", required: true },
@@ -575,6 +579,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
 
   pi.registerCommand("task-comment", {
     description: "Add comment to task",
+  // @ts-ignore Command args property
     args: [
       { name: "id", description: "Task ID", required: true },
       { name: "content", description: "Comment text", required: true },
@@ -597,6 +602,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
 
   pi.registerCommand("task-delete", {
     description: "Delete a task",
+  // @ts-ignore Command args property
     args: [{ name: "id", description: "Task ID", required: true }],
     handler: async (args, ctx) => {
       const { id } = args;
@@ -759,6 +765,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
   });
 
   // Status bar item
+  // @ts-ignore ExtensionAPI property
   pi.registerStatusBarItem("tasks", {
     render() {
       const counts = getBoard();

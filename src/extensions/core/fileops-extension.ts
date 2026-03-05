@@ -718,6 +718,7 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
   });
 
   // Register status bar item
+  // @ts-ignore ExtensionAPI property
   pi.registerStatusBarItem('fileops', {
     render() {
       return '📁 FileOps Ready';

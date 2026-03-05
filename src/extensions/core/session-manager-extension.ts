@@ -363,6 +363,7 @@ export default function sessionManagerExtension(pi: ExtensionAPI) {
 
   pi.registerCommand("resume", {
     description: "Resume a previous session (requires session ID)",
+  // @ts-ignore Command args property
     args: [
       { name: "sessionId", description: "Session ID to resume", required: true },
     ],

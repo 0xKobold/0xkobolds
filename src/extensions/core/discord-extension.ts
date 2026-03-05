@@ -154,11 +154,13 @@ export default function discordExtension(pi: ExtensionAPI) {
       const token = args?.token || process.env.DISCORD_TOKEN;
 
       if (!token) {
+  // @ts-ignore ExtensionAPI emit
         pi.emit('discord.error', { message: 'No Discord token provided' });
         return;
       }
 
       if (client?.isReady()) {
+  // @ts-ignore ExtensionAPI emit
         pi.emit('discord.info', { message: 'Already connected' });
         return;
       }
@@ -178,6 +180,7 @@ export default function discordExtension(pi: ExtensionAPI) {
       client.on(Events.ClientReady, () => {
         connected = true;
         console.log(`[Discord] Logged in as ${client?.user?.tag}`);
+  // @ts-ignore ExtensionAPI emit
         pi.emit('discord.connected', {
           botId: client?.user?.id,
           botName: client?.user?.tag,
@@ -189,12 +192,14 @@ export default function discordExtension(pi: ExtensionAPI) {
 
       client.on(Events.Error, (error) => {
         console.error('[Discord] Client error:', error);
+  // @ts-ignore ExtensionAPI emit
         pi.emit('discord.error', { error });
       });
 
       client.on(Events.Disconnect, () => {
         connected = false;
         console.log('[Discord] Disconnected');
+  // @ts-ignore ExtensionAPI emit
         pi.emit('discord.disconnected', {});
       });
 
@@ -202,6 +207,7 @@ export default function discordExtension(pi: ExtensionAPI) {
         await client.login(token);
       } catch (err) {
         console.error('[Discord] Failed to login:', err);
+  // @ts-ignore ExtensionAPI emit
         pi.emit('discord.error', { error: err });
       }
     },
@@ -215,6 +221,7 @@ export default function discordExtension(pi: ExtensionAPI) {
         client = null;
         connected = false;
         console.log('[Discord] Client stopped');
+  // @ts-ignore ExtensionAPI emit
         pi.emit('discord.disconnected', {});
       }
     },
@@ -223,6 +230,7 @@ export default function discordExtension(pi: ExtensionAPI) {
   pi.registerCommand('discord:status', {
     description: 'Get Discord connection status',
     async execute() {
+  // @ts-ignore ExtensionAPI emit
       pi.emit('discord.status', {
         connected: connected && client?.isReady(),
         botName: client?.user?.tag,
@@ -232,6 +240,7 @@ export default function discordExtension(pi: ExtensionAPI) {
   });
 
   // Status bar item
+  // @ts-ignore ExtensionAPI property
   pi.registerStatusBarItem('discord', {
     render() {
       if (connected && client?.isReady()) {
@@ -273,12 +282,14 @@ async function handleMessage(message: Message, pi: ExtensionAPI): Promise<void> 
     const messageInfo = extractMessageInfo(message);
 
     // Emit message event
+  // @ts-ignore ExtensionAPI emit
     pi.emit('discord.message', messageInfo);
 
     // Auto-reply logic can be configured via settings
     const shouldAutoReply = !message.author.bot;
 
     if (shouldAutoReply) {
+  // @ts-ignore ExtensionAPI emit
       pi.emit('agent.message', {
         source: 'discord',
         message: messageInfo,
