@@ -114,6 +114,7 @@ export default function sessionManagerExtension(pi: ExtensionAPI) {
 
       if (existing) {
         // Reactivate session
+// @ts-ignore SQLite binding
         database.run(
           "UPDATE sessions SET is_active = 1, last_activity = ? WHERE id = ?",
           Date.now(),
@@ -153,6 +154,7 @@ export default function sessionManagerExtension(pi: ExtensionAPI) {
       isActive: true,
     };
 
+// @ts-ignore SQLite binding
     database.run(
       `INSERT INTO sessions (id, type, workspace, created_at, last_activity, metadata, is_active)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -181,6 +183,7 @@ export default function sessionManagerExtension(pi: ExtensionAPI) {
   ): void {
     const messageId = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
+// @ts-ignore SQLite binding
     database.run(
       `INSERT INTO session_messages (id, session_id, role, content, timestamp, metadata)
        VALUES (?, ?, ?, ?, ?, ?)`,
@@ -193,6 +196,7 @@ export default function sessionManagerExtension(pi: ExtensionAPI) {
     );
 
     // Update session activity
+// @ts-ignore SQLite binding
     database.run(
       "UPDATE sessions SET last_activity = ? WHERE id = ?",
       Date.now(),
@@ -259,6 +263,7 @@ export default function sessionManagerExtension(pi: ExtensionAPI) {
    * Deactivate a session (not delete, just mark inactive)
    */
   function deactivateSession(sessionId: string): void {
+// @ts-ignore SQLite binding
     database.run(
       "UPDATE sessions SET is_active = 0 WHERE id = ?",
       sessionId

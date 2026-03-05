@@ -183,6 +183,7 @@ async function compactMessages(
   const originalSize = messages?.total || 0;
   
   // Store compaction rule
+// @ts-ignore SQLite binding
   database.run(
     `INSERT INTO compaction_rules (id, session_id, turn_start, turn_end, summary, original_size, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -190,6 +191,7 @@ async function compactMessages(
   );
   
   // Mark original messages as compacted (soft delete)
+// @ts-ignore SQLite binding
   database.run(
     "UPDATE message_entries SET preserved = -1 WHERE session_id = ? AND turn_number >= ? AND turn_number <= ?",
     sessionId, startTurn, endTurn
@@ -207,6 +209,7 @@ function shouldCompact(database: Database, sessionId: string, threshold: number)
   ).get(sessionId) as any;
   
   const currentTokens = stats?.total || 0;
+// @ts-ignore SQLite binding
   const config = database.query("SELECT max_context_tokens FROM session_configs WHERE id = ?").get(sessionId) as any;
   const maxTokens = config?.max_context_tokens || 8000;
   
@@ -275,12 +278,14 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
     if (!currentSessionId) return;
     
     // Initialize config for this session
+// @ts-ignore SQLite binding
     const existing = database.query("SELECT * FROM session_configs WHERE id = ?").get(currentSessionId) as any;
     
     if (!existing) {
       const channelType = process.env.KOBOLD_CHANNEL_TYPE || "dm";
       const maxMessages = channelType === "group" ? 50 : 100; // Groups get less history
       
+// @ts-ignore SQLite binding
       database.run(
         `INSERT INTO session_configs (id, max_history_messages, max_context_tokens, compaction_threshold, channel_type)
          VALUES (?, ?, ?, ?, ?)`,
@@ -301,6 +306,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
     if (!currentSessionId) return;
     
     // Check if we need compaction before this turn
+// @ts-ignore SQLite binding
     const config = database.query("SELECT compaction_threshold FROM session_configs WHERE id = ?").get(currentSessionId) as any;
     
     if (config && shouldCompact(database, currentSessionId, config.compaction_threshold)) {
@@ -333,6 +339,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
       if (args["max-messages"] || args["max-tokens"]) {
         // Update config
         if (args["max-messages"]) {
+// @ts-ignore SQLite binding
           database.run(
             "UPDATE session_configs SET max_history_messages = ? WHERE id = ?",
             parseInt(String(args["max-messages"])),
@@ -340,6 +347,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
           );
         }
         if (args["max-tokens"]) {
+// @ts-ignore SQLite binding
           database.run(
             "UPDATE session_configs SET max_context_tokens = ? WHERE id = ?",
             parseInt(String(args["max-tokens"])),
@@ -350,6 +358,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
       }
       
       // Show current config
+// @ts-ignore SQLite binding
       const config = database.query("SELECT * FROM session_configs WHERE id = ?").get(currentSessionId) as any;
       
       if (!config) {
@@ -419,6 +428,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
       const now = Date.now();
       
       // Delete expired cached messages
+// @ts-ignore SQLite binding
       const result = database.run(
         `DELETE FROM message_entries 
          WHERE session_id = ? 
@@ -428,6 +438,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
       );
       
       // Clean up cache_ttl table
+// @ts-ignore SQLite binding
       database.run("DELETE FROM cache_ttl WHERE ttl < ?", now);
       
       ctx.ui?.notify?.(`Pruned ${result.changes} expired messages from cache`, "success");
@@ -531,6 +542,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
         };
       }
       
+// @ts-ignore SQLite binding
       const config = database.query("SELECT * FROM session_configs WHERE id = ?").get(currentSessionId) as any;
       const usage = database.query(
         "SELECT COUNT(*) as count, SUM(token_count) as tokens FROM message_entries WHERE session_id = ? AND preserved >= 0"
@@ -569,6 +581,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
     render() {
       if (!currentSessionId) return "";
       
+// @ts-ignore SQLite binding
       const config = database.query("SELECT max_context_tokens FROM session_configs WHERE id = ?").get(currentSessionId) as any;
       const usage = database.query(
         "SELECT SUM(token_count) as total FROM message_entries WHERE session_id = ? AND preserved >= 0"

@@ -150,6 +150,7 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
         createdAt: now,
       };
       
+// @ts-ignore SQLite binding
       database.run(
         `INSERT INTO channel_configs (id, type, channel_id, user_id, guild_id, session_id, workspace, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -202,6 +203,7 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
       metadata,
     };
     
+// @ts-ignore SQLite binding
     database.run(
       `INSERT INTO channel_messages (id, channel_id, session_id, source, role, content, timestamp, metadata)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -216,6 +218,7 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
     );
     
     // Update channel state
+// @ts-ignore SQLite binding
     database.run(
       `INSERT INTO channel_state (channel_id, last_message_id, last_activity) 
        VALUES (?, ?, ?)
@@ -483,6 +486,7 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
     },
     async execute(args) {
       const channelId = String(args.channel_id);
+// @ts-ignore SQLite binding
       const config = database.query("SELECT * FROM channel_configs WHERE id = ?").get(channelId) as any;
       
       if (!config) {
@@ -517,6 +521,7 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
     parameters: { type: "object", properties: {} },
     async execute() {
       const channels = database.query("SELECT type, COUNT(*) as count FROM channel_configs GROUP BY type").all() as any[];
+// @ts-ignore SQLite binding
       const messages = database.query("SELECT COUNT(*) as total FROM channel_messages").get() as any;
       
       const today = Date.now() - (24 * 60 * 60 * 1000);

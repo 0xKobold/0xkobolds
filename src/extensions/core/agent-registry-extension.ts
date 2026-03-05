@@ -150,6 +150,7 @@ function initDatabase(): Database {
 
 function loadAgentDefinitions(database: Database): void {
   // Create default definitions if none exist
+// @ts-ignore SQLite binding
   const count = (database.query("SELECT COUNT(*) as count FROM agent_definitions").get() as any)?.count || 0;
   
   if (count === 0) {
@@ -208,6 +209,7 @@ function loadAgentDefinitions(database: Database): void {
 
     const now = Date.now();
     for (const def of defaults) {
+// @ts-ignore SQLite binding
       database.run(
         `INSERT INTO agent_definitions 
          (id, name, type, description, capabilities, model, max_depth, timeout, enabled, created_at)
@@ -240,6 +242,7 @@ async function spawnAgent(
   sessionId: string,
   parentId?: string
 ): Promise<RunningAgent> {
+// @ts-ignore SQLite binding
   const def = database.query("SELECT * FROM agent_definitions WHERE id = ?").get(definitionId) as any;
   if (!def) {
     throw new Error(`Agent definition not found: ${definitionId}`);
@@ -270,6 +273,7 @@ async function spawnAgent(
   };
 
   // Store in database
+// @ts-ignore SQLite binding
   database.run(
     `INSERT INTO running_agents 
      (id, definition_id, session_id, parent_id, task, status, started_at, spawn_depth)
@@ -302,6 +306,7 @@ function updateAgentStatus(
     agent.completedAt = Date.now();
   }
 
+// @ts-ignore SQLite binding
   database.run(
     `UPDATE running_agents SET status = ?, completed_at = ?, result = ? WHERE id = ?`,
     status,
@@ -334,6 +339,7 @@ function sendMessage(
     metadata,
   };
 
+// @ts-ignore SQLite binding
   database.run(
     `INSERT INTO agent_messages 
      (id, from_agent, to_agent, type, content, timestamp, metadata, session_id)

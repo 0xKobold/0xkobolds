@@ -176,6 +176,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       metadata: options.metadata || {},
     };
 
+// @ts-ignore SQLite binding
     database.run(
       `INSERT INTO tasks (id, title, description, status, priority, assignee, session_id, parent_id, tags, created_at, updated_at, metadata)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -194,6 +195,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
     );
 
     // Log creation in history
+// @ts-ignore SQLite binding
     database.run(
       `INSERT INTO task_history (id, task_id, from_status, to_status, changed_by, timestamp, note)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -213,6 +215,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
    * Get task by ID
    */
   function getTask(id: string): Task | null {
+// @ts-ignore SQLite binding
     const row = database.query("SELECT * FROM tasks WHERE id = ?").get(id) as any;
     if (!row) return null;
 
@@ -247,6 +250,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
     const oldStatus = task.status;
     const now = Date.now();
 
+// @ts-ignore SQLite binding
     database.run(
       `UPDATE tasks SET status = ?, updated_at = ?, completed_at = ? WHERE id = ?`,
       newStatus,
@@ -256,6 +260,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
     );
 
     // Log in history
+// @ts-ignore SQLite binding
     database.run(
       `INSERT INTO task_history (id, task_id, from_status, to_status, changed_by, timestamp, note)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -278,6 +283,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
     const task = getTask(id);
     if (!task) return false;
 
+// @ts-ignore SQLite binding
     database.run(
       `UPDATE tasks SET assignee = ?, updated_at = ? WHERE id = ?`,
       assignee,
@@ -366,6 +372,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
    * Add comment to task
    */
   function addComment(taskId: string, content: string): boolean {
+// @ts-ignore SQLite binding
     database.run(
       `INSERT INTO task_comments (id, task_id, author, content, timestamp)
        VALUES (?, ?, ?, ?, ?)`,
@@ -602,6 +609,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
         return;
       }
 
+// @ts-ignore SQLite binding
       database.run("DELETE FROM tasks WHERE id = ?", task.id);
       ctx.ui?.notify?.(`Deleted: ${task.title}`, "success");
     },

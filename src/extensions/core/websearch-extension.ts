@@ -325,12 +325,21 @@ export default function webSearchExtension(pi: ExtensionAPI) {
       required: ["query"],
     },
     async execute(args) {
-      const { query, limit = 5 } = args as { query: string; limit?: number };
+      console.log("[WebSearch] Received args:", JSON.stringify(args, null, 2));
+      
+      // Handle different argument structures
+      const query = args?.query || args?.parameters?.query || args?.[0]?.query;
+      const limit = args?.limit || args?.parameters?.limit || args?.[0]?.limit || 5;
+      
+      console.log("[WebSearch] Extracted query:", query, "limit:", limit);
 
-      if (!query?.trim()) {
+      if (!query || typeof query !== 'string' || !query.trim()) {
         return {
-          content: [{ type: "text", text: "Invalid search query" }],
-          details: { error: "invalid_query" },
+          content: [{ 
+            type: "text", 
+            text: `Invalid search query: received "${query}" (type: ${typeof query})` 
+          }],
+          details: { error: "invalid_query", received: args },
         };
       }
 
@@ -386,12 +395,28 @@ export default function webSearchExtension(pi: ExtensionAPI) {
       required: ["url"],
     },
     async execute(args) {
-      const { url, max_length = 5000 } = args as { url: string; max_length?: number };
+      console.log("[WebFetch] Received args:", JSON.stringify(args, null, 2));
+      
+      // Handle different argument structures that pi-coding-agent might send
+      const url = args?.url || args?.parameters?.url || args?.[0]?.url;
+      const max_length = args?.max_length || args?.parameters?.max_length || args?.[0]?.max_length || 5000;
+      
+      console.log("[WebFetch] Extracted url:", url, "max_length:", max_length);
 
-      if (!url?.startsWith("http")) {
+      if (!url || typeof url !== 'string') {
         return {
-          content: [{ type: "text", text: "Invalid URL. Must start with http:// or https://" }],
-          details: { error: "invalid_url" },
+          content: [{ 
+            type: "text", 
+            text: `Invalid URL: received "${url}" (type: ${typeof url}). Must be a string starting with http:// or https://` 
+          }],
+          details: { error: "invalid_url", received: args },
+        };
+      }
+
+      if (!url.startsWith("http")) {
+        return {
+          content: [{ type: "text", text: `Invalid URL "${url}". Must start with http:// or https://` }],
+          details: { error: "invalid_url_scheme", url },
         };
       }
 
@@ -439,7 +464,23 @@ export default function webSearchExtension(pi: ExtensionAPI) {
       required: ["question"],
     },
     async execute(args) {
-      const { question, sources = 3 } = args as { question: string; sources?: number };
+      console.log("[WebQA] Received args:", JSON.stringify(args, null, 2));
+      
+      // Handle different argument structures
+      const question = args?.question || args?.parameters?.question || args?.[0]?.question;
+      const sources = args?.sources || args?.parameters?.sources || args?.[0]?.sources || 3;
+      
+      console.log("[WebQA] Extracted question:", question, "sources:", sources);
+
+      if (!question || typeof question !== 'string' || !question.trim()) {
+        return {
+          content: [{ 
+            type: "text", 
+            text: `Invalid question: received "${question}" (type: ${typeof question})` 
+          }],
+          details: { error: "invalid_question", received: args },
+        };
+      }
 
       // Search first
       const searchResults = await performWebSearch(question, Math.min(sources, 5));
