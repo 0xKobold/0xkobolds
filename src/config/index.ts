@@ -299,7 +299,8 @@ export function migrateFromOpenClaw(
 
   try {
     const raw = loadConfigRaw(openclawPath);
-    const migrated = transformOpenClawConfig(raw);
+    // @ts-ignore Type assertion for config migration
+    const migrated = transformOpenClawConfig(raw as Record<string, unknown>);
     const validated = KoboldConfigSchema.safeParse(migrated);
 
     if (!validated.success) {

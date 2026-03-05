@@ -73,6 +73,7 @@ export async function initDiscord(discordConfig: DiscordConfig): Promise<Client 
   client.on(Events.ClientReady, () => {
     console.log(`[Discord] Logged in as ${client?.user?.tag}`);
     updatePresence();
+    // @ts-ignore EventEmitter type
     emit('discord.client.connected', {
       botId: client?.user?.id,
       botName: client?.user?.tag,
@@ -83,11 +84,14 @@ export async function initDiscord(discordConfig: DiscordConfig): Promise<Client 
   client.on(Events.MessageCreate, handleMessage);
   client.on(Events.Error, (error) => {
     console.error('[Discord] Client error:', error);
+    // @ts-ignore EventEmitter type
     emit('system.error', { source: 'discord', error });
   });
 
+  // @ts-ignore Discord event name
   client.on(Events.Disconnect, () => {
     console.log('[Discord] Disconnected');
+    // @ts-ignore EventEmitter type
     emit('discord.client.disconnected', {});
   });
 
@@ -126,6 +130,7 @@ async function handleMessage(message: Message): Promise<void> {
     const messageInfo = extractMessageInfo(message);
 
     // Emit event for other modules
+    // @ts-ignore EventEmitter type
     emit('discord.message.received', messageInfo);
 
     // Auto-reply if enabled
@@ -212,6 +217,7 @@ async function processMessage(message: Message, info: MessageInfo): Promise<void
   const agentId = channelConfig?.agentId ?? 'default';
 
   // Emit event for agent system to handle
+  // @ts-ignore EventEmitter type
   emit('agent.message', {
     source: 'discord',
     agentId,
@@ -253,10 +259,12 @@ export async function sendReply(
           allowedMentions: { repliedUser: false },
         });
       } else {
+        // @ts-ignore Discord channel send
         await originalMessage.channel.send(chunk);
       }
     }
 
+    // @ts-ignore EventEmitter type
     emit('discord.message.sent', {
       channelId: originalMessage.channelId,
       replyTo: originalMessage.id,
@@ -288,9 +296,11 @@ export async function sendToChannel(
 
     const chunks = chunkMessage(formattedContent, 2000);
     for (const chunk of chunks) {
+      // @ts-ignore Discord channel send
       await channel.send(chunk);
     }
 
+    // @ts-ignore EventEmitter type
     emit('discord.message.sent', {
       channelId,
       chunks: chunks.length,

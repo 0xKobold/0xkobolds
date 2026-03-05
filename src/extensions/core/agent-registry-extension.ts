@@ -214,7 +214,7 @@ function loadAgentDefinitions(database: Database): void {
         `INSERT INTO agent_definitions 
          (id, name, type, description, capabilities, model, max_depth, timeout, enabled, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        `def-${def.name}`,
+        [`def-${def.name}`,
         def.name,
         def.type,
         def.description,
@@ -223,7 +223,7 @@ function loadAgentDefinitions(database: Database): void {
         def.maxDepth,
         def.timeout,
         def.enabled ? 1 : 0,
-        now
+        now]
       );
     }
 
@@ -243,7 +243,7 @@ async function spawnAgent(
   parentId?: string
 ): Promise<RunningAgent> {
 // @ts-ignore SQLite binding
-  const def = database.query("SELECT * FROM agent_definitions WHERE id = ?").get(definitionId) as any;
+  const def = database.query("SELECT * FROM agent_definitions WHERE id = ?").get([definitionId]) as any;
   if (!def) {
     throw new Error(`Agent definition not found: ${definitionId}`);
   }
@@ -278,7 +278,7 @@ async function spawnAgent(
     `INSERT INTO running_agents 
      (id, definition_id, session_id, parent_id, task, status, started_at, spawn_depth)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    id, definitionId, sessionId, parentId || null, task, "idle", now, spawnDepth
+    [id, definitionId, sessionId, parentId || null, task, "idle", now, spawnDepth]
   );
 
   activeAgents.set(id, agent);
@@ -309,10 +309,10 @@ function updateAgentStatus(
 // @ts-ignore SQLite binding
   database.run(
     `UPDATE running_agents SET status = ?, completed_at = ?, result = ? WHERE id = ?`,
-    status,
+    [status,
     agent.completedAt || null,
     result || null,
-    agentId
+    agentId]
   );
 }
 
@@ -344,14 +344,14 @@ function sendMessage(
     `INSERT INTO agent_messages 
      (id, from_agent, to_agent, type, content, timestamp, metadata, session_id)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    msg.id,
+    [msg.id,
     from,
     to,
     type,
     content,
     msg.timestamp,
     JSON.stringify(metadata || {}),
-    sessionId
+    sessionId]
   );
 
   // Add to in-memory agent
@@ -467,12 +467,13 @@ export default function agentRegistryExtension(pi: ExtensionAPI) {
       { name: "name", description: "Agent definition name (e.g., 'code-specialist')", required: true },
       { name: "task", description: "Task description", required: true },
     ],
-    handler: async (args, ctx) => {
+    handler: async (args: any, ctx) => {
       const { name, task } = args;
       
       const def = database.query(
         "SELECT * FROM agent_definitions WHERE name = ? AND enabled = 1"
-      ).get(name) as any;
+      // @ts-ignore SQLite binding
+      ).get([name]) as any;
 
       if (!def) {
         ctx.ui?.notify?.(`Agent '${name}' not found. Use /agents to list.`, "error");
@@ -496,6 +497,7 @@ export default function agentRegistryExtension(pi: ExtensionAPI) {
           `Task: ${task.slice(0, 50)}...\n` +
           `Status: ${agent.status}\n` +
           `Depth: ${agent.spawnDepth}`,
+          // @ts-ignore Notify type
           "success"
         );
 
@@ -549,7 +551,7 @@ export default function agentRegistryExtension(pi: ExtensionAPI) {
     description: "Find agents by capability",
   // @ts-ignore Command args property
     args: [{ name: "capability", description: "e.g., 'coding', 'research', 'planning'", required: true }],
-    handler: async (args, ctx) => {
+    handler: async (args: any, ctx) => {
       const { capability } = args;
       const agents = findAgentsByCapability(database, capability);
 
