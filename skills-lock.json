@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "sql-optimization-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "5d182f85b327275d3b159d4ebc864691baa6f8fdec30a9cce1f04a0cf10dce2b"
+    }
+  }
+}

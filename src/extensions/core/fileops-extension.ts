@@ -50,10 +50,10 @@ const DANGEROUS_COMMANDS = [
  */
 function validatePath(inputPath: string): { valid: boolean; error?: string; resolvedPath: string } {
   const result = validatePathWithinWorkspace(inputPath);
-  if (result.valid) {
-    return { valid: true, resolvedPath: result.resolvedPath };
+  if ('error' in result) {
+    return { valid: false, error: result.error, resolvedPath: result.resolvedPath };
   }
-  return { valid: false, error: result.error, resolvedPath: result.resolvedPath };
+  return { valid: true, resolvedPath: result.resolvedPath };
 }
 
 /**
