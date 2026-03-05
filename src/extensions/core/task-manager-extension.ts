@@ -15,6 +15,7 @@ import { Database } from "bun:sqlite";
 import { join } from "path";
 import { homedir } from "os";
 import { existsSync, mkdirSync } from "fs";
+import { parseArgs, CommonArgs } from "../command-args.js";
 
 const KOBOLD_DIR = join(homedir(), ".0xkobold");
 const TASK_DB = join(KOBOLD_DIR, "tasks.db");
@@ -180,7 +181,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
     database.run(
       `INSERT INTO tasks (id, title, description, status, priority, assignee, session_id, parent_id, tags, created_at, updated_at, metadata)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      task.id,
+      [task.id,
       task.title,
       task.description,
       task.status,
@@ -191,7 +192,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       JSON.stringify(task.tags),
       task.createdAt,
       task.updatedAt,
-      JSON.stringify(task.metadata)
+      JSON.stringify(task.metadata)]
     );
 
     // Log creation in history
@@ -216,7 +217,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
    */
   function getTask(id: string): Task | null {
 // @ts-ignore SQLite binding
-    const row = database.query("SELECT * FROM tasks WHERE id = ?").get(id) as any;
+    const row = database.query("SELECT * FROM tasks WHERE id = ?").get([id]) as any;
     if (!row) return null;
 
     return {
@@ -253,10 +254,10 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
 // @ts-ignore SQLite binding
     database.run(
       `UPDATE tasks SET status = ?, updated_at = ?, completed_at = ? WHERE id = ?`,
-      newStatus,
+      [newStatus,
       now,
       newStatus === "done" ? now : task.completedAt || null,
-      id
+      id]
     );
 
     // Log in history
@@ -264,13 +265,13 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
     database.run(
       `INSERT INTO task_history (id, task_id, from_status, to_status, changed_by, timestamp, note)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      `hist-${Date.now()}`,
+      [`hist-${Date.now()}`,
       id,
       oldStatus,
       newStatus,
       currentSessionId || "system",
       now,
-      note || `Moved from ${oldStatus} to ${newStatus}`
+      note || `Moved from ${oldStatus} to ${newStatus}`]
     );
 
     return true;
@@ -286,9 +287,9 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
 // @ts-ignore SQLite binding
     database.run(
       `UPDATE tasks SET assignee = ?, updated_at = ? WHERE id = ?`,
-      assignee,
+      [assignee,
       Date.now(),
-      id
+      id]
     );
 
     // Also move to in-progress if in backlog
@@ -376,11 +377,11 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
     database.run(
       `INSERT INTO task_comments (id, task_id, author, content, timestamp)
        VALUES (?, ?, ?, ?, ?)`,
-      `comment-${Date.now()}`,
+      [`comment-${Date.now()}`,
       taskId,
       currentSessionId || "system",
       content,
-      Date.now()
+      Date.now()]
     );
     return true;
   }
@@ -415,9 +416,13 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       { name: "title", description: "Task title", required: true },
       { name: "description", description: "Task description", required: false },
     ],
-    handler: async (args, ctx) => {
-      const title = args.title;
-      const description = args.description || "";
+    handler: async (args: string, ctx) => {
+      const parsed = parseArgs(args, [
+        CommonArgs.title,
+        CommonArgs.description,
+      ]);
+      const title = parsed.title;
+      const description = parsed.description || "";
 
       if (!title) {
         ctx.ui?.notify?.("Usage: /task <title> [description]", "warning");
@@ -469,8 +474,9 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
     description: "Show task details",
   // @ts-ignore Command args property
     args: [{ name: "id", description: "Task ID (or first few characters)", required: true }],
-    handler: async (args, ctx) => {
-      const searchId = args.id;
+    handler: async (args: string, ctx) => {
+      const parsed = parseArgs(args, [CommonArgs.id]);
+      const searchId = parsed.id;
       if (!searchId) {
         ctx.ui?.notify?.("Usage: /task-show <task-id>", "warning");
         return;
@@ -521,8 +527,13 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       { name: "id", description: "Task ID", required: true },
       { name: "status", description: "New status (backlog|needs-assignment|in-progress|needs-review|blocked|done)", required: true },
     ],
-    handler: async (args, ctx) => {
-      const { id, status } = args;
+    handler: async (args: string, ctx) => {
+      const parsed = parseArgs(args, [
+        { name: "id", description: "Task ID", required: true },
+        { name: "status", description: "New status", required: true },
+      ]);
+      const id = parsed.id!;
+      const status = parsed.status!;
       const validStatuses: TaskStatus[] = [
         "backlog",
         "needs-assignment",
@@ -558,8 +569,13 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       { name: "id", description: "Task ID", required: true },
       { name: "assignee", description: "Who to assign to", required: true },
     ],
-    handler: async (args, ctx) => {
-      const { id, assignee } = args;
+    handler: async (args: string, ctx) => {
+      const parsed = parseArgs(args, [
+        { name: "id", description: "Task ID", required: true },
+        { name: "assignee", description: "Who to assign to", required: true },
+      ]);
+      const id = parsed.id!;
+      const assignee = parsed.assignee!;
 
       const all = listTasks();
       const task = all.find((t) => t.id.startsWith(id));
@@ -584,8 +600,13 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       { name: "id", description: "Task ID", required: true },
       { name: "content", description: "Comment text", required: true },
     ],
-    handler: async (args, ctx) => {
-      const { id, content } = args;
+    handler: async (args: string, ctx) => {
+      const parsed = parseArgs(args, [
+        { name: "id", description: "Task ID", required: true },
+        { name: "content", description: "Comment text", required: true },
+      ]);
+      const id = parsed.id!;
+      const content = parsed.content!;
 
       const all = listTasks();
       const task = all.find((t) => t.id.startsWith(id));
@@ -604,8 +625,9 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
     description: "Delete a task",
   // @ts-ignore Command args property
     args: [{ name: "id", description: "Task ID", required: true }],
-    handler: async (args, ctx) => {
-      const { id } = args;
+    handler: async (args: string, ctx) => {
+      const parsed = parseArgs(args, [CommonArgs.id]);
+      const id = parsed.id!;
 
       const all = listTasks();
       const task = all.find((t) => t.id.startsWith(id));
@@ -617,6 +639,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
 
 // @ts-ignore SQLite binding
       database.run("DELETE FROM tasks WHERE id = ?", task.id);
+      // @ts-ignore Notify type
       ctx.ui?.notify?.(`Deleted: ${task.title}`, "success");
     },
   });
