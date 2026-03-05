@@ -608,28 +608,28 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
 
   // Status bar
   // @ts-ignore ExtensionAPI property
-  pi.registerStatusBarItem("context", {
-    render() {
-      if (!currentSessionId) return "";
-      
-// @ts-ignore SQLite binding
-      const config = database.query("SELECT max_context_tokens FROM session_configs WHERE id = ?")
-      // @ts-ignore SQLite binding
-      .get([currentSessionId]) as any;
-      const usage = database.query(
-        "SELECT SUM(token_count) as total FROM message_entries WHERE session_id = ? AND preserved >= 0"
-      )
-      // @ts-ignore SQLite binding
-      .get([currentSessionId]) as any;
-      
-      if (!config) return "";
-      
-      const percentage = Math.round(((usage?.total || 0) / config.max_context_tokens) * 100);
-      const icon = percentage > 90 ? "🔴" : percentage > 75 ? "🟡" : "🟢";
-      
-      return `${icon} ${percentage}%`;
-    },
-  });
+//   pi.registerStatusBarItem("context", {
+//     render() {
+//       if (!currentSessionId) return "";
+//       
+// // @ts-ignore SQLite binding
+//       const config = database.query("SELECT max_context_tokens FROM session_configs WHERE id = ?")
+//       // @ts-ignore SQLite binding
+//       .get([currentSessionId]) as any;
+//       const usage = database.query(
+//         "SELECT SUM(token_count) as total FROM message_entries WHERE session_id = ? AND preserved >= 0"
+//       )
+//       // @ts-ignore SQLite binding
+//       .get([currentSessionId]) as any;
+//       
+//       if (!config) return "";
+//       
+//       const percentage = Math.round(((usage?.total || 0) / config.max_context_tokens) * 100);
+//       const icon = percentage > 90 ? "🔴" : percentage > 75 ? "🟡" : "🟢";
+//       
+//       return `${icon} ${percentage}%`;
+//     },
+//   });
 
   console.log("[SessionPruning] OpenClaw-style context management loaded");
   console.log("[SessionPruning] Commands: /session-config, /compact, /prune-cache, /compactions");

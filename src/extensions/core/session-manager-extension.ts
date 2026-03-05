@@ -320,8 +320,8 @@ export default function sessionManagerExtension(pi: ExtensionAPI) {
     }
   });
 
-  // Register commands
-  pi.registerCommand("session", {
+  // Register commands (renamed to avoid conflicts with pi-coding-agent built-ins)
+  pi.registerCommand("kobold-session", {
     description: "Show current session info",
     handler: async (_args, ctx) => {
       if (!currentSession) {
@@ -343,7 +343,7 @@ export default function sessionManagerExtension(pi: ExtensionAPI) {
     },
   });
 
-  pi.registerCommand("sessions", {
+  pi.registerCommand("kobold-sessions", {
     description: "List active sessions",
     handler: async (_args, ctx) => {
       const sessions = listSessions();
@@ -363,7 +363,7 @@ export default function sessionManagerExtension(pi: ExtensionAPI) {
     },
   });
 
-  pi.registerCommand("resume", {
+  pi.registerCommand("kobold-resume", {
     description: "Resume a previous session (requires session ID)",
   // @ts-ignore Command args property
     args: [

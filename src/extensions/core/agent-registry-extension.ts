@@ -807,14 +807,14 @@ export default function agentRegistryExtension(pi: ExtensionAPI) {
 
   // Status bar
   // @ts-ignore ExtensionAPI property
-  pi.registerStatusBarItem("agents", {
-    render() {
-      const active = database.query(
-        "SELECT COUNT(*) as count FROM running_agents WHERE status = 'working'"
-      ).get() as any;
-      return active?.count > 0 ? `🤖 ${active.count}` : "";
-    },
-  });
+//   pi.registerStatusBarItem("agents", {
+//     render() {
+//       const active = database.query(
+//         "SELECT COUNT(*) as count FROM running_agents WHERE status = 'working'"
+//       ).get() as any;
+//       return active?.count > 0 ? `🤖 ${active.count}` : "";
+//     },
+//   });
 
   console.log("[AgentRegistry] OpenClaw-style multi-agent system loaded");
   console.log("[AgentRegistry] Commands: /agents, /agent-spawn, /agent-status, /agent-tree");

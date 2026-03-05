@@ -499,14 +499,14 @@ export default function mcpExtension(pi: ExtensionAPI) {
 
   // Status bar
   // @ts-ignore ExtensionAPI property
-  pi.registerStatusBarItem("mcp", {
-    render() {
-      const connected = Array.from(connections.values()).filter(
-        (c) => c.status === "connected"
-      ).length;
-      return connected > 0 ? `🔌 ${connected} MCP` : "";
-    },
-  });
+//   pi.registerStatusBarItem("mcp", {
+//     render() {
+//       const connected = Array.from(connections.values()).filter(
+//         (c) => c.status === "connected"
+//       ).length;
+//       return connected > 0 ? `🔌 ${connected} MCP` : "";
+//     },
+//   });
 
   console.log("[MCP] Extension loaded");
 }

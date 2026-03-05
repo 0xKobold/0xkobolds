@@ -797,22 +797,22 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
   });
 
   // Status bar item
-  // @ts-ignore ExtensionAPI property
-  pi.registerStatusBarItem("tasks", {
-    render() {
-      const counts = getBoard();
-      const inProgress = counts["in-progress"].length;
-      const blocked = counts["blocked"].length;
-
-      if (blocked > 0) {
-        return `🚫 ${blocked} blocked`;
-      }
-      if (inProgress > 0) {
-        return `🏗️ ${inProgress} active`;
-      }
-      return "";
-    },
-  });
-
+//   // @ts-ignore ExtensionAPI property
+//   pi.registerStatusBarItem("tasks", {
+//     render() {
+//       const counts = getBoard();
+//       const inProgress = counts["in-progress"].length;
+//       const blocked = counts["blocked"].length;
+// 
+//       if (blocked > 0) {
+//         return `🚫 ${blocked} blocked`;
+//       }
+//       if (inProgress > 0) {
+//         return `🏗️ ${inProgress} active`;
+//       }
+//       return "";
+//     },
+//   });
+// 
   console.log("[TaskManager] Extension loaded with Kanban workflow");
 }

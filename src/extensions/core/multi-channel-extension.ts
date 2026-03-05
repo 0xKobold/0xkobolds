@@ -557,19 +557,19 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
 
   // Status bar
   // @ts-ignore ExtensionAPI property
-  pi.registerStatusBarItem("channel", {
-    render() {
-      if (!currentChannel) return "";
-      const icons: Record<ChannelType, string> = {
-        tui: "💻",
-        discord: "💬",
-        web: "🌐",
-        slack: "💼",
-        telegram: "✈️",
-      };
-      return `${icons[currentChannel.type]} ${currentChannel.type}`;
-    },
-  });
+//   pi.registerStatusBarItem("channel", {
+//     render() {
+//       if (!currentChannel) return "";
+//       const icons: Record<ChannelType, string> = {
+//         tui: "💻",
+//         discord: "💬",
+//         web: "🌐",
+//         slack: "💼",
+//         telegram: "✈️",
+//       };
+//       return `${icons[currentChannel.type]} ${currentChannel.type}`;
+//     },
+//   });
 
   console.log("[MultiChannel] Multi-channel support loaded");
   console.log("[MultiChannel] Commands: /channel, /channels, /channel-history");

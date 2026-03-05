@@ -246,14 +246,14 @@ export default function discordExtension(pi: ExtensionAPI) {
 
   // Status bar item
   // @ts-ignore ExtensionAPI property
-  pi.registerStatusBarItem('discord', {
-    render() {
-      if (connected && client?.isReady()) {
-        return `Discord: 🟢 ${client.user?.tag}`;
-      }
-      return 'Discord: 🔴';
-    },
-  });
+//   pi.registerStatusBarItem('discord', {
+//     render() {
+//       if (connected && client?.isReady()) {
+//         return `Discord: 🟢 ${client.user?.tag}`;
+//       }
+//       return 'Discord: 🔴';
+//     },
+//   });
 
   // Cleanup on shutdown
   // @ts-ignore Event type
