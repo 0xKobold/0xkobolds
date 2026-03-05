@@ -4,6 +4,7 @@ import { resolve, join } from "path";
 import { homedir } from "os";
 
 const MODE_CONFIG_FILE = join(homedir(), ".0xkobold", "modes.json");
+const CONTEXT_FILE = join(homedir(), ".0xkobold", ".active-context");
 
 interface ModeConfig {
   currentMode: string;
@@ -109,4 +110,25 @@ modeCommand
     const config = loadConfig();
     console.log("\nCurrent configuration:");
     console.log(JSON.stringify(config, null, 2));
+  });
+
+modeCommand
+  .command("context")
+  .description("Show current TUI working context")
+  .action(async () => {
+    if (!existsSync(CONTEXT_FILE)) {
+      console.log("No active TUI context found");
+      console.log("The TUI may not be running, or was started without --local");
+      return;
+    }
+
+    try {
+      const context = JSON.parse(readFileSync(CONTEXT_FILE, "utf-8"));
+      console.log("🐉 Current TUI Context:");
+      console.log(`  Working directory: ${context.workingDir}`);
+      console.log(`  Mode: ${context.isLocal ? "local" : "global"}`);
+      console.log(`  Started: ${new Date(context.timestamp).toLocaleString()}`);
+    } catch {
+      console.log("Invalid context file");
+    }
   });
