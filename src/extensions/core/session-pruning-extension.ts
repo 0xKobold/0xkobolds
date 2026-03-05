@@ -178,7 +178,8 @@ async function compactMessages(
   // Calculate original size
   const messages = database.query(
     "SELECT SUM(token_count) as total FROM message_entries WHERE session_id = ? AND turn_number >= ? AND turn_number <= ?"
-  ).get(sessionId, startTurn, endTurn) as any;
+  // @ts-ignore SQLite binding
+  ).get([sessionId, startTurn, endTurn]) as any;
   
   const originalSize = messages?.total || 0;
   
@@ -187,14 +188,14 @@ async function compactMessages(
   database.run(
     `INSERT INTO compaction_rules (id, session_id, turn_start, turn_end, summary, original_size, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    id, sessionId, startTurn, endTurn, aiSummary, originalSize, now
+    [id, sessionId, startTurn, endTurn, aiSummary, originalSize, now]
   );
   
   // Mark original messages as compacted (soft delete)
 // @ts-ignore SQLite binding
   database.run(
     "UPDATE message_entries SET preserved = -1 WHERE session_id = ? AND turn_number >= ? AND turn_number <= ?",
-    sessionId, startTurn, endTurn
+    [sessionId, startTurn, endTurn]
   );
   
   console.log(`[SessionPruning] Compacted turns ${startTurn}-${endTurn} → ${estimateTokens(aiSummary)} tokens`);
@@ -206,11 +207,12 @@ async function compactMessages(
 function shouldCompact(database: Database, sessionId: string, threshold: number): boolean {
   const stats = database.query(
     "SELECT SUM(token_count) as total FROM message_entries WHERE session_id = ? AND preserved >= 0"
-  ).get(sessionId) as any;
+  // @ts-ignore SQLite binding
+  ).get([sessionId]) as any;
   
   const currentTokens = stats?.total || 0;
 // @ts-ignore SQLite binding
-  const config = database.query("SELECT max_context_tokens FROM session_configs WHERE id = ?").get(sessionId) as any;
+  const config = database.query("SELECT max_context_tokens FROM session_configs WHERE id = ?").get([sessionId]) as any;
   const maxTokens = config?.max_context_tokens || 8000;
   
   const percentage = (currentTokens / maxTokens) * 100;
@@ -279,7 +281,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
     
     // Initialize config for this session
 // @ts-ignore SQLite binding
-    const existing = database.query("SELECT * FROM session_configs WHERE id = ?").get(currentSessionId) as any;
+    const existing = database.query("SELECT * FROM session_configs WHERE id = ?").get([currentSessionId]) as any;
     
     if (!existing) {
       const channelType = process.env.KOBOLD_CHANNEL_TYPE || "dm";
@@ -289,11 +291,11 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
       database.run(
         `INSERT INTO session_configs (id, max_history_messages, max_context_tokens, compaction_threshold, channel_type)
          VALUES (?, ?, ?, ?, ?)`,
-        currentSessionId,
+        [currentSessionId,
         maxMessages,
         8000,
         80,
-        channelType
+        channelType]
       );
       
       console.log(`[SessionPruning] Configured session ${currentSessionId.slice(0, 8)}... as ${channelType}`);

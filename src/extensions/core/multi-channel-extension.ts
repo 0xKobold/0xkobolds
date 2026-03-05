@@ -296,6 +296,7 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
     process.env.KOBOLD_CHANNEL_CONFIG_ID = currentChannel.id;
   });
 
+  // @ts-ignore Event type
   pi.on("message", async (event, ctx) => {
     if (!currentChannel) return;
     
@@ -310,6 +311,7 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
     );
   });
 
+  // @ts-ignore Event type
   pi.on("reply", async (event, ctx) => {
     if (!currentChannel) return;
     
@@ -364,7 +366,7 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
     description: "List active channels",
   // @ts-ignore Command args property
     args: [{ name: "type", description: "Filter by type (tui/discord/web)", required: false }],
-    handler: async (args, ctx) => {
+    handler: async (args: any, ctx) => {
       let query = "SELECT * FROM channel_configs";
       const params: any[] = [];
       

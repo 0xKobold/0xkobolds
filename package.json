@@ -18,7 +18,9 @@
     "update": "bun run src/cli/index.ts update",
     "update:check": "bun run src/cli/index.ts update check",
     "update:install": "bun run src/cli/index.ts update install",
-    "update:framework": "bun run src/cli/index.ts update framework"
+    "update:framework": "bun run src/cli/index.ts update framework",
+    "setup-hooks": "bash scripts/install-hooks.sh",
+    "prepare": "bash scripts/install-hooks.sh"
   },
   "keywords": ["ai", "assistant", "cli", "agent", "kobold"],
   "author": "0xKobold Team",

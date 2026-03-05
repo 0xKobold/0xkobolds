@@ -98,13 +98,17 @@ export default function personaLoaderExtension(pi: ExtensionAPI) {
   console.log("[Persona] Loaded persona files:", Object.keys(files).filter(k => files[k as keyof PersonaFiles]));
 
   // Inject persona into system prompt on session start
+  // @ts-ignore Event type
   pi.on("session_start", async (_event, ctx) => {
+    // @ts-ignore ExtensionContext type
     if (ctx.sessionManager?.setSystemPrompt) {
+      // @ts-ignore ExtensionContext type
       const currentPrompt = ctx.sessionManager.getSystemPrompt?.() || "";
 
       // Only add if not already present
       if (!currentPrompt.includes("=== PERSONA CONTEXT ===")) {
         const newPrompt = currentPrompt + personaPrompt;
+        // @ts-ignore ExtensionContext type
         ctx.sessionManager.setSystemPrompt(newPrompt);
         console.log("[Persona] Persona context injected into system prompt");
       }
