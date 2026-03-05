@@ -4,7 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-0xKobold is a personal AI assistant framework built on **Bun** and the **`@mariozechner/pi-coding-agent`** library. It provides a hot-reloadable skill system, multi-agent WebSocket gateway, Discord integration, and an event-driven architecture.
+0xKobold is a personal AI assistant framework built on **Bun** and the **`@mariozechner/pi-coding-agent`** library. It features an **OpenClaw-style multi-agent orchestration system** with a hot-reloadable skill system, WebSocket gateway for agent spawning, Discord integration, and an event-driven architecture.
+
+**Key Capabilities:**
+- **Multi-Agent Orchestration** - Spawn specialized agents (coordinator, specialist, researcher, planner, reviewer) dynamically
+- **Hot-Reload Skills** - Add capabilities without restart via `skills/` directory
+- **WebSocket Gateway** - Real-time agent spawning and communication (port 18789)
+- **Discord Integration** - Bot interface for remote interaction
+- **Event-Driven Architecture** - Decoupled modules via event bus
 
 **Key Dependencies:**
 - `@mariozechner/pi-coding-agent` - Core agent framework
@@ -34,6 +41,78 @@ bun test <pattern>     # Run specific test file (e.g., bun test tui)
 bun run demo           # Run demo.ts
 ./demo-multi-agent.sh  # Multi-agent demo
 ./demo-openclaw.sh     # OpenClaw compatibility demo
+```
+
+## Multi-Agent System
+
+0xKobold implements OpenClaw-style multi-agent orchestration with specialized agent types defined in the registry (`~/.0xkobold/agents.db`).
+
+### Agent Types
+
+| Type | Capabilities | Use For |
+|------|--------------|---------|
+| **coordinator** | task-delegation, planning, coordination | Breaking down complex requests, managing workflows |
+| **specialist** | coding, refactoring, code-review, debugging | Implementation tasks, code generation |
+| **researcher** | research, analysis, documentation, search | Exploring codebases, finding patterns |
+| **planner** | planning, architecture-design, task-breakdown | Design phase, creating implementation plans |
+| **reviewer** | code-review, quality-assurance, security-review | Final review before merging changes |
+
+### Agent Commands (Runtime)
+
+```bash
+/agents                 # List all agent definitions
+/agent-status           # Show running agents
+/agent-tree            # Display agent hierarchy
+/agent-cap <capability> # Find agents by capability (e.g., /agent-cap planning)
+
+# Spawn agents
+/agent-spawn coordinator "plan a feature"
+/agent-spawn specialist "implement auth"
+/agent-spawn researcher "analyze this codebase"
+/agent-spawn planner "design a database schema"
+/agent-spawn reviewer "check for security issues"
+```
+
+### Programmatic Agent Spawning
+
+```typescript
+// Spawn specific agent type
+agent_spawn({
+  agent_type: "specialist",
+  task: "implement user authentication",
+  capabilities_needed: ["coding", "security"]
+})
+
+// Delegate to best matching agent
+agent_delegate({
+  task: "optimize database queries",
+  preferred_type: "specialist"
+})
+
+// List available agents
+agent_list({})
+```
+
+### Agent Lifecycle
+
+1. **Idle** → Agent created, waiting for task
+2. **Working** → Processing task
+3. **Completed/Error** → Task finished or failed
+
+Agents spawn at depth 0 (root) or as children (depth > 0). Max depth prevents runaway spawning.
+
+### Multi-Agent Workflow Example
+
+```
+User: "Build a user authentication system"
+
+1. Spawn planner: "design auth system"
+2. Planner returns architecture 
+3. Spawn specialist: "implement login"
+4. Specialist implements code
+5. Spawn reviewer: "review auth code"
+6. Reviewer approves
+7. Integrate results
 ```
 
 ## Architecture
@@ -68,6 +147,47 @@ export default mySkill;
 ```
 
 Skills auto-reload on file change via `src/skills/loader.ts`. Built-in skills are in `src/skills/builtin/`.
+
+### Creating a New Skill
+
+1. **Create file** in `skills/` (e.g., `skills/my-skill.ts`)
+2. **Define the skill** with proper risk level:
+   - `safe` - No approval (math, string ops, read-only)
+   - `medium` - Confirmation required (file write, web requests)
+   - `high` - Explicit approval (shell, delete, system changes)
+3. **Export skill** object with `name`, `description`, `risk`, `toolDefinition`, `execute`
+4. **Test immediately** - hot-reload is active, no build step needed
+
+**Template:**
+```typescript
+import { Skill } from '../src/skills/types';
+
+export const mySkill: Skill = {
+  name: 'mySkill',
+  description: 'Clear description of what this skill does',
+  risk: 'medium',
+  toolDefinition: {
+    type: 'function',
+    function: {
+      name: 'mySkill',
+      description: 'Description for the LLM',
+      parameters: {
+        type: 'object',
+        properties: {
+          param: { type: 'string', description: 'Parameter description' }
+        },
+        required: ['param']
+      }
+    }
+  },
+  async execute(args) {
+    // Implementation
+    return { success: true, data: result };
+  }
+};
+
+export default mySkill;
+```
 
 **3. Event Bus**
 Decoupled module communication via `src/event-bus/index.ts`:
@@ -138,6 +258,8 @@ Project-local workspace in `.0xkobold/` (created by `bun run init`).
 - **`src/skills/loader.ts`** - Hot-reload implementation using `fs.watch`
 - **`src/event-bus/index.ts`** - Domain event system with typed events
 - **`cli/commands/init.ts`** - Workspace initialization logic
+- **`~/.0xkobold/agents.db`** - Agent registry database (agent definitions, running agents, messages)
+- **`AGENTS.md`** - Detailed multi-agent system documentation
 
 ### Testing
 
@@ -156,10 +278,66 @@ Test utilities in `test/setup.ts` include `createMockLogger()`, `delay()`, `retr
 - Bun types included (`bun-types`)
 - Source maps enabled
 
+## Common Workflows
+
+### Add a New Skill
+1. Create file in `skills/<name>.ts`
+2. Import `Skill` type from `../src/skills/types`
+3. Export skill with `name`, `description`, `risk`, `toolDefinition`, `execute`
+4. Test immediately via REPL or TUI (hot-reload active)
+
+### Spawn a Sub-Agent
+```typescript
+// Direct spawn
+agent_spawn({
+  agent_type: "specialist",
+  task: "implement user authentication"
+})
+
+// Capability-based routing
+agent_delegate({
+  task: "optimize database queries",
+  preferred_type: "specialist"
+})
+```
+
+### Create a New Extension
+1. Create file in `src/extensions/core/<name>-extension.ts`
+2. Implement extension interface (see existing extensions for patterns)
+3. Register in `src/pi-config.ts`
+4. Restart to load (extensions not hot-reloaded)
+
+### Debug Agent Issues
+```bash
+/agent-tree           # View hierarchy
+/agent-status         # Check running agents
+# Or check ~/.0xkobold/agents.db for agent state
+```
+
 ## Important Notes
 
-- **Always use Bun**, not Node.js. This project depends on Bun-specific APIs (`bun:sqlite`, `import.meta.main`, etc.)
-- The project uses `pi-coding-agent` framework - don't reinvent agent loop logic, extend via the extension system
-- Skills auto-reload on save - no build step needed for skill development
-- The gateway uses WebSocket protocol (port 18789 by default) for agent spawning
-- Extensions are loaded dynamically from paths in `pi-config.ts`
+### Runtime Requirements
+- **Bun only** - Not Node.js compatible. Uses Bun-specific APIs (`bun:sqlite`, `import.meta.main`, etc.)
+- **SQLite** - Agent registry and memory stored in `~/.0xkobold/agents.db`
+
+### Development Patterns
+- **Extend, don't reinvent** - Use `pi-coding-agent` extension system; don't write custom agent loops
+- **Skills auto-reload** - No build step needed for skill changes
+- **Extensions require restart** - Not hot-reloaded like skills
+
+### Gateway & Multi-Agent
+- **WebSocket gateway** runs on port 18789 by default for agent spawning
+- **Agent registry** in SQLite database tracks definitions, running instances, and messages
+- **Max depth** prevents runaway agent spawning (hierarchical depth limit)
+
+### Configuration
+- **Global config**: `~/.0xkobold/config.json`
+- **Project workspace**: `.0xkobold/` (created by `bun run init`)
+- **Extensions**: Registered in `src/pi-config.ts`
+
+## See Also
+
+- **`AGENTS.md`** - Detailed multi-agent orchestration documentation (OpenClaw-style, registry database, agent lifecycle)
+- **`README.md`** - Project overview and quick start
+- **Skills directory** - `skills/` for user-defined skills
+- **Built-in skills** - `src/skills/builtin/` for reference implementations

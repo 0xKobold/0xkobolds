@@ -272,11 +272,9 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
   // ═══════════════════════════════════════════════════════════════
 
   pi.on("session_start", async (_event, ctx) => {
-    const sessionId = process.env.KOBOLD_SESSION_ID;
+    const sessionId = ctx.sessionManager.getSessionId();
     const channelType = (process.env.KOBOLD_CHANNEL_TYPE || "tui") as ChannelType;
     const userId = process.env.KOBOLD_USER_ID || "anonymous";
-    
-    if (!sessionId) return;
     
     currentChannel = getOrCreateChannel(
       channelType,
@@ -295,6 +293,14 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
     
     // Set environment for tools
     process.env.KOBOLD_CHANNEL_CONFIG_ID = currentChannel.id;
+  });
+
+  // Update on session switch
+  pi.on("session_switch", async (event, ctx) => {
+    const sessionId = ctx.sessionManager.getSessionId();
+    if (currentChannel) {
+      currentChannel.sessionId = sessionId;
+    }
   });
 
   // @ts-ignore Event type

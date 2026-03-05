@@ -35,7 +35,7 @@ interface Task {
   status: TaskStatus;
   priority: "low" | "medium" | "high" | "critical";
   assignee?: string;
-  sessionId?: string;
+  sessionId: string;
   parentId?: string;
   tags: string[];
   createdAt: number;
@@ -63,7 +63,7 @@ const TASK_COLUMNS: { id: TaskStatus; label: string; emoji: string; color: strin
   ];
 
 let db: Database | null = null;
-let currentSessionId: string | null = null;
+let currentSessionId: string = "default";
 
 /**
  * Initialize task database
@@ -87,7 +87,7 @@ function initDatabase(): Database {
       status TEXT NOT NULL DEFAULT 'backlog',
       priority TEXT NOT NULL DEFAULT 'medium',
       assignee TEXT,
-      session_id TEXT,
+      session_id TEXT NOT NULL,
       parent_id TEXT,
       tags TEXT,
       created_at INTEGER NOT NULL,
@@ -146,9 +146,14 @@ function generateTaskId(): string {
 export default function taskManagerExtension(pi: ExtensionAPI) {
   const database = initDatabase();
 
-  // Track current session
+  // Track current session from session or environment
   pi.on("session_start", async (_event, ctx) => {
-    currentSessionId = process.env.KOBOLD_SESSION_ID || null;
+    currentSessionId = ctx.sessionManager.getSessionId();
+  });
+
+  // Update session ID on session switch
+  pi.on("session_switch", async (event, ctx) => {
+    currentSessionId = ctx.sessionManager.getSessionId();
   });
 
   /**
@@ -169,7 +174,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       status: options.status || "backlog",
       priority: options.priority || "medium",
       assignee: options.assignee,
-      sessionId: options.sessionId || currentSessionId || undefined,
+      sessionId: options.sessionId || currentSessionId,
       parentId: options.parentId,
       tags: options.tags || [],
       createdAt: now,
@@ -204,7 +209,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       task.id,
       null,
       task.status,
-      currentSessionId || "system",
+      currentSessionId,
       now,
       "Task created"]
     );
@@ -269,7 +274,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       id,
       oldStatus,
       newStatus,
-      currentSessionId || "system",
+      currentSessionId,
       now,
       note || `Moved from ${oldStatus} to ${newStatus}`]
     );
@@ -305,7 +310,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
    */
   function listTasks(filter?: {
     status?: TaskStatus;
-    sessionId?: string;
+    sessionId: string;
     assignee?: string;
     tags?: string[];
   }): Task[] {
@@ -379,7 +384,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
        VALUES (?, ?, ?, ?, ?)`,
       [`comment-${Date.now()}`,
       taskId,
-      currentSessionId || "system",
+      currentSessionId,
       content,
       Date.now()]
     );
@@ -430,7 +435,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       }
 
       const task = createTask(title, description, {
-        sessionId: currentSessionId || undefined,
+        sessionId: currentSessionId,
       });
       // @ts-ignore Notify type
       // @ts-ignore Notify type
@@ -688,7 +693,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
 
       const parentTask = createTask(request, "Auto-generated from breakdown", {
         status: "in-progress",
-        sessionId: currentSessionId || undefined,
+        sessionId: currentSessionId,
       });
 
       const created: Task[] = [];
@@ -697,7 +702,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
           parentId: parentTask.id,
           priority: (st.priority as any) || "medium",
           status: "backlog",
-          sessionId: currentSessionId || undefined,
+          sessionId: currentSessionId,
         });
         created.push(child);
       }
@@ -735,7 +740,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
     },
     async execute(args: any) {
       const tasks = listTasks(
-        args.status ? { status: args.status as TaskStatus } : undefined
+        args.status ? { status: args.status as TaskStatus, sessionId: currentSessionId } : { sessionId: currentSessionId }
       ).slice(0, (args.limit as number) || 20);
 
       return {

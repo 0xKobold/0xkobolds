@@ -1,821 +1,446 @@
 /**
- * Agent Registry Extension - OpenClaw Style Multi-Agent System
- *
- * Inspired by OpenClaw (docs.openclaw.ai)
- * Features:
- * - Agent definitions in AGENTS.md and AGENTS.default
- * - Capability-based agent discovery
- * - Inter-agent messaging
- * - Agent lifecycle management
- * - Specialized agent types
+ * Agent Registry Extension - Secure Gateway-Based Multi-Agent System
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Database } from "bun:sqlite";
 import { join } from "path";
 import { homedir } from "os";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
-import { spawn } from "child_process";
+import { existsSync, mkdirSync, rmSync } from "fs";
 
 const KOBOLD_DIR = join(homedir(), ".0xkobold");
 const AGENTS_DIR = join(KOBOLD_DIR, "agents");
 const REGISTRY_DB = join(KOBOLD_DIR, "agents.db");
+const GATEWAY_PORT = 18789;
 
-// Agent Types inspired by OpenClaw
-type AgentType = 
-  | "coordinator"    // Orchestrates other agents
-  | "specialist"     // Deep expertise in one area
-  | "worker"         // General purpose task executor
-  | "reviewer"       // Code review, analysis
-  | "researcher"     // Information gathering
-  | "planner"        // Breaks down complex tasks
-  | "executor";      // Executes plans
+const AGENT_TYPES = [
+  "coordinator", "specialist", "worker",
+  "reviewer", "researcher", "planner", "executor",
+] as const;
+type AgentType = (typeof AGENT_TYPES)[number];
 
 interface AgentDefinition {
-  id: string;
-  name: string;
-  type: AgentType;
-  description: string;
-  capabilities: string[];
-  model: string;
-  systemPrompt?: string;
-  maxDepth: number;  // How many sub-agents this agent can spawn
-  timeout: number;   // Default timeout in seconds
-  enabled: boolean;
+  id: string; name: string; type: AgentType;
+  description: string; capabilities: string[];
+  model: string; systemPrompt?: string;
+  maxDepth: number; timeout: number;
+  memoryLimit: number; enabled: boolean;
 }
 
-interface RunningAgent {
-  id: string;
-  definitionId: string;
-  sessionId: string;
-  parentId?: string;
-  task: string;
-  status: "idle" | "working" | "completed" | "error" | "terminated";
-  startedAt: number;
-  completedAt?: number;
-  spawnDepth: number;
-  children: string[];
-  messages: AgentMessage[];
-  process?: any;  // Child process reference
+interface AgentProcess {
+  id: string; definitionId: string;
+  workspace: string; parentId?: string;
+  task: string; status: "idle" | "working" | "completed" | "error" | "terminated";
+  startedAt: number; completedAt?: number;
+  spawnDepth: number; children: string[];
+  result?: string; exitCode?: number;
+  sessionKey: string;
+  subprocess?: ReturnType<typeof Bun.spawn> | null;
+  pid?: number; tokens: { input: number; output: number };
+  runtime: number;
 }
 
-interface AgentMessage {
-  id: string;
-  from: string;
-  to: string;
-  type: "request" | "response" | "announce" | "error";
-  content: string;
-  timestamp: number;
-  metadata?: Record<string, unknown>;
+interface AgentAnnouncement {
+  source: "subagent";
+  childSessionKey: string;
+  taskLabel?: string;
+  status: "success" | "error" | "timeout" | "unknown";
+  result: string;
+  tokens: { input: number; output: number };
+  runtime: number; exitCode?: number;
 }
 
 let db: Database | null = null;
-const activeAgents = new Map<string, RunningAgent>();
+const activeAgents = new Map<string, AgentProcess>();
+const sessionKeyToAgent = new Map<string, string>();
 
-// ═════════════════════════════════════════════════════════════════
-// DATABASE
-// ═════════════════════════════════════════════════════════════════
+function generateSessionKey(agentId: string): string {
+  const timestamp = Date.now();
+  const random = crypto.randomUUID();
+  const key = `${agentId}:${timestamp}:${random}`;
+  const checksum = [...key].reduce((a, b) => a + b.charCodeAt(0), 0) % 256;
+  return `${key}:${checksum.toString(16).padStart(2, "0")}`;
+}
+
+function validateSessionKey(key: string, agentId: string): boolean {
+  const parts = key.split(":");
+  if (parts.length !== 4 || parts[0] !== agentId) return false;
+  const checksum = parseInt(parts[3], 16);
+  const keyWithoutChecksum = parts.slice(0, 3).join(":");
+  const expected = [...keyWithoutChecksum].reduce((a, b) => a + b.charCodeAt(0), 0) % 256;
+  return checksum === expected;
+}
 
 function initDatabase(): Database {
   if (db) return db;
-
-  if (!existsSync(KOBOLD_DIR)) {
-    mkdirSync(KOBOLD_DIR, { recursive: true });
-  }
+  if (!existsSync(KOBOLD_DIR)) mkdirSync(KOBOLD_DIR, { recursive: true });
 
   db = new Database(REGISTRY_DB);
   db.run("PRAGMA journal_mode = WAL;");
 
-  // Agent definitions (from AGENTS.md)
-  db.run(`
-    CREATE TABLE IF NOT EXISTS agent_definitions (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      type TEXT NOT NULL,
-      description TEXT,
-      capabilities TEXT NOT NULL,  -- JSON array
-      model TEXT DEFAULT 'ollama/llama3.2',
-      system_prompt TEXT,
-      max_depth INTEGER DEFAULT 2,
-      timeout INTEGER DEFAULT 300,
-      enabled INTEGER DEFAULT 1,
-      source TEXT DEFAULT 'registry',  -- 'registry' or 'session'
-      created_at INTEGER NOT NULL
-    )
-  `);
+  db.run(`CREATE TABLE IF NOT EXISTS agent_definitions (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, type TEXT NOT NULL,
+    description TEXT, capabilities TEXT NOT NULL, model TEXT DEFAULT 'ollama/llama3.2',
+    system_prompt TEXT, max_depth INTEGER DEFAULT 2, timeout INTEGER DEFAULT 300,
+    memory_limit INTEGER DEFAULT 512, enabled INTEGER DEFAULT 1,
+    source TEXT DEFAULT 'registry', created_at INTEGER NOT NULL)`);
 
-  // Running agents
-  db.run(`
-    CREATE TABLE IF NOT EXISTS running_agents (
-      id TEXT PRIMARY KEY,
-      definition_id TEXT,
-      session_id TEXT NOT NULL,
-      parent_id TEXT,
-      task TEXT NOT NULL,
-      status TEXT DEFAULT 'idle',
-      started_at INTEGER NOT NULL,
-      completed_at INTEGER,
-      spawn_depth INTEGER DEFAULT 0,
-      result TEXT,
-      FOREIGN KEY (definition_id) REFERENCES agent_definitions(id)
-    )
-  `);
+  db.run(`CREATE TABLE IF NOT EXISTS running_agents (
+    id TEXT PRIMARY KEY, definition_id TEXT NOT NULL,
+    session_key TEXT NOT NULL UNIQUE, workspace TEXT NOT NULL,
+    parent_id TEXT, task TEXT NOT NULL, status TEXT DEFAULT 'idle',
+    started_at INTEGER NOT NULL, completed_at INTEGER,
+    spawn_depth INTEGER DEFAULT 0, result TEXT, exit_code INTEGER,
+    pid INTEGER, tokens_input INTEGER DEFAULT 0, tokens_output INTEGER DEFAULT 0,
+    runtime INTEGER DEFAULT 0,
+    FOREIGN KEY (definition_id) REFERENCES agent_definitions(id))`);
 
-  // Agent messages
-  db.run(`
-    CREATE TABLE IF NOT EXISTS agent_messages (
-      id TEXT PRIMARY KEY,
-      from_agent TEXT NOT NULL,
-      to_agent TEXT NOT NULL,
-      type TEXT NOT NULL,
-      content TEXT NOT NULL,
-      timestamp INTEGER NOT NULL,
-      metadata TEXT,
-      session_id TEXT NOT NULL
-    )
-  `);
-
-  // Indexes
-  db.run(`CREATE INDEX IF NOT EXISTS idx_agents_session ON running_agents(session_id)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_messages_session ON agent_messages(session_id)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_agents_status ON running_agents(status)`);
-
+  db.run(`CREATE INDEX IF NOT EXISTS idx_agents_key ON running_agents(session_key)`);
   console.log("[AgentRegistry] Database initialized");
   return db;
 }
 
-// ═════════════════════════════════════════════════════════════════
-// AGENT DEFINITIONS (AGENTS.md style)
-// ═════════════════════════════════════════════════════════════════
+function loadDefaultAgents(database: Database): void {
+  const query = database.prepare("SELECT COUNT(*) as count FROM agent_definitions");
+  const result = query.get() as { count: number } | null;
+  if (result && result.count > 0) return;
 
-function loadAgentDefinitions(database: Database): void {
-  // Create default definitions if none exist
-// @ts-ignore SQLite binding
-  const count = (database.query("SELECT COUNT(*) as count FROM agent_definitions").get() as any)?.count || 0;
-  
-  if (count === 0) {
-    const defaults: Omit<AgentDefinition, "id">[] = [
-      {
-        name: "coordinator",
-        type: "coordinator",
-        description: "Orchestrates complex tasks by delegating to specialists",
-        capabilities: ["task-delegation", "planning", "coordination", "orchestration"],
-        model: "kimi-k2.5:cloud",
-        maxDepth: 3,
-        timeout: 600,
-        enabled: true,
-      },
-      {
-        name: "code-specialist",
-        type: "specialist",
-        description: "Deep expertise in code generation and review",
-        capabilities: ["coding", "refactoring", "code-review", "debugging", "architecture"],
-        model: "minimax-m2.5:cloud",
-        maxDepth: 1,
-        timeout: 300,
-        enabled: true,
-      },
-      {
-        name: "researcher",
-        type: "researcher",
-        description: "Gathers information and analyzes data",
-        capabilities: ["research", "analysis", "documentation", "search"],
-        model: "kimi-k2.5:cloud",
-        maxDepth: 2,
-        timeout: 300,
-        enabled: true,
-      },
-      {
-        name: "planner",
-        type: "planner",
-        description: "Breaks down complex tasks into actionable steps",
-        capabilities: ["planning", "architecture-design", "task-breakdown"],
-        model: "kimi-k2.5:cloud",
-        maxDepth: 2,
-        timeout: 300,
-        enabled: true,
-      },
-      {
-        name: "reviewer",
-        type: "reviewer",
-        description: "Reviews code, designs, and plans for quality",
-        capabilities: ["code-review", "quality-assurance", "security-review"],
-        model: "minimax-m2.5:cloud",
-        maxDepth: 0,
-        timeout: 300,
-        enabled: true,
-      },
-    ];
+  const defaults: Omit<AgentDefinition, "id">[] = [
+    { name: "coordinator", type: "coordinator",
+      description: "Orchestrates complex tasks by delegating to specialists",
+      capabilities: ["task-delegation", "planning", "coordination"],
+      model: "kimi-k2.5:cloud", maxDepth: 3, timeout: 600, memoryLimit: 1024, enabled: true },
+    { name: "specialist", type: "specialist",
+      description: "Deep expertise in code generation and review",
+      capabilities: ["coding", "refactoring", "debugging"],
+      model: "minimax-m2.5:cloud", maxDepth: 1, timeout: 300, memoryLimit: 512, enabled: true },
+    { name: "researcher", type: "researcher",
+      description: "Gathers information and analyzes data",
+      capabilities: ["research", "analysis", "search"],
+      model: "kimi-k2.5:cloud", maxDepth: 2, timeout: 300, memoryLimit: 512, enabled: true },
+    { name: "planner", type: "planner",
+      description: "Breaks down complex tasks into actionable steps",
+      capabilities: ["planning", "task-breakdown"],
+      model: "kimi-k2.5:cloud", maxDepth: 2, timeout: 300, memoryLimit: 512, enabled: true },
+    { name: "reviewer", type: "reviewer",
+      description: "Reviews code, designs, and plans for quality",
+      capabilities: ["code-review", "quality-assurance"],
+      model: "minimax-m2.5:cloud", maxDepth: 0, timeout: 300, memoryLimit: 512, enabled: true },
+  ];
 
-    const now = Date.now();
-    for (const def of defaults) {
-// @ts-ignore SQLite binding
-      database.run(
-        `INSERT INTO agent_definitions 
-         (id, name, type, description, capabilities, model, max_depth, timeout, enabled, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [`def-${def.name}`,
-        def.name,
-        def.type,
-        def.description,
-        JSON.stringify(def.capabilities),
-        def.model,
-        def.maxDepth,
-        def.timeout,
-        def.enabled ? 1 : 0,
-        now]
-      );
-    }
+  const insert = database.prepare(`INSERT INTO agent_definitions
+    (id, name, type, description, capabilities, model, max_depth, timeout, memory_limit, enabled, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
-    console.log("[AgentRegistry] Created default agent definitions");
+  const now = Date.now();
+  for (const def of defaults) {
+    insert.run(`def-${def.name}`, def.name, def.type, def.description,
+      JSON.stringify(def.capabilities), def.model, def.maxDepth, def.timeout,
+      def.memoryLimit, def.enabled ? 1 : 0, now);
   }
+  console.log("[AgentRegistry] Created default agent definitions");
 }
 
-// ═════════════════════════════════════════════════════════════════
-// AGENT LIFECYCLE
-// ═════════════════════════════════════════════════════════════════
+function createAgentWorkspace(agentId: string): string {
+  const workspace = join(AGENTS_DIR, agentId, "workspace");
+  if (!existsSync(workspace)) mkdirSync(workspace, { recursive: true });
+  return workspace;
+}
 
-async function spawnAgent(
-  database: Database,
-  definitionId: string,
-  task: string,
-  sessionId: string,
-  parentId?: string
-): Promise<RunningAgent> {
-// @ts-ignore SQLite binding
-  const def = database.query("SELECT * FROM agent_definitions WHERE id = ?").get([definitionId]) as any;
-  if (!def) {
-    throw new Error(`Agent definition not found: ${definitionId}`);
-  }
+function cleanupWorkspace(agentId: string): void {
+  const workspace = join(AGENTS_DIR, agentId);
+  try { if (existsSync(workspace)) rmSync(workspace, { recursive: true }); }
+  catch (e) { console.error(`[AgentRegistry] Cleanup failed: ${e}`); }
+}
 
+async function spawnAgentProcess(
+  database: Database, definition: AgentDefinition,
+  task: string, sessionId: string, parentId?: string
+): Promise<AgentProcess> {
   const parent = parentId ? activeAgents.get(parentId) : undefined;
   const spawnDepth = parent ? parent.spawnDepth + 1 : 0;
 
-  // Check depth limit
-  if (spawnDepth > def.max_depth) {
-    throw new Error(`Max spawn depth exceeded for ${def.name}`);
+  if (spawnDepth > definition.maxDepth) {
+    throw new Error(`Max spawn depth exceeded (${spawnDepth} > ${definition.maxDepth})`);
   }
 
-  const id = `agent-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const agentId = `agent-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const sessionKey = generateSessionKey(agentId);
+  const workspace = createAgentWorkspace(agentId);
   const now = Date.now();
 
-  const agent: RunningAgent = {
-    id,
-    definitionId,
-    sessionId,
-    parentId,
-    task,
-    status: "idle",
-    startedAt: now,
-    spawnDepth,
-    children: [],
-    messages: [],
+  const agent: AgentProcess = {
+    id: agentId, definitionId: definition.id, workspace,
+    parentId, task, status: "idle", startedAt: now,
+    spawnDepth, children: [], sessionKey,
+    tokens: { input: 0, output: 0 }, runtime: 0,
   };
 
-  // Store in database
-// @ts-ignore SQLite binding
-  database.run(
-    `INSERT INTO running_agents 
-     (id, definition_id, session_id, parent_id, task, status, started_at, spawn_depth)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, definitionId, sessionId, parentId || null, task, "idle", now, spawnDepth]
-  );
+  const insert = database.prepare(`INSERT INTO running_agents
+    (id, definition_id, session_key, workspace, parent_id, task, status, started_at, spawn_depth)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  insert.run(agentId, definition.id, sessionKey, workspace,
+    parentId || null, task, "idle", now, spawnDepth);
 
-  activeAgents.set(id, agent);
+  if (parent) parent.children.push(agentId);
+  activeAgents.set(agentId, agent);
+  sessionKeyToAgent.set(sessionKey, agentId);
 
-  // Add to parent's children
-  if (parent) {
-    parent.children.push(id);
-  }
-
-  console.log(`[AgentRegistry] Spawned ${def.name} (${id.slice(0, 20)}...) at depth ${spawnDepth}`);
+  console.log(`[AgentRegistry] Created agent ${agentId} (${definition.name})`);
+  await startSubprocess(agent, definition, sessionId);
   return agent;
 }
 
-function updateAgentStatus(
-  database: Database,
-  agentId: string,
-  status: RunningAgent["status"],
-  result?: string
-): void {
+async function startSubprocess(agent: AgentProcess, definition: AgentDefinition, sessionId: string): Promise<void> {
+  const env = {
+    ...process.env,
+    KOBOLD_AGENT_ID: agent.id, KOBOLD_AGENT_TYPE: definition.type,
+    KOBOLD_AGENT_TASK: agent.task, KOBOLD_SESSION_KEY: agent.sessionKey,
+    KOBOLD_PARENT_ID: agent.parentId || "", KOBOLD_SPAWNING_SESSION: sessionId,
+    KOBOLD_WORKSPACE: agent.workspace, KOBOLD_GATEWAY_PORT: String(GATEWAY_PORT),
+    NODE_ENV: process.env.NODE_ENV || "production",
+  };
+
+  const workerPath = join(__dirname, "agent-worker.ts");
+  const proc = Bun.spawn([process.argv[0], "run", workerPath], {
+    env, cwd: agent.workspace, stdio: ["pipe", "pipe", "pipe"],
+    onExit: (p, code) => handleAgentExit(agent.id, code ?? 0),
+  });
+
+  agent.subprocess = proc;
+  agent.pid = proc.pid;
+  agent.status = "working";
+
+  db?.prepare("UPDATE running_agents SET status = ?, pid = ? WHERE id = ?")
+    .run("working", proc.pid, agent.id);
+
+  console.log(`[AgentRegistry] Started agent ${agent.id} (PID: ${proc.pid})`);
+  setTimeout(() => watchTimeout(agent.id, definition.timeout), 1000);
+}
+
+async function watchTimeout(agentId: string, timeoutSec: number): Promise<void> {
+  const agent = activeAgents.get(agentId);
+  if (!agent || agent.status !== "working") return;
+
+  const elapsed = (Date.now() - agent.startedAt) / 1000;
+  if (elapsed > timeoutSec) {
+    console.log(`[AgentRegistry] Timeout: ${agentId}`);
+    await terminateAgent(agentId, "timeout");
+    return;
+  }
+  setTimeout(() => watchTimeout(agentId, timeoutSec), 5000);
+}
+
+async function terminateAgent(agentId: string, reason: string): Promise<void> {
   const agent = activeAgents.get(agentId);
   if (!agent) return;
 
-  agent.status = status;
-  if (status === "completed" || status === "error" || status === "terminated") {
-    agent.completedAt = Date.now();
-  }
+  console.log(`[AgentRegistry] Terminating ${agentId}: ${reason}`);
+  if (agent.subprocess) { try { agent.subprocess.kill(); } catch {} }
 
-// @ts-ignore SQLite binding
-  database.run(
-    `UPDATE running_agents SET status = ?, completed_at = ?, result = ? WHERE id = ?`,
-    [status,
-    agent.completedAt || null,
-    result || null,
-    agentId]
-  );
+  agent.status = "terminated";
+  agent.completedAt = Date.now();
+  agent.runtime = agent.completedAt - agent.startedAt;
+  agent.exitCode = -1;
+
+  db?.prepare(`UPDATE running_agents SET status = ?, completed_at = ?,
+    result = ?, runtime = ?, exit_code = ? WHERE id = ?`)
+    .run("terminated", agent.completedAt, reason, agent.runtime, -1, agentId);
+
+  setTimeout(() => cleanupWorkspace(agentId), 60000);
 }
 
-// ═════════════════════════════════════════════════════════════════
-// MESSAGING
-// ═════════════════════════════════════════════════════════════════
+function handleAgentExit(agentId: string, exitCode: number): void {
+  const agent = activeAgents.get(agentId);
+  if (!agent) return;
 
-function sendMessage(
-  database: Database,
-  from: string,
-  to: string,
-  type: AgentMessage["type"],
-  content: string,
-  sessionId: string,
-  metadata?: Record<string, unknown>
-): void {
-  const msg: AgentMessage = {
-    id: `msg-${Date.now()}`,
-    from,
-    to,
-    type,
-    content,
-    timestamp: Date.now(),
-    metadata,
-  };
+  agent.exitCode = exitCode;
+  agent.completedAt = Date.now();
+  agent.runtime = agent.completedAt - agent.startedAt;
+  agent.status = exitCode === 0 ? "completed" : "error";
 
-// @ts-ignore SQLite binding
-  database.run(
-    `INSERT INTO agent_messages 
-     (id, from_agent, to_agent, type, content, timestamp, metadata, session_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [msg.id,
-    from,
-    to,
-    type,
-    content,
-    msg.timestamp,
-    JSON.stringify(metadata || {}),
-    sessionId]
-  );
+  db?.prepare(`UPDATE running_agents SET status = ?, completed_at = ?,
+    exit_code = ?, runtime = ? WHERE id = ?`)
+    .run(agent.status, agent.completedAt, exitCode, agent.runtime, agentId);
 
-  // Add to in-memory agent
-  const agent = activeAgents.get(to);
-  if (agent) {
-    agent.messages.push(msg);
-  }
-
-  console.log(`[AgentRegistry] Message ${from} → ${to}: ${type}`);
+  if (agent.parentId) announceToParent(agent);
+  setTimeout(() => cleanupWorkspace(agentId), 60000);
 }
 
-function getMessages(database: Database, agentId: string, since?: number): AgentMessage[] {
-  const query = since
-    ? `SELECT * FROM agent_messages WHERE to_agent = ? AND timestamp > ? ORDER BY timestamp`
-    : `SELECT * FROM agent_messages WHERE to_agent = ? ORDER BY timestamp`;
-  
-  const rows = since
-    ? database.query(query).all(agentId, since) as any[]
-    : database.query(query).all(agentId) as any[];
-
-  return rows.map(r => ({
-    id: r.id,
-    from: r.from_agent,
-    to: r.to_agent,
-    type: r.type,
-    content: r.content,
-    timestamp: r.timestamp,
-    metadata: JSON.parse(String(r.metadata || "{}")),
-  }));
+function announceToParent(agent: AgentProcess): void {
+  const parent = activeAgents.get(agent.parentId || "");
+  if (!parent) return;
+  console.log(`[AgentRegistry] ${agent.id} -> parent ${parent.id}`);
 }
 
-// ═════════════════════════════════════════════════════════════════
-// CAPABILITY DISCOVERY
-// ═════════════════════════════════════════════════════════════════
-
-function findAgentsByCapability(database: Database, capability: string): AgentDefinition[] {
-  const rows = database.query(
-    `SELECT * FROM agent_definitions WHERE enabled = 1`
-  ).all() as any[];
-
-  return rows
-    .map(r => ({
-      id: r.id,
-      name: r.name,
-      type: r.type,
-      description: r.description,
-      capabilities: JSON.parse(String(r.capabilities || "[]")),
-      model: r.model,
-      systemPrompt: r.system_prompt,
-      maxDepth: r.max_depth,
-      timeout: r.timeout,
-      enabled: r.enabled === 1,
-    }))
-    .filter(def => def.capabilities.includes(capability));
+function findByCapability(database: Database, cap: string): AgentDefinition[] {
+  const rows = database.prepare("SELECT * FROM agent_definitions WHERE enabled = 1").all() as any[];
+  return rows.map(r => ({ ...r,
+    type: r.type, capabilities: JSON.parse(String(r.capabilities || "[]")),
+    maxDepth: r.max_depth, timeout: r.timeout,
+    memoryLimit: r.memory_limit, enabled: r.enabled === 1,
+  })).filter(d => d.capabilities.includes(cap));
 }
-
-// ═════════════════════════════════════════════════════════════════
-// EXTENSION
-// ═════════════════════════════════════════════════════════════════
 
 export default function agentRegistryExtension(pi: ExtensionAPI) {
   const database = initDatabase();
-  loadAgentDefinitions(database);
-  let currentSessionId: string | null = null;
+  loadDefaultAgents(database);
+  let currentSessionId = "default";
 
-  pi.on("session_start", async (_event, ctx) => {
-    currentSessionId = process.env.KOBOLD_SESSION_ID || null;
+  pi.on("session_start", async () => {
+    currentSessionId = (pi as any).sessionManager?.getSessionId?.() || "default";
   });
 
-  // ═══════════════════════════════════════════════════════════════
-  // COMMANDS
-  // ═══════════════════════════════════════════════════════════════
-
   pi.registerCommand("agents", {
-    description: "List all agent definitions (OpenClaw style)",
+    description: "List all agent definitions",
     handler: async (_args, ctx) => {
-      const rows = database.query(
-        `SELECT * FROM agent_definitions WHERE enabled = 1 ORDER BY type, name`
-      ).all() as any[];
+      const rows = database.prepare("SELECT * FROM agent_definitions WHERE enabled = 1 ORDER BY type, name").all() as any[];
+      if (rows.length === 0) { ctx.ui?.notify?.("No agents found", "warning"); return; }
 
-      if (rows.length === 0) {
-        ctx.ui?.notify?.("No agent definitions found", "warning");
-        return;
-      }
+      const byType = new Map<string, any[]>();
+      for (const r of rows) { if (!byType.has(r.type)) byType.set(r.type, []); byType.get(r.type)!.push(r); }
 
-      const byType: Record<string, typeof rows> = {};
-      for (const row of rows) {
-        if (!byType[row.type]) byType[row.type] = [];
-        byType[row.type].push(row);
-      }
-
-      const lines: string[] = ["🤖 Agent Registry (OpenClaw Style)\n"];
-      
-      for (const [type, agents] of Object.entries(byType)) {
+      const lines: string[] = ["Agent Registry\\n"];
+      for (const [type, agents] of byType) {
         lines.push(`${type.toUpperCase()}:`);
-        for (const agent of agents) {
-          const caps = JSON.parse(String(agent.capabilities || "[]")).slice(0, 3).join(", ");
-          lines.push(`  • ${agent.name} - ${agent.description.slice(0, 50)}...`);
-          lines.push(`    Capabilities: ${caps}${JSON.parse(String(agent.capabilities)).length > 3 ? "..." : ""}`);
-          lines.push(`    Model: ${agent.model}`);
+        for (const a of agents) {
+          lines.push(`  - ${a.name}: ${a.description.slice(0, 50)}`);
+          const caps = JSON.parse(String(a.capabilities || "[]")).slice(0, 3).join(", ");
+          lines.push(`    Capabilities: ${caps}`);
         }
-        lines.push("");
       }
-
-      ctx.ui?.notify?.(lines.join("\n"), "info");
+      ctx.ui?.notify?.(lines.join("\\n"), "info");
     },
   });
 
   pi.registerCommand("agent-spawn", {
-    description: "Spawn an agent by definition",
-  // @ts-ignore Command args property
-    args: [
-      { name: "name", description: "Agent definition name (e.g., 'code-specialist')", required: true },
-      { name: "task", description: "Task description", required: true },
-    ],
+    description: "Spawn an agent",
     handler: async (args: any, ctx) => {
       const { name, task } = args;
-      
-      const def = database.query(
-        "SELECT * FROM agent_definitions WHERE name = ? AND enabled = 1"
-      // @ts-ignore SQLite binding
-      ).get([name]) as any;
+      if (!name || !task) { ctx.ui?.notify?.("Usage: /agent-spawn name=<agent> task=<desc>", "warning"); return; }
 
-      if (!def) {
-        ctx.ui?.notify?.(`Agent '${name}' not found. Use /agents to list.`, "error");
-        return;
-      }
+      const def = database.prepare("SELECT * FROM agent_definitions WHERE name = ? AND enabled = 1").get(name) as any;
+      if (!def) { ctx.ui?.notify?.(`Agent '${name}' not found`, "error"); return; }
 
       try {
-        const agent = await spawnAgent(
-          database,
-          def.id,
-          task,
-          currentSessionId || "orphan"
-        );
-
-        // Simulate work (in real implementation, this would spawn a subprocess)
-        updateAgentStatus(database, agent.id, "working");
-
-        ctx.ui?.notify?.(
-          `🤖 Spawned ${def.name}\n` +
-          `ID: ${agent.id}\n` +
-          `Task: ${task.slice(0, 50)}...\n` +
-          `Status: ${agent.status}\n` +
-          `Depth: ${agent.spawnDepth}`,
-          // @ts-ignore Notify type
-          "success"
-        );
-
-        // Simulate completion after delay
-        setTimeout(() => {
-          updateAgentStatus(database, agent.id, "completed", "Task completed successfully");
-          console.log(`[AgentRegistry] Agent ${agent.id.slice(0, 20)}... completed`);
-        }, 5000);
-
-      } catch (error) {
-        ctx.ui?.notify?.(`Failed to spawn: ${error}`, "error");
-      }
+        const definition = { ...def,
+          capabilities: JSON.parse(String(def.capabilities || "[]")),
+          maxDepth: def.max_depth, timeout: def.timeout,
+          memoryLimit: def.memory_limit, enabled: def.enabled === 1,
+        };
+        const agent = await spawnAgentProcess(database, definition, task, currentSessionId);
+        ctx.ui?.notify?.(`Spawned ${def.name}\\nID: ${agent.id}\\nPID: ${agent.pid}\\nDepth: ${agent.spawnDepth}`, "info");
+      } catch (e) { ctx.ui?.notify?.(`Failed: ${e}`, "error"); }
     },
   });
 
   pi.registerCommand("agent-status", {
-    description: "Show running agents",
+    description: "Show active agents",
     handler: async (_args, ctx) => {
-      const rows = database.query(
-        `SELECT ra.*, ad.name as def_name, ad.type 
-         FROM running_agents ra
-         JOIN agent_definitions ad ON ra.definition_id = ad.id
-         WHERE ra.status IN ('idle', 'working')
-         ORDER BY ra.started_at DESC`
-      ).all() as any[];
+      const rows = database.prepare(`SELECT ra.*, ad.name as def_name FROM running_agents ra
+        JOIN agent_definitions ad ON ra.definition_id = ad.id
+        WHERE ra.status IN ('idle', 'working') ORDER BY ra.started_at DESC`).all() as any[];
 
-      if (rows.length === 0) {
-        ctx.ui?.notify?.("No active agents", "info");
-        return;
+      if (rows.length === 0) { ctx.ui?.notify?.("No active agents", "info"); return; }
+
+      const lines = ["Active Agents\\n"];
+      for (const a of rows) {
+        const runtime = Math.floor((Date.now() - a.started_at) / 1000);
+        lines.push(`${a.def_name}: ${a.status} (${runtime}s) - PID ${a.pid || 'N/A'}`);
       }
-
-      const lines = ["🤖 Active Agents\n"];
-      
-      for (const agent of rows) {
-        const runtime = Math.floor((Date.now() - agent.started_at) / 1000);
-        const indent = "  ".repeat(agent.spawn_depth);
-        const parent = agent.parent_id ? `(child of ${agent.parent_id.slice(0, 8)}...)` : "(root)";
-        
-        lines.push(`${indent}▸ ${agent.def_name}`);
-        lines.push(`${indent}  ID: ${agent.id.slice(0, 20)}... ${parent}`);
-        lines.push(`${indent}  Status: ${agent.status} (${runtime}s)`);
-        lines.push(`${indent}  Task: ${agent.task.slice(0, 40)}...`);
-        lines.push("");
-      }
-
-      ctx.ui?.notify?.(lines.join("\n"), "info");
+      ctx.ui?.notify?.(lines.join("\\n"), "info");
     },
   });
 
-  pi.registerCommand("agent-cap", {
-    description: "Find agents by capability",
-  // @ts-ignore Command args property
-    args: [{ name: "capability", description: "e.g., 'coding', 'research', 'planning'", required: true }],
+  pi.registerCommand("agent-kill", {
+    description: "Terminate an agent",
     handler: async (args: any, ctx) => {
-      const { capability } = args;
-      const agents = findAgentsByCapability(database, capability);
-
-      if (agents.length === 0) {
-        ctx.ui?.notify?.(`No agents found with capability: ${capability}`, "warning");
-        return;
-      }
-
-      const lines = [`🔍 Agents with '${capability}':\n`];
-      for (const agent of agents) {
-        lines.push(`• ${agent.name} (${agent.type})`);
-        lines.push(`  ${agent.description}`);
-        lines.push(`  All capabilities: ${agent.capabilities.join(", ")}`);
-        lines.push("");
-      }
-
-      ctx.ui?.notify?.(lines.join("\n"), "info");
+      const { id } = args;
+      if (!id) { ctx.ui?.notify?.("Usage: /agent-kill id=<agent-id>", "warning"); return; }
+      try { await terminateAgent(id, "manual"); ctx.ui?.notify?.(`Agent ${id} terminated`, "info"); }
+      catch (e) { ctx.ui?.notify?.(`Failed: ${e}`, "error"); }
     },
   });
 
-  pi.registerCommand("agent-tree", {
-    description: "Show agent hierarchy",
-    handler: async (_args, ctx) => {
-      const rows = database.query(
-        `SELECT ra.*, ad.name as def_name 
-         FROM running_agents ra
-         JOIN agent_definitions ad ON ra.definition_id = ad.id
-         ORDER BY ra.started_at`
-      ).all() as any[];
-
-      if (rows.length === 0) {
-        ctx.ui?.notify?.("No agents", "info");
-        return;
-      }
-
-      // Build tree
-      const tree: Record<string, any> = {};
-      const children: Record<string, string[]> = {};
-
-      for (const agent of rows) {
-        children[agent.id] = [];
-      }
-
-      for (const agent of rows) {
-        if (agent.parent_id) {
-          if (!children[agent.parent_id]) children[agent.parent_id] = [];
-          children[agent.parent_id].push(agent.id);
-        } else {
-          tree[agent.id] = agent;
-        }
-      }
-
-      const lines = ["🌳 Agent Tree\n"];
-
-      function printTree(id: string, depth: number) {
-        const agent = rows.find(r => r.id === id);
-        if (!agent) return;
-
-        const indent = "  ".repeat(depth);
-        const icon = agent.status === "completed" ? "✓" : 
-                    agent.status === "error" ? "✗" :
-                    agent.status === "working" ? "◐" : "○";
-        
-        lines.push(`${indent}${icon} ${agent.def_name} ${agent.id.slice(0, 8)}...`);
-        lines.push(`${indent}  "${agent.task.slice(0, 40)}..."`);
-
-        for (const childId of children[id] || []) {
-          printTree(childId, depth + 1);
-        }
-      }
-
-      for (const rootId of Object.keys(tree)) {
-        printTree(rootId, 0);
-      }
-
-      ctx.ui?.notify?.(lines.join("\n"), "info");
-    },
-  });
-
-  // ═══════════════════════════════════════════════════════════════
-  // TOOLS (AI-facing)
-  // ═══════════════════════════════════════════════════════════════
-
+  // @ts-ignore Tool definition type mismatch
   pi.registerTool({
+    label: "Agent Spawn",
     name: "agent_spawn",
-    description: "Spawn a specialized agent for a specific task",
-    // @ts-ignore TSchema mismatch
-    parameters: {
-      type: "object",
-      properties: {
-        agent_type: { 
-          type: "string", 
-          description: "Type of agent to spawn",
-          enum: ["coordinator", "specialist", "worker", "reviewer", "researcher", "planner", "executor"]
-        },
-        task: { type: "string", description: "Task description" },
-        capabilities_needed: { 
-          type: "array", 
-          items: { type: "string" },
-          description: "Required capabilities"
-        },
-      },
-      required: ["agent_type", "task"],
-    },
+    description: "Spawn an agent",
+    parameters: { type: "object", properties: {
+      agent_type: { type: "string", enum: AGENT_TYPES },
+      task: { type: "string" },
+      capabilities_needed: { type: "array", items: { type: "string" } },
+    }, required: ["agent_type", "task"] } as any,
     async execute(args: any) {
-      const { agent_type, task, capabilities_needed } = args as {
-        agent_type: AgentType;
-        task: string;
-        capabilities_needed?: string[];
-      };
+      const { agent_type, task } = args;
+      let defs = database.prepare("SELECT * FROM agent_definitions WHERE type = ? AND enabled = 1").all(agent_type) as any[];
 
-      // Find best matching agent
-      let defQuery = "SELECT * FROM agent_definitions WHERE type = ? AND enabled = 1";
-      let defs = database.query(defQuery).all(agent_type) as any[];
-
-      // If no exact type match, find by capability
-      if (defs.length === 0 && capabilities_needed) {
-        for (const cap of capabilities_needed) {
-          const capAgents = findAgentsByCapability(database, cap);
-          if (capAgents.length > 0) {
-            defs = [{ ...capAgents[0], id: capAgents[0].id }];
-            break;
-          }
-        }
-      }
-
-      if (defs.length === 0) {
-        return {
-          content: [{ type: "text", text: `No ${agent_type} agent available` }],
-          details: { error: "no_agent", type: agent_type },
-        };
-      }
+      if (defs.length === 0) return { content: [{ type: "text", text: `No ${agent_type} agent available` }], details: { error: "no_agent" } };
 
       const def = defs[0];
-      const agent = await spawnAgent(
-        database,
-        def.id,
-        task,
-        currentSessionId || "orphan"
-      );
+      const definition = { ...def, capabilities: JSON.parse(String(def.capabilities || "[]")),
+        maxDepth: def.max_depth, timeout: def.timeout, memoryLimit: def.memory_limit };
 
+      const agent = await spawnAgentProcess(database, definition, task, currentSessionId);
       return {
-        content: [
-          { type: "text", text: `Spawned ${def.name} for: ${task.slice(0, 50)}...` },
-        ],
-        details: {
-          agent_id: agent.id,
-          name: def.name,
-          type: def.type,
-          capabilities: JSON.parse(String(def.capabilities || "[]")),
-          depth: agent.spawnDepth,
-        },
+        content: [{ type: "text", text: `Spawned ${def.name} (id=${agent.id}, pid=${agent.pid})` }],
+        details: { error: "" },
       };
     },
   });
 
+  // @ts-ignore Tool definition type mismatch
   pi.registerTool({
+    label: "Agent Delegate",
     name: "agent_delegate",
-    description: "Delegate a task to the most appropriate agent",
-    // @ts-ignore TSchema mismatch
-    parameters: {
-      type: "object",
-      properties: {
-        task: { type: "string" },
-        preferred_type: { type: "string" },
-      },
-      required: ["task"],
-    },
+    description: "Delegate to appropriate agent",
+    parameters: { type: "object", properties: { task: { type: "string" }, preferred_type: { type: "string" } }, required: ["task"] } as any,
     async execute(args: any) {
       const { task, preferred_type } = args;
-
-      // Analyze task to determine best agent type
       const taskLower = String(task).toLowerCase();
-      let targetType: AgentType = "worker";
+      let targetType: AgentType = preferred_type || "worker";
 
-      if (taskLower.includes("orchestrate") || taskLower.includes("coordinate")) {
-        targetType = "coordinator";
-      } else if (taskLower.includes("code") || taskLower.includes("implement")) {
-        targetType = "specialist";
-      } else if (taskLower.includes("research") || taskLower.includes("find")) {
-        targetType = "researcher";
-      } else if (taskLower.includes("plan") || taskLower.includes("design")) {
-        targetType = "planner";
-      } else if (taskLower.includes("review") || taskLower.includes("check")) {
-        targetType = "reviewer";
-      }
+      if (taskLower.includes("code")) targetType = "specialist";
+      else if (taskLower.includes("research")) targetType = "researcher";
+      else if (taskLower.includes("plan")) targetType = "planner";
+      else if (taskLower.includes("review")) targetType = "reviewer";
 
-      if (preferred_type) {
-        targetType = preferred_type as AgentType;
-      }
-
-      const defs = database.query(
-        "SELECT * FROM agent_definitions WHERE type = ? AND enabled = 1"
-      ).all(targetType) as any[];
-
-      if (defs.length === 0) {
-        return {
-          content: [{ type: "text", text: `No ${targetType} agent available` }],
-          details: { error: "no_agent", requested_type: targetType },
-        };
-      }
+      const defs = database.prepare("SELECT * FROM agent_definitions WHERE type = ? AND enabled = 1").all(targetType) as any[];
+      if (defs.length === 0) return { content: [{ type: "text", text: `No ${targetType} agent available` }], details: { error: "no_agent" } };
 
       const def = defs[0];
-      const agent = await spawnAgent(
-        database,
-        def.id,
-        task,
-        currentSessionId || "orphan"
-      );
+      const definition = { ...def, capabilities: JSON.parse(String(def.capabilities || "[]")),
+        maxDepth: def.max_depth, timeout: def.timeout, memoryLimit: def.memory_limit };
 
+      const agent = await spawnAgentProcess(database, definition, task, currentSessionId);
       return {
-        content: [
-          { type: "text", text: `Delegated to ${def.name} (${targetType})` },
-        ],
-        details: {
-          agent_id: agent.id,
-          type: targetType,
-          capabilities: JSON.parse(String(def.capabilities || "[]")),
-        },
+        content: [{ type: "text", text: `Delegated to ${def.name} (id=${agent.id}, pid=${agent.pid})` }],
+        details: { error: "" },
       };
     },
   });
 
+  // @ts-ignore Tool definition type mismatch
   pi.registerTool({
+    label: "Agent List",
     name: "agent_list",
-    description: "List available agent types and their capabilities",
-  // @ts-ignore TSchema type mismatch
-    // @ts-ignore TSchema mismatch
-    parameters: { type: "object", properties: {} },
+    description: "List agents",
+    parameters: { type: "object", properties: {} } as any,
     async execute() {
-      const rows = database.query(
-        "SELECT * FROM agent_definitions WHERE enabled = 1"
-      ).all() as any[];
-
-      const agents = rows.map(r => ({
-        name: r.name,
-        type: r.type,
-        description: r.description,
-        capabilities: JSON.parse(String(r.capabilities || "[]")),
-        model: r.model,
-      }));
-
-      return {
-        content: [
-          { type: "text", text: `Available agents:\n${agents.map(a => 
-            `- ${a.name} (${a.type}): ${a.capabilities.join(", ")}`
-          ).join("\n")}` },
-        ],
-        details: { agents },
-      };
+      const rows = database.prepare("SELECT * FROM agent_definitions WHERE enabled = 1").all() as any[];
+      return { content: [{ type: "text", text: rows.map(r => `- ${r.name} (${r.type})`).join("\\n") }], details: { count: rows.length } };
     },
   });
 
-  // Status bar
-  // @ts-ignore ExtensionAPI property
-//   pi.registerStatusBarItem("agents", {
-//     render() {
-//       const active = database.query(
-//         "SELECT COUNT(*) as count FROM running_agents WHERE status = 'working'"
-//       ).get() as any;
-//       return active?.count > 0 ? `🤖 ${active.count}` : "";
-//     },
-//   });
+  // @ts-ignore Event type
+  pi.on("shutdown", async () => {
+    console.log("[AgentRegistry] Cleaning up...");
+    for (const [id, agent] of activeAgents) {
+      if (agent.status === "working") await terminateAgent(id, "shutdown");
+    }
+  });
 
-  console.log("[AgentRegistry] OpenClaw-style multi-agent system loaded");
-  console.log("[AgentRegistry] Commands: /agents, /agent-spawn, /agent-status, /agent-tree");
+  console.log("[AgentRegistry] Secure multi-agent system loaded");
+  console.log("[AgentRegistry] Commands: /agents, /agent-spawn, /agent-status, /agent-kill");
 }

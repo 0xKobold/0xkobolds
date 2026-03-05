@@ -9,7 +9,7 @@ import { mkdir, writeFile, rm, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import modeManagerExtension from "../../../src/extensions/core/mode-manager-extension";
+import modeManagerExtension, { __resetModeManagerState } from "../../../src/extensions/core/mode-manager-extension";
 import {
   createMockExtensionAPI,
   createMockContext,
@@ -27,6 +27,8 @@ describe("Mode Manager Extension", () => {
     originalHome = process.env.HOME;
     process.env.HOME = TEST_DIR;
     await mkdir(join(TEST_DIR, ".0xkobold"), { recursive: true });
+    // Reset mode manager state to allow re-initialization
+    __resetModeManagerState();
   });
 
   afterEach(async () => {

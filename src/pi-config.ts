@@ -21,7 +21,7 @@ export const config: Config = {
   extensions: [
     // Infrastructure
     './src/extensions/core/ollama-provider-extension.ts', // Register Ollama models
-    './src/extensions/core/session-manager-extension.ts',   // Session isolation and persistence
+    './src/extensions/core/session-bridge-extension.ts', // Bridge pi-coding-agent sessions to KOBOLD_SESSION_ID
     
     // Core Features
     './src/extensions/core/persona-loader-extension.ts', // Load identity files
@@ -29,7 +29,7 @@ export const config: Config = {
     './src/extensions/core/onboarding-extension.ts', // First-run setup
     './src/extensions/core/mode-manager-extension.ts',    // Plan/Build mode switching
     './src/extensions/core/task-manager-extension.ts', // Task board and workflow
-    './src/extensions/core/session-pruning-extension.ts', // OpenClaw context management
+    // Note: pi-coding-agent has built-in compaction, no need for custom pruning
     
     // Multi-Channel (for future Discord/Web)
     './src/extensions/core/multi-channel-extension.ts', // Unified channel management
@@ -56,6 +56,7 @@ export const config: Config = {
     'ctrl+d': 'shutdown',
     'ctrl+l': 'clear',
     'f1': 'help',
+    'f2': 'toggle_mode',  // Toggle between plan/build modes
     'ctrl+t': 'toggle_tree',
     'ctrl+n': 'new_chat',
   },

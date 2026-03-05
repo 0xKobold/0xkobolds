@@ -12,9 +12,14 @@ import {
 } from '@mariozechner/pi-coding-agent';
 import { fileURLToPath } from 'url';
 import { resolve, dirname } from 'path';
+import { homedir } from 'os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(__dirname, '..');
+
+// Use 0xKobold directory for pi-coding-agent data (sessions, settings, auth)
+// This keeps everything in ~/.0xkobold instead of ~/.pi
+process.env.PI_CODING_AGENT_DIR = process.env.PI_CODING_AGENT_DIR || resolve(homedir(), '.0xkobold');
 
 async function main(): Promise<void> {
   // Check if we should run in CLI mode (with args) or programmatic mode
@@ -34,7 +39,7 @@ async function main(): Promise<void> {
   return piMain([
     // Infrastructure
     '--extension', resolve(packageRoot, 'src/extensions/core/ollama-provider-extension.ts'),
-    '--extension', resolve(packageRoot, 'src/extensions/core/session-manager-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/session-bridge-extension.ts'),
     
     // Core Features
     '--extension', resolve(packageRoot, 'src/extensions/core/persona-loader-extension.ts'),
@@ -42,7 +47,7 @@ async function main(): Promise<void> {
     '--extension', resolve(packageRoot, 'src/extensions/core/onboarding-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/mode-manager-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/task-manager-extension.ts'),
-    '--extension', resolve(packageRoot, 'src/extensions/core/session-pruning-extension.ts'),
+    // Note: pi-coding-agent has built-in compaction via /compact command
     
     // Multi-Channel
     '--extension', resolve(packageRoot, 'src/extensions/core/multi-channel-extension.ts'),

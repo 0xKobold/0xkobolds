@@ -416,10 +416,22 @@ async function spawnSwarm(pi: ExtensionAPI, parentId: string, task: string, coun
   return spawned;
 }
 
+// Check if another gateway instance is already running
+async function isGatewayRunning(port: number, hostname: string): Promise<boolean> {
+  try {
+    const response = await fetch(`http://${hostname}:${port}/health`, { 
+      signal: AbortSignal.timeout(1000) 
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 // Start Gateway Server
 async function startGateway(pi: ExtensionAPI): Promise<void> {
   if (server) {
-    console.log('[Gateway] Already running');
+    console.log('[Gateway] Already running in this process');
     return;
   }
 
@@ -429,7 +441,14 @@ async function startGateway(pi: ExtensionAPI): Promise<void> {
   const preferredPort = Number(pi.getFlag('gateway-port')) || DEFAULT_GATEWAY_PORT;
   const hostname = String(pi.getFlag('gateway-host') ?? '127.0.0.1');
 
-  // Find an available port
+  // Check if another gateway is already running on the preferred port
+  if (await isGatewayRunning(preferredPort, hostname)) {
+    console.log(`[Gateway] Another gateway instance is already running on port ${preferredPort}. Skipping start.`);
+    GATEWAY_PORT = preferredPort;
+    return;
+  }
+
+  // Find an available port (only if preferred is not in use by a gateway)
   try {
     GATEWAY_PORT = await findAvailablePort(preferredPort, hostname);
     if (GATEWAY_PORT !== preferredPort) {
