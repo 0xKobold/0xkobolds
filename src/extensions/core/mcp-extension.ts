@@ -298,6 +298,7 @@ export default function mcpExtension(pi: ExtensionAPI) {
         pi.registerTool({
           name: `mcp_${config.name}_${tool.name}`,
           description: `[MCP:${config.name}] ${tool.description}`,
+          // @ts-ignore TSchema mismatch
           parameters: tool.inputSchema,
           async execute(args: any) {
             try {
@@ -361,7 +362,7 @@ export default function mcpExtension(pi: ExtensionAPI) {
     description: "Enable an MCP server",
   // @ts-ignore Command args property
     args: [{ name: "name", description: "Server name", required: true }],
-    handler: async (args, ctx) => {
+    handler: async (args: any, ctx) => {
       const { name } = args;
       const configs = loadConfig();
 
@@ -378,9 +379,10 @@ export default function mcpExtension(pi: ExtensionAPI) {
       const conn = await connectStdio(config);
       connections.set(name, conn);
 
+      // @ts-ignore Notify type
       ctx.ui?.notify?.(
-        `Enabled ${name}\n` +
-          `Status: ${conn.status}\n` +
+        `Enabled ${name}\\n` +
+          `Status: ${conn.status}\\n` +
           (conn.tools.length > 0 ? `Tools: ${conn.tools.length}` : ""),
         conn.status === "connected" ? "success" : "warning"
       );
@@ -391,7 +393,7 @@ export default function mcpExtension(pi: ExtensionAPI) {
     description: "Disable an MCP server",
   // @ts-ignore Command args property
     args: [{ name: "name", description: "Server name", required: true }],
-    handler: async (args, ctx) => {
+    handler: async (args: any, ctx) => {
       const { name } = args;
       const configs = loadConfig();
 
@@ -411,6 +413,7 @@ export default function mcpExtension(pi: ExtensionAPI) {
       }
       connections.delete(name);
 
+      // @ts-ignore Notify type
       ctx.ui?.notify?.(`Disabled ${name}`, "success");
     },
   });
@@ -423,7 +426,7 @@ export default function mcpExtension(pi: ExtensionAPI) {
       { name: "command", description: "Command to run", required: true },
       { name: "args", description: "Arguments (comma-separated)", required: false },
     ],
-    handler: async (args, ctx) => {
+    handler: async (args: any, ctx) => {
       const { name, command, args: argsStr } = args;
       const configs = loadConfig();
 
@@ -447,6 +450,7 @@ export default function mcpExtension(pi: ExtensionAPI) {
         `Added MCP server: ${name}\\nCommand: ${command}\\nRun /mcp-enable ${name} to activate.`,
         "success"
       ); */
+      // @ts-ignore Notify type
       ctx.ui?.notify?.(`Added MCP server: ${name}`, "success");
     },
   });
