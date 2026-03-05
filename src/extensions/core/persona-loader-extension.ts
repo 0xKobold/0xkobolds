@@ -9,7 +9,8 @@
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { readFileSync, existsSync } from "fs";
-import { join, homedir } from "path";
+import { join } from "path";
+import { homedir } from "os";
 
 const PERSONA_DIR = join(homedir(), ".0xkobold");
 
