@@ -29,14 +29,22 @@ async function main(): Promise<void> {
   console.log('🐉 0xKobold starting with PI Framework...\n');
 
   // Launch pi-coding-agent's built-in TUI with all 0xKobold extensions
-  // Extensions are loaded in order: provider first, then features, then gateway
+  // Extensions are loaded in order: infrastructure first, then features, then integrations
   // Use absolute paths so extensions load correctly regardless of cwd
   return piMain([
+    // Infrastructure
     '--extension', resolve(packageRoot, 'src/extensions/core/ollama-provider-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/session-manager-extension.ts'),
+    
+    // Core Features
     '--extension', resolve(packageRoot, 'src/extensions/core/persona-loader-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/context-aware-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/onboarding-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/mode-manager-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/task-manager-extension.ts'),
+    
+    // Integrations
+    '--extension', resolve(packageRoot, 'src/extensions/core/mcp-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/gateway-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/update-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/self-update-extension.ts'),

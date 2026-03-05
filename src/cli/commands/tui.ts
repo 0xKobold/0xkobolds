@@ -86,6 +86,10 @@ export const tuiCommand = new Command()
           // Set working directory for file operations (tools, etc.)
           // Config stays in default pi location (~/.pi/agent/)
           KOBOLD_WORKING_DIR: cwd,
+          // Session identification
+          KOBOLD_SESSION_TYPE: "tui",
+          // Resume behavior - each TUI gets new session by default
+          // Can override with KOBOLD_RESUME_SESSION env var
         },
       });
 

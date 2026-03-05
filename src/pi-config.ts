@@ -17,13 +17,21 @@ export const config: Config = {
   ui: 'tui',
 
   // Load extensions (paths resolved from project root)
-  // Order matters: provider should be first, then other extensions
+  // Order matters: infrastructure first, then features, then integrations
   extensions: [
+    // Infrastructure
     './src/extensions/core/ollama-provider-extension.ts', // Register Ollama models
+    './src/extensions/core/session-manager-extension.ts',   // Session isolation and persistence
+    
+    // Core Features
     './src/extensions/core/persona-loader-extension.ts', // Load identity files
     './src/extensions/core/context-aware-extension.ts', // Local mode context
     './src/extensions/core/onboarding-extension.ts', // First-run setup
     './src/extensions/core/mode-manager-extension.ts',    // Plan/Build mode switching
+    './src/extensions/core/task-manager-extension.ts', // Task board and workflow
+    
+    // Integrations
+    './src/extensions/core/mcp-extension.ts', // Model Context Protocol support
     './src/extensions/core/gateway-extension.ts',          // WebSocket gateway
     './src/extensions/core/update-extension.ts',           // Framework update functionality
     './src/extensions/core/self-update-extension.ts',        // 0xKobold self-update
