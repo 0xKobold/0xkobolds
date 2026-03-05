@@ -131,7 +131,8 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
     if (type === "discord" && channelId) {
       existing = database.query(
         "SELECT * FROM channel_configs WHERE type = ? AND channel_id = ?"
-      ).get(type, channelId) as any;
+      // @ts-ignore SQLite binding
+      ).get([type, channelId]) as any;
     }
     
     if (!existing) {
@@ -154,14 +155,14 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
       database.run(
         `INSERT INTO channel_configs (id, type, channel_id, user_id, guild_id, session_id, workspace, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        config.id,
+        [config.id,
         config.type,
         config.channelId || null,
         config.userId,
         config.guildId || null,
         config.sessionId,
         config.workspace,
-        config.createdAt
+        config.createdAt]
       );
       
       console.log(`[MultiChannel] Created ${type} channel: ${id.slice(0, 8)}...`);
@@ -207,14 +208,14 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
     database.run(
       `INSERT INTO channel_messages (id, channel_id, session_id, source, role, content, timestamp, metadata)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      msg.id,
+      [msg.id,
       msg.channelId,
       msg.sessionId,
       msg.source,
       msg.role,
       msg.content,
       msg.timestamp,
-      JSON.stringify(metadata || {})
+      JSON.stringify(metadata || {})]
     );
     
     // Update channel state
@@ -225,9 +226,9 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
        ON CONFLICT(channel_id) DO UPDATE SET 
        last_message_id = excluded.last_message_id,
        last_activity = excluded.last_activity`,
-      channelId,
+      [channelId,
       msg.id,
-      msg.timestamp
+      msg.timestamp]
     );
     
     return msg;
@@ -491,7 +492,7 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
     async execute(args: any) {
       const channelId = String(args.channel_id);
 // @ts-ignore SQLite binding
-      const config = database.query("SELECT * FROM channel_configs WHERE id = ?").get(channelId) as any;
+      const config = database.query("SELECT * FROM channel_configs WHERE id = ?").get([channelId]) as any;
       
       if (!config) {
         return {
@@ -533,7 +534,8 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
       const today = Date.now() - (24 * 60 * 60 * 1000);
       const recent = database.query(
         "SELECT COUNT(*) as count FROM channel_messages WHERE timestamp > ?"
-      ).get(today) as any;
+      // @ts-ignore SQLite binding
+      ).get([today]) as any;
       
       return {
         content: [
