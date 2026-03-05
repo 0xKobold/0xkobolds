@@ -48,6 +48,12 @@ async function main(): Promise<void> {
     '--extension', resolve(packageRoot, 'src/extensions/core/multi-channel-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/discord-extension.ts'),
     
+    // Safety extensions (pi-mono)
+    '--extension', resolve(packageRoot, 'src/extensions/core/protected-paths.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/confirm-destructive.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/dirty-repo-guard.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/git-checkpoint.ts'),
+
     // Integrations
     '--extension', resolve(packageRoot, 'src/extensions/core/mcp-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/gateway-extension.ts'),
