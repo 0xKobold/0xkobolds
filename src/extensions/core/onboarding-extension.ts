@@ -15,7 +15,8 @@ import {
   writeFileSync,
   readFileSync,
 } from "fs";
-import { join, homedir } from "path";
+import { join } from "path";
+import { homedir } from "os";
 
 const PERSONA_DIR = join(homedir(), ".0xkobold");
 const ONBOARDING_FLAG = join(PERSONA_DIR, ".onboarded");
