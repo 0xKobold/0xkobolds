@@ -5,13 +5,14 @@
   "main": "dist/index.js",
   "type": "module",
   "bin": {
-    "0xkobold": "./dist/src/cli/index.js"
+    "0xkobold": "./src/cli/index.ts"
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "bun run src/index.ts",
     "cli": "bun run src/cli/index.ts",
+    "tui": "bun run src/index.ts",
     "init": "bun run src/cli/index.ts init",
     "test": "bun test",
     "update": "bun run src/cli/index.ts update",

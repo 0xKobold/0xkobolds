@@ -8,6 +8,8 @@ import { agentCommand } from "./commands/agent.js";
 import { statusCommand } from "./commands/status.js";
 import { gatewayCommand } from "./commands/gateway.js";
 import { updateCommand } from "./commands/update.js";
+import { modeCommand } from "./commands/mode.js";
+import { tuiCommand } from "./commands/tui.js";
 import { startRepl } from "./repl.js";
 
 // Dynamically get version from package.json
@@ -35,6 +37,8 @@ program.addCommand(gatewayCommand);
 program.addCommand(chatCommand);
 program.addCommand(agentCommand);
 program.addCommand(statusCommand);
+program.addCommand(modeCommand);
 program.addCommand(updateCommand);
+program.addCommand(tuiCommand);
 
 program.parse();

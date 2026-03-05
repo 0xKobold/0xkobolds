@@ -159,7 +159,7 @@ const statusCommand = new Command("status")
         try {
           const response = await fetch("http://127.0.0.1:18789/health");
           if (response.ok) {
-            const data = await response.json();
+            const data = await response.json() as { agents?: number; clients?: number };
             console.log(`  WebSocket: ws://127.0.0.1:18789`);
             console.log(`  Agents: ${data.agents || 0}`);
             console.log(`  Clients: ${data.clients || 0}`);

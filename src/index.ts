@@ -10,6 +10,11 @@
 import {
   main as piMain,
 } from '@mariozechner/pi-coding-agent';
+import { fileURLToPath } from 'url';
+import { resolve, dirname } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const packageRoot = resolve(__dirname, '..');
 
 async function main(): Promise<void> {
   // Check if we should run in CLI mode (with args) or programmatic mode
@@ -24,12 +29,14 @@ async function main(): Promise<void> {
   console.log('🐉 0xKobold starting with PI Framework...\n');
 
   // Launch pi-coding-agent's built-in TUI with all 0xKobold extensions
-  // Extensions are loaded in order: provider first, then gateway, then updates
+  // Extensions are loaded in order: provider first, then features, then gateway
+  // Use absolute paths so extensions load correctly regardless of cwd
   return piMain([
-    '--extension', 'src/extensions/core/ollama-provider-extension.ts',
-    '--extension', 'src/extensions/core/gateway-extension.ts',
-    '--extension', 'src/extensions/core/update-extension.ts',
-    '--extension', 'src/extensions/core/self-update-extension.ts',
+    '--extension', resolve(packageRoot, 'src/extensions/core/ollama-provider-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/mode-manager-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/gateway-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/update-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/self-update-extension.ts'),
   ]);
 }
 
