@@ -1,0 +1,53 @@
+{
+  "name": "0xkobold",
+  "version": "0.1.0",
+  "description": "Your digital familiar - a personal AI assistant that learns and evolves",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "0xkobold": "./dist/src/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "bun run src/index.ts",
+    "cli": "bun run src/cli/index.ts",
+    "init": "bun run src/cli/index.ts init",
+    "test": "bun test",
+    "update": "bun run src/cli/index.ts update",
+    "update:check": "bun run src/cli/index.ts update check",
+    "update:install": "bun run src/cli/index.ts update install",
+    "update:framework": "bun run src/cli/index.ts update framework"
+  },
+  "keywords": ["ai", "assistant", "cli", "agent", "kobold"],
+  "author": "0xKobold Team",
+  "license": "MIT",
+  "dependencies": {
+    "@mariozechner/pi-agent-core": "0.55.4",
+    "@mariozechner/pi-coding-agent": "0.55.4",
+    "@mariozechner/pi-tui": "0.55.4",
+    "ajv": "^8.18.0",
+    "better-sqlite3": "^12.6.2",
+    "blessed": "^0.1.81",
+    "commander": "^11.1.0",
+    "discord.js": "^14.14.1",
+    "glob": "^10.0.0",
+    "json5": "^2.2.3",
+    "react": "^19.2.4",
+    "sharp": "^0.33.0",
+    "sqlite3": "^5.1.6",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/blessed": "^0.1.25",
+    "@types/json5": "^2.2.0",
+    "@types/node": "^20.10.0",
+    "bun-types": "latest",
+    "typescript": "^5.3.0",
+    "@types/bun": "latest"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "private": true
+}

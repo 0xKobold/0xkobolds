@@ -1,0 +1,41 @@
+/**
+ * 0xKobold - PI Framework Architecture
+ *
+ * Main entry point using @mariozechner/pi-coding-agent
+ * - Agent-based architecture
+ * - Extension system
+ * - Graceful shutdown handling
+ */
+
+import {
+  main as piMain,
+} from '@mariozechner/pi-coding-agent';
+
+async function main(): Promise<void> {
+  // Check if we should run in CLI mode (with args) or programmatic mode
+  const args = process.argv.slice(2);
+
+  // If there are CLI arguments, use the pi-coding-agent main
+  if (args.length > 0) {
+    return piMain(args);
+  }
+
+  // Otherwise run in interactive TUI mode using pi-coding-agent's built-in TUI
+  console.log('🐉 0xKobold starting with PI Framework...\n');
+
+  // Launch pi-coding-agent's built-in TUI with all 0xKobold extensions
+  // Extensions are loaded in order: provider first, then gateway, then updates
+  return piMain([
+    '--extension', 'src/extensions/core/ollama-provider-extension.ts',
+    '--extension', 'src/extensions/core/gateway-extension.ts',
+    '--extension', 'src/extensions/core/update-extension.ts',
+    '--extension', 'src/extensions/core/self-update-extension.ts',
+  ]);
+}
+
+// Run if this is the main module
+if (import.meta.main) {
+  main();
+}
+
+export { main };

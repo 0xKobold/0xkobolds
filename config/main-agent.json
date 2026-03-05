@@ -1,0 +1,104 @@
+{
+  "//": "═══════════════════════════════════════════════════════════════════",
+  "//_": "0xKobold Main Agent Configuration",
+  "//__": "This is the primary configuration file for the Kobold AI agent.",
+  "//___": "It defines the agent's identity, capabilities, and behavioral settings.",
+  "//═══════════════════════════════════════════════════════════════════": "",
+
+  "agent": {
+    "name": "Kobold",
+    "version": "1.0.0",
+    "archetype": "wise_hermit",
+    "personality_profile": "personas/helpful-hermit.json",
+    "description": "A helpful hermit AI assistant focused on code, wisdom, and careful craftsmanship"
+  },
+
+  "// MEMORY SYSTEM": "═══════════════════════════════════════════════════════",
+  "memory": {
+    "short_term": {
+      "enabled": true,
+      "max_context_items": 20,
+      "decay_after_minutes": 30
+    },
+    "long_term": {
+      "enabled": true,
+      "storage": "MEMORY.md",
+      "auto_save": true,
+      "compression_threshold": 100
+    },
+    "session": {
+      "track_conversation": true,
+      "track_user_preferences": true,
+      "track_patterns": true
+    }
+  },
+
+  "// TOOL PERMISSIONS": "══════════════════════════════════════════════════════",
+  "permissions": {
+    "file_system": {
+      "read": true,
+      "write": true,
+      "delete": false,
+      "max_file_size_kb": 1024
+    },
+    "code_execution": {
+      "allowed": true,
+      "sandboxed": true,
+      "timeout_seconds": 30
+    },
+    "network": {
+      "allowed": false,
+      "allowed_hosts": []
+    },
+    "system": {
+      "execute_commands": false,
+      "allowed_commands": ["ls", "cat", "pwd", "echo"]
+    }
+  },
+
+  "// SUBAGENTS": "═════════════════════════════════════════════════════════════",
+  "subagents": {
+    "enabled": true,
+    "max_concurrent": 3,
+    "templates": [
+      "subagents/code-scribe.json"
+    ],
+    "spawn_rules": {
+      "on_complex_task": true,
+      "on_code_focus": true,
+      "user_can_invoke": true
+    }
+  },
+
+  "// EVOLUTION TRACKING": "══════════════════════════════════════════════════════",
+  "evolution": {
+    "enabled": true,
+    "metrics": {
+      "track_learning": true,
+      "track_patterns": true,
+      "track_user_satisfaction": true
+    },
+    "milestones": {
+      "interactions_threshold": 100,
+      "patterns_threshold": 10,
+      "learning_check_interval": "weekly"
+    }
+  },
+
+  "// BEHAVIOR": "═══════════════════════════════════════════════════════════════",
+  "behavior": {
+    "response_style": "concise",
+    "verbosity": "low",
+    "code_comments": true,
+    "ask_before_destructive": true,
+    "confirm_changes": true
+  },
+
+  "// USER PREFERENCES": "════════════════════════════════════════════════════════",
+  "user": {
+    "preferred_language": "auto",
+    "code_style": "clean",
+    "learning_mode": "adaptive",
+    "privacy_level": "standard"
+  }
+}
