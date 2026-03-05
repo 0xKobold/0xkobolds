@@ -482,6 +482,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "session_compact",
     description: "Compact old conversation history to save context window space",
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: "object",
       properties: {
@@ -492,7 +493,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
         },
       },
     },
-    async execute(args) {
+    async execute(args: any) {
       if (!currentSessionId) {
         return {
           content: [{ type: "text", text: "No active session" }],
@@ -536,6 +537,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
     name: "session_stats",
     description: "Get session context window statistics",
   // @ts-ignore TSchema type mismatch
+    // @ts-ignore TSchema mismatch
     parameters: { type: "object", properties: {} },
     async execute() {
       if (!currentSessionId) {

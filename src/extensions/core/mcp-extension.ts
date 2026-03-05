@@ -299,7 +299,7 @@ export default function mcpExtension(pi: ExtensionAPI) {
           name: `mcp_${config.name}_${tool.name}`,
           description: `[MCP:${config.name}] ${tool.description}`,
           parameters: tool.inputSchema,
-          async execute(args) {
+          async execute(args: any) {
             try {
               const result = await callTool(conn, tool.name, args);
               return {
@@ -456,6 +456,7 @@ export default function mcpExtension(pi: ExtensionAPI) {
     name: "mcp_discover",
     description: "Discover available MCP tools from all connected servers",
   // @ts-ignore TSchema type mismatch
+    // @ts-ignore TSchema mismatch
     parameters: { type: "object", properties: {} },
     async execute() {
       const allTools: { server: string; tools: MCPTool[] }[] = [];

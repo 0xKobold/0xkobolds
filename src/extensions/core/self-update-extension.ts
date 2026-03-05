@@ -151,9 +151,20 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
     });
   }
 
-  // Check on session start
+  // Check on session start - only in main process
   if (checkOnStartup) {
     pi.on('session_start', async () => {
+      // Skip in subagent sessions
+      const isSubagent = process.env.KOBOLD_SUBAGENT === 'true' || process.env.PI_SESSION_PARENT;
+      if (isSubagent) {
+        return;
+      }
+      // Skip if running with command flags (non-interactive)
+      const args = process.argv.slice(2);
+      if (args.includes('--command') || args.includes('-c')) {
+        return;
+      }
+
       setTimeout(checkAndNotify, 3000);
     });
   }

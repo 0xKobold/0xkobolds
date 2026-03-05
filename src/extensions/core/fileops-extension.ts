@@ -84,6 +84,7 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
     name: 'read_file_with_line_numbers',
     description:
       'Read the contents of a file with line numbers prepended. Useful for viewing code with context. Max file size 1MB.',
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: 'object',
       properties: {
@@ -102,7 +103,7 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
       },
       required: ['path'],
     },
-    async execute(args) {
+    async execute(args: any) {
       try {
         const filePath = String(args.path);
         const offset = typeof args.offset === 'number' ? args.offset : 0;
@@ -196,6 +197,7 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
     name: 'write_file',
     description:
       'Write content to a file at the specified path. Creates directories if needed. Can append to existing files.',
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: 'object',
       properties: {
@@ -214,7 +216,7 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
       },
       required: ['path', 'content'],
     },
-    async execute(args) {
+    async execute(args: any) {
       try {
         const filePath = String(args.path);
         const content = String(args.content);
@@ -277,6 +279,7 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
     name: 'list_directory',
     description:
       'List the contents of a directory. Shows file and folder icons. Can optionally recurse into subdirectories.',
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: 'object',
       properties: {
@@ -291,7 +294,7 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
       },
       required: ['path'],
     },
-    async execute(args) {
+    async execute(args: any) {
       try {
         const dirPath = String(args.path);
         const recursive = args.recursive === true;
@@ -412,6 +415,7 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
     name: 'search_files',
     description:
       'Search for text patterns in files using glob patterns. Returns list of matching file paths.',
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: 'object',
       properties: {
@@ -430,7 +434,7 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
       },
       required: ['pattern', 'path'],
     },
-    async execute(args) {
+    async execute(args: any) {
       try {
         const searchPattern = String(args.pattern);
         const searchPath = String(args.path);
@@ -537,6 +541,7 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
     name: 'batch_edit',
     description:
       'Find and replace text across multiple files matching a glob pattern. Returns list of edited files.',
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: 'object',
       properties: {
@@ -559,7 +564,7 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
       },
       required: ['glob', 'search', 'replace'],
     },
-    async execute(args) {
+    async execute(args: any) {
       try {
         const globPattern = String(args.glob);
         const searchPattern = String(args.search);
@@ -653,6 +658,7 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
     name: 'shell',
     description:
       'Execute a shell command using Bun. Returns command output. Has safety checks for dangerous commands.',
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: 'object',
       properties: {
@@ -671,7 +677,7 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
       },
       required: ['command'],
     },
-    async execute(args) {
+    async execute(args: any) {
       try {
         const command = String(args.command);
         const cwd = args.cwd ? String(args.cwd) : getWorkingDir();

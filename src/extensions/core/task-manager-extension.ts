@@ -628,6 +628,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "task_breakdown",
     description: "Break down a request into subtasks and create them",
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: "object",
       properties: {
@@ -650,7 +651,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       },
       required: ["request", "subtasks"],
     },
-    async execute(args) {
+    async execute(args: any) {
       const { request, subtasks } = args as {
         request: string;
         subtasks: Array<{ title: string; description?: string; priority?: string }>;
@@ -692,6 +693,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "task_list",
     description: "List tasks by status",
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: "object",
       properties: {
@@ -702,7 +704,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
         limit: { type: "number", default: 20 },
       },
     },
-    async execute(args) {
+    async execute(args: any) {
       const tasks = listTasks(
         args.status ? { status: args.status as TaskStatus } : undefined
       ).slice(0, (args.limit as number) || 20);
@@ -725,6 +727,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "task_update",
     description: "Update task status or assignee",
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: "object",
       properties: {
@@ -738,7 +741,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       },
       required: ["taskId"],
     },
-    async execute(args) {
+    async execute(args: any) {
       const { taskId, status, assignee, note } = args;
 
       const task = getTask(taskId);

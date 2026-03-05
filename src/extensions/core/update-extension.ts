@@ -188,7 +188,19 @@ export default function updateExtension(pi: ExtensionAPI) {
   });
 
   // Check for pending updates on startup FIRST (before checking for new updates)
+  // Only run in main process, not in subagents
   pi.on('session_start', async () => {
+    // Skip in subagent sessions
+    const isSubagent = process.env.KOBOLD_SUBAGENT === 'true' || process.env.PI_SESSION_PARENT;
+    if (isSubagent) {
+      return;
+    }
+    // Skip if running with command flags (non-interactive)
+    const args = process.argv.slice(2);
+    if (args.includes('--command') || args.includes('-c')) {
+      return;
+    }
+
     const pending = await readPendingUpdate();
 
     if (pending) {
@@ -280,8 +292,20 @@ export default function updateExtension(pi: ExtensionAPI) {
   }
 
   // Check on session start (with a delay to not block startup)
+  // Only run in main process, not in subagents
   if (checkOnStartup) {
     pi.on('session_start', async () => {
+      // Skip in subagent sessions
+      const isSubagent = process.env.KOBOLD_SUBAGENT === 'true' || process.env.PI_SESSION_PARENT;
+      if (isSubagent) {
+        return;
+      }
+      // Skip if running with command flags (non-interactive)
+      const args = process.argv.slice(2);
+      if (args.includes('--command') || args.includes('-c')) {
+        return;
+      }
+
       setTimeout(async () => {
         await performUpdateCheck(true);
       }, 5000); // Wait 5 seconds after startup

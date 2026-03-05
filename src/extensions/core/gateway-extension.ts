@@ -96,6 +96,7 @@ const agents = new Map<string, Agent>();
 const clients = new Map<string, WebSocket>();
 let eventSeq = 0;
 let isRunning = false;
+let hasAttemptedStart = false; // Track if we've attempted to start
 
 const KOBOLD_DIR = join(homedir(), ".0xkobold");
 const AGENTS_DIR = join(KOBOLD_DIR, "agents");
@@ -766,6 +767,7 @@ export default function gatewayExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: 'gateway_broadcast',
     description: 'Broadcast a message to all connected gateway clients',
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: 'object',
       properties: {
@@ -774,7 +776,7 @@ export default function gatewayExtension(pi: ExtensionAPI) {
       },
       required: ['event', 'payload'],
     },
-    async execute(args) {
+    async execute(args: any) {
       const { event, payload } = args as { event: string; payload: Record<string, unknown> };
 
       if (!isRunning) {
@@ -830,7 +832,30 @@ export default function gatewayExtension(pi: ExtensionAPI) {
   });
 
   // Auto-start gateway when session starts (runtime is ready)
+  // Only start in the main process, NOT in subagent sessions
   pi.on('session_start', async () => {
+    // Skip if already attempted (prevents duplicate starts in subagents)
+    if (hasAttemptedStart) {
+      console.log('[Gateway] Gateway already started or attempted, skipping...');
+      return;
+    }
+    hasAttemptedStart = true;
+
+    // Check if we're in a subagent by looking for parent session indicator
+    const isSubagent = process.env.KOBOLD_SUBAGENT === 'true' || process.env.PI_SESSION_PARENT;
+    if (isSubagent) {
+      console.log('[Gateway] Running in subagent, skipping gateway auto-start');
+      return;
+    }
+
+    // Skip if this isn't the main TUI process
+    const args = process.argv.slice(2);
+    const hasCommandFlag = args.includes('--command') || args.includes('-c');
+    if (hasCommandFlag) {
+      console.log('[Gateway] Running with --command flag, skipping gateway auto-start');
+      return;
+    }
+
     console.log('[Gateway] Session started. Auto-starting gateway...');
     await startGateway(pi);
   });

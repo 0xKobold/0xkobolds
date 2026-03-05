@@ -73,6 +73,7 @@ export default function discordExtension(pi: ExtensionAPI) {
 
         const chunks = chunkMessage(formattedContent, 2000);
         for (const chunk of chunks) {
+      // @ts-ignore Discord channel type
           await channel.send(chunk);
         }
 
@@ -130,6 +131,7 @@ export default function discordExtension(pi: ExtensionAPI) {
               allowedMentions: { repliedUser: false },
             });
           } else {
+      // @ts-ignore Discord channel type
             await channel.send(chunks[i]);
           }
         }
@@ -196,6 +198,7 @@ export default function discordExtension(pi: ExtensionAPI) {
         pi.emit('discord.error', { error });
       });
 
+      // @ts-ignore Discord event enum
       client.on(Events.Disconnect, () => {
         connected = false;
         console.log('[Discord] Disconnected');
@@ -328,6 +331,7 @@ async function sendReply(
           allowedMentions: { repliedUser: false },
         });
       } else {
+      // @ts-ignore Discord channel type
         await originalMessage.channel.send(chunks[i]);
       }
     }

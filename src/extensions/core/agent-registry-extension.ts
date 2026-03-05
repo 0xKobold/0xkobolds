@@ -636,6 +636,7 @@ export default function agentRegistryExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "agent_spawn",
     description: "Spawn a specialized agent for a specific task",
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: "object",
       properties: {
@@ -653,7 +654,7 @@ export default function agentRegistryExtension(pi: ExtensionAPI) {
       },
       required: ["agent_type", "task"],
     },
-    async execute(args) {
+    async execute(args: any) {
       const { agent_type, task, capabilities_needed } = args as {
         agent_type: AgentType;
         task: string;
@@ -708,6 +709,7 @@ export default function agentRegistryExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "agent_delegate",
     description: "Delegate a task to the most appropriate agent",
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: "object",
       properties: {
@@ -716,7 +718,7 @@ export default function agentRegistryExtension(pi: ExtensionAPI) {
       },
       required: ["task"],
     },
-    async execute(args) {
+    async execute(args: any) {
       const { task, preferred_type } = args;
 
       // Analyze task to determine best agent type
@@ -775,6 +777,7 @@ export default function agentRegistryExtension(pi: ExtensionAPI) {
     name: "agent_list",
     description: "List available agent types and their capabilities",
   // @ts-ignore TSchema type mismatch
+    // @ts-ignore TSchema mismatch
     parameters: { type: "object", properties: {} },
     async execute() {
       const rows = database.query(

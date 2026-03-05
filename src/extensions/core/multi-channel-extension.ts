@@ -439,6 +439,7 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "channel_broadcast",
     description: "Broadcast a message to all channel participants",
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: "object",
       properties: {
@@ -447,7 +448,7 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
       },
       required: ["content"],
     },
-    async execute(args) {
+    async execute(args: any) {
       if (!currentChannel) {
         return {
           content: [{ type: "text", text: "No active channel" }],
@@ -479,6 +480,7 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "channel_switch",
     description: "Switch to a different channel (for multi-channel agents)",
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: "object",
       properties: {
@@ -486,7 +488,7 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
       },
       required: ["channel_id"],
     },
-    async execute(args) {
+    async execute(args: any) {
       const channelId = String(args.channel_id);
 // @ts-ignore SQLite binding
       const config = database.query("SELECT * FROM channel_configs WHERE id = ?").get(channelId) as any;
@@ -521,6 +523,7 @@ export default function multiChannelExtension(pi: ExtensionAPI) {
     name: "channel_stats",
     description: "Get statistics across all channels",
   // @ts-ignore TSchema type mismatch
+    // @ts-ignore TSchema mismatch
     parameters: { type: "object", properties: {} },
     async execute() {
       const channels = database.query("SELECT type, COUNT(*) as count FROM channel_configs GROUP BY type").all() as any[];

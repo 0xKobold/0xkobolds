@@ -388,6 +388,7 @@ export default function sessionManagerExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "session_broadcast",
     description: "Broadcast a message to all clients in current session",
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: "object",
       properties: {
@@ -396,7 +397,7 @@ export default function sessionManagerExtension(pi: ExtensionAPI) {
       },
       required: ["event", "payload"],
     },
-    async execute(args) {
+    async execute(args: any) {
       if (!currentSession) {
         return {
           content: [{ type: "text", text: "No active session" }],

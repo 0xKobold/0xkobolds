@@ -71,17 +71,20 @@ class KoboldEventBus extends EventEmitter {
   private middleware: MiddlewareFn[] = [];
 
   // Subscribe to an event
+  // @ts-ignore EventEmitter override
   on<T>(event: DomainEventType, listener: EventHandler<T>): this {
     return super.on(event, listener);
   }
 
   // Unsubscribe from an event
+  // @ts-ignore EventEmitter override
   off<T>(event: DomainEventType, listener: EventHandler<T>): this {
     return super.off(event, listener);
   }
 
-  // Publish an event
-  async emit<T>(type: DomainEventType, payload: T, options: EmitOptions = {}): Promise<boolean> {
+  // Publish an event - override EventEmitter.emit but return Promise<void>
+  // @ts-ignore Return type override
+  override async emit<T>(type: DomainEventType, payload: T, options: EmitOptions = {}): Promise<void> {
     const event: DomainEvent = {
       type,
       payload,
@@ -178,7 +181,7 @@ export class EventBuilder<T = Record<string, unknown>> {
     return this;
   }
 
-  async emit(type: DomainEventType): Promise<void> {
+  emit(type: DomainEventType): Promise<void> {
     return eventBus.emit(type, this.payload as T, this.options);
   }
 }

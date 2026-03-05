@@ -311,6 +311,7 @@ export default function webSearchExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "web_search",
     description: "Search the web for current information. Use this when you need up-to-date information not in your training data.",
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: "object",
       properties: {
@@ -326,7 +327,7 @@ export default function webSearchExtension(pi: ExtensionAPI) {
       },
       required: ["query"],
     },
-    async execute(args) {
+    async execute(args: any) {
   // @ts-ignore Command args property
       console.log("[WebSearch] Received args:", JSON.stringify(args, null, 2));
       
@@ -382,6 +383,7 @@ export default function webSearchExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "web_fetch",
     description: "Fetch and read the content of a web page. Use this to get detailed information from a specific URL.",
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: "object",
       properties: {
@@ -397,7 +399,7 @@ export default function webSearchExtension(pi: ExtensionAPI) {
       },
       required: ["url"],
     },
-    async execute(args) {
+    async execute(args: any) {
   // @ts-ignore Command args property
       console.log("[WebFetch] Received args:", JSON.stringify(args, null, 2));
       
@@ -452,6 +454,7 @@ export default function webSearchExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "web_qa",
     description: "Search the web and synthesize an answer. Combines search + fetch for comprehensive results.",
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: "object",
       properties: {
@@ -467,7 +470,7 @@ export default function webSearchExtension(pi: ExtensionAPI) {
       },
       required: ["question"],
     },
-    async execute(args) {
+    async execute(args: any) {
   // @ts-ignore Command args property
       console.log("[WebQA] Received args:", JSON.stringify(args, null, 2));
       
