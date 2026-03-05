@@ -140,6 +140,7 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
 
     console.log(`[SelfUpdate] Update available: ${latestVersion} (current: ${currentVersion})`);
 
+    // @ts-ignore sendMessage type
     pi.sendMessage({
       customType: 'self-update.available',
       content: [{
@@ -172,15 +173,16 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
   // Register commands
   pi.registerCommand('self-update:check', {
     description: 'Check for 0xKobold updates',
-    execute: checkAndNotify,
+    handler: checkAndNotify,
   });
 
   pi.registerCommand('self-update:install', {
     description: 'Install 0xKobold update and restart',
-    execute: async () => {
+    handler: async () => {
       const { hasUpdate, latestVersion } = await checkForSelfUpdate();
 
       if (!hasUpdate) {
+        // @ts-ignore sendMessage type
         pi.sendMessage({
           customType: 'self-update.none',
           content: [{ type: 'text', text: 'No updates available.' }],
@@ -189,6 +191,7 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
         return;
       }
 
+      // @ts-ignore sendMessage type
       pi.sendMessage({
         customType: 'self-update.installing',
         content: [{ type: 'text', text: `Updating to ${latestVersion}...` }],
