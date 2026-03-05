@@ -29,6 +29,11 @@ export const config: Config = {
     './src/extensions/core/onboarding-extension.ts', // First-run setup
     './src/extensions/core/mode-manager-extension.ts',    // Plan/Build mode switching
     './src/extensions/core/task-manager-extension.ts', // Task board and workflow
+    './src/extensions/core/session-pruning-extension.ts', // OpenClaw context management
+    
+    // Multi-Channel (for future Discord/Web)
+    './src/extensions/core/multi-channel-extension.ts', // Unified channel management
+    './src/extensions/core/discord-extension.ts',        // Discord bot integration
     
     // Integrations
     './src/extensions/core/mcp-extension.ts', // Model Context Protocol support

@@ -42,6 +42,11 @@ async function main(): Promise<void> {
     '--extension', resolve(packageRoot, 'src/extensions/core/onboarding-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/mode-manager-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/task-manager-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/session-pruning-extension.ts'),
+    
+    // Multi-Channel
+    '--extension', resolve(packageRoot, 'src/extensions/core/multi-channel-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/discord-extension.ts'),
     
     // Integrations
     '--extension', resolve(packageRoot, 'src/extensions/core/mcp-extension.ts'),
