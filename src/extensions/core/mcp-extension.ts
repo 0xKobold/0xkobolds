@@ -436,10 +436,11 @@ export default function mcpExtension(pi: ExtensionAPI) {
       configs.push(newConfig);
       saveConfig(configs);
 
-      ctx.ui?.notify?(
-        `Added MCP server: ${name}\nCommand: ${command}\nRun /mcp-enable ${name} to activate.`,
+      /* ctx.ui?.notify?(
+        `Added MCP server: ${name}\\nCommand: ${command}\\nRun /mcp-enable ${name} to activate.`,
         "success"
-      );
+      ); */
+      ctx.ui?.notify?.(`Added MCP server: ${name}`, "success");
     },
   });
 

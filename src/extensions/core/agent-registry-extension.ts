@@ -525,7 +525,7 @@ export default function agentRegistryExtension(pi: ExtensionAPI) {
       for (const agent of rows) {
         const runtime = Math.floor((Date.now() - agent.started_at) / 1000);
         const indent = "  ".repeat(agent.spawn_depth);
-        const parent = agent.parent_id ? `(child of ${agent.parent_id.slice(0, 8)}...)" : "(root)`;
+        const parent = agent.parent_id ? `(child of ${agent.parent_id.slice(0, 8)}...)` : "(root)";
         
         lines.push(`${indent}▸ ${agent.def_name}`);
         lines.push(`${indent}  ID: ${agent.id.slice(0, 20)}... ${parent}`);

@@ -374,11 +374,7 @@ export default function sessionManagerExtension(pi: ExtensionAPI) {
         return;
       }
 
-      ctx.ui?.notify?(
-        `Resuming session ${sessionId.slice(0, 20)}...\n` +
-          `Loaded ${history.length} messages`,
-        "success"
-      );
+      ctx.ui?.notify?.(`Resuming session with ${history.length} messages`, "success");
     },
   });
 

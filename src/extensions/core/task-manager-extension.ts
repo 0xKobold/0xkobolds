@@ -523,10 +523,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       ];
 
       if (!validStatuses.includes(status)) {
-        ctx.ui?.notify?(
-          `Invalid status. Use: ${validStatuses.join(", ")}`,
-          "error"
-        );
+        ctx.ui?.notify?.(`Invalid status. Use: ${validStatuses.join(", ")}`, "error");
         return;
       }
 
@@ -540,10 +537,7 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       }
 
       updateTaskStatus(task.id, status);
-      ctx.ui?.notify?(
-        `Moved "${task.title.slice(0, 30)}..." to ${status}`,
-        "success"
-      );
+      ctx.ui?.notify?.(`Moved "${task.title.slice(0, 30)}..." to ${status}`, "success");
     },
   });
 

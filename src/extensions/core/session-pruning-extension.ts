@@ -400,11 +400,11 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
       ctx.ui?.notify?.(`Compacting turns ${compactStart}-${compactEnd}...`, "info");
       
       // In real implementation, would call AI to summarize
-      const summary = `Previous conversation with ${compactEnd} turns";
+      const summary = `Previous conversation with ${compactEnd} turns`;
       
       await compactMessages(database, currentSessionId, compactStart, compactEnd, summary);
       
-      ctx.ui?.notify?(`Compacted turns ${compactStart}-${compactEnd}. Kept last ${keepTurns} turns.`, "success");
+      ctx.ui?.notify?.(`Compacted turns ${compactStart}-${compactEnd}. Kept last ${keepTurns} turns.`, "success");
     },
   });
 
