@@ -38,6 +38,7 @@ export default function discordExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: 'discord_send_message',
     description: 'Send a message to a Discord channel',
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: 'object',
       properties: {
@@ -47,7 +48,7 @@ export default function discordExtension(pi: ExtensionAPI) {
       },
       required: ['channelId', 'content'],
     },
-    async execute(args) {
+    async execute(args: any) {
       const { channelId, content, codeBlock } = args;
 
       if (!client || !connected) {
@@ -93,6 +94,7 @@ export default function discordExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: 'discord_reply',
     description: 'Reply to a specific Discord message',
+    // @ts-ignore TSchema mismatch
     parameters: {
       type: 'object',
       properties: {
@@ -102,7 +104,7 @@ export default function discordExtension(pi: ExtensionAPI) {
       },
       required: ['channelId', 'messageId', 'content'],
     },
-    async execute(args) {
+    async execute(args: any) {
       const { channelId, messageId, content } = args;
 
       if (!client || !connected) {
@@ -152,7 +154,7 @@ export default function discordExtension(pi: ExtensionAPI) {
   // Register Discord commands
   pi.registerCommand('discord:connect', {
     description: 'Connect to Discord with bot token',
-    async execute(args) {
+    async handler(args: any) {
       const token = args?.token || process.env.DISCORD_TOKEN;
 
       if (!token) {
@@ -218,7 +220,7 @@ export default function discordExtension(pi: ExtensionAPI) {
 
   pi.registerCommand('discord:disconnect', {
     description: 'Disconnect from Discord',
-    async execute() {
+    async handler() {
       if (client) {
         await client.destroy();
         client = null;
@@ -232,7 +234,7 @@ export default function discordExtension(pi: ExtensionAPI) {
 
   pi.registerCommand('discord:status', {
     description: 'Get Discord connection status',
-    async execute() {
+    async handler() {
   // @ts-ignore ExtensionAPI emit
       pi.emit('discord.status', {
         connected: connected && client?.isReady(),
@@ -254,6 +256,7 @@ export default function discordExtension(pi: ExtensionAPI) {
   });
 
   // Cleanup on shutdown
+  // @ts-ignore Event type
   pi.on('shutdown', async () => {
     clearInterval(cleanupInterval);
     if (client) {
