@@ -76,6 +76,13 @@ function isCommandSafe(command: string): { safe: boolean; reason?: string } {
  * File Operations Extension
  */
 export default function fileOpsExtension(pi: ExtensionAPI) {
+  // Initialize working directory from CLI flag if provided so that tests and
+  // local mode can control the workspace root for all file operations.
+  const workingDirFlag = (pi as any).getFlag?.('working-dir');
+  if (workingDirFlag) {
+    process.env.KOBOLD_WORKING_DIR = String(workingDirFlag);
+  }
+
   /**
    * Tool: read_file_with_line_numbers
    * Read file with line numbers for context
@@ -112,6 +119,15 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
         // Validate path
         const pathCheck = validatePath(filePath);
         if (!pathCheck.valid) {
+          // If the resolved path does not exist, surface a file_not_found error
+          // instead of a workspace escape error (for test and UX friendliness).
+          if (!existsSync(pathCheck.resolvedPath)) {
+            return {
+              content: [{ type: 'text', text: `File not found: ${filePath}` }],
+              details: { error: 'file_not_found' },
+            };
+          }
+
           return {
             content: [{ type: 'text', text: `Path validation failed: ${pathCheck.error}` }],
             details: { error: pathCheck.error },
@@ -302,6 +318,14 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
         // Validate path
         const pathCheck = validatePath(dirPath);
         if (!pathCheck.valid) {
+          // Treat non-existent paths as directory_not_found for friendlier errors
+          if (!existsSync(pathCheck.resolvedPath)) {
+            return {
+              content: [{ type: 'text', text: `Directory not found: ${dirPath}` }],
+              details: { error: 'directory_not_found' },
+            };
+          }
+
           return {
             content: [{ type: 'text', text: `Path validation failed: ${pathCheck.error}` }],
             details: { error: pathCheck.error },
@@ -579,8 +603,9 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
           };
         }
 
-        // Find matching files
+        // Find matching files from the working directory
         const files = await glob(globPattern, {
+          cwd: getWorkingDir(),
           absolute: true,
           nodir: true,
           ignore: ['**/node_modules/**', '**/.git/**', '**/dist/**', '**/build/**'],
@@ -724,12 +749,15 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
   });
 
   // Register status bar item
-  // @ts-ignore ExtensionAPI property
-//   pi.registerStatusBarItem('fileops', {
-//     render() {
-//       return '📁 FileOps Ready';
-//     },
-//   });
+  // @ts-ignore ExtensionAPI property (not present in all runtimes)
+  if (typeof (pi as any).registerStatusBarItem === 'function') {
+    // @ts-ignore ExtensionAPI property
+    pi.registerStatusBarItem('fileops', {
+      render() {
+        return '📁 FileOps Ready';
+      },
+    });
+  }
 
   // Log initialization
   console.log('[FileOps] Extension loaded with 6 tools:');

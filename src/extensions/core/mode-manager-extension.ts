@@ -150,15 +150,19 @@ Be concise and focused on delivering working code.`,
   },
 };
 
-const MODE_CONFIG_FILE = join(homedir(), ".0xkobold", "modes.json");
+function getModeConfigPath(): string {
+  const homeDir = process.env.HOME || homedir();
+  return join(homeDir, ".0xkobold", "modes.json");
+}
 
 /**
  * Load mode configuration from disk
  */
 function loadModeConfig(): ModeConfig {
   try {
-    if (existsSync(MODE_CONFIG_FILE)) {
-      const content = readFileSync(MODE_CONFIG_FILE, "utf-8");
+    const configPath = getModeConfigPath();
+    if (existsSync(configPath)) {
+      const content = readFileSync(configPath, "utf-8");
       return JSON.parse(content);
     }
   } catch (error) {
@@ -172,11 +176,12 @@ function loadModeConfig(): ModeConfig {
  */
 function saveModeConfig(config: ModeConfig): void {
   try {
-    const dir = join(homedir(), ".0xkobold");
+    const configPath = getModeConfigPath();
+    const dir = join(configPath, "..");
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
-    writeFileSync(MODE_CONFIG_FILE, JSON.stringify(config, null, 2));
+    writeFileSync(configPath, JSON.stringify(config, null, 2));
   } catch (error) {
     console.error("Failed to save mode config:", error);
   }
@@ -224,12 +229,6 @@ export default function modeManagerExtension(pi: ExtensionAPI) {
       return false;
     }
 
-    // Skip if already in this mode
-    if (currentMode.id === modeId) {
-      console.log(`[ModeManager] Already in ${modeId} mode, skipping`);
-      return false;
-    }
-
     currentMode = mode;
     MODE_MANAGER_STATE.currentModeId = modeId;
     config.currentMode = modeId;
@@ -273,6 +272,9 @@ export default function modeManagerExtension(pi: ExtensionAPI) {
     description: "Switch to PLAN mode (read-only investigation)",
     handler: async (_args, ctx) => {
       if (setMode("plan")) {
+        // Update session system prompt for the active session, if available
+        // @ts-ignore sessionManager in mocks may expose setSystemPrompt
+        ctx.sessionManager?.setSystemPrompt?.(currentMode.systemPrompt);
         ctx.ui.notify(currentMode.systemPrompt, "info");
       }
     },
@@ -282,6 +284,9 @@ export default function modeManagerExtension(pi: ExtensionAPI) {
     description: "Switch to BUILD mode (full tool access)",
     handler: async (_args, ctx) => {
       if (setMode("build")) {
+        // Update session system prompt for the active session, if available
+        // @ts-ignore sessionManager in mocks may expose setSystemPrompt
+        ctx.sessionManager?.setSystemPrompt?.(currentMode.systemPrompt);
         ctx.ui.notify(currentMode.systemPrompt, "info");
       }
     },
@@ -295,7 +300,10 @@ export default function modeManagerExtension(pi: ExtensionAPI) {
       const argsArray = argsString.trim() ? argsString.split(/\s+/) : [];
       if (argsArray.length === 0) {
         // Show current mode
-        ctx.ui.notify(`Current mode: ${currentMode.icon} ${currentMode.name}`, "info");
+        ctx.ui.notify(
+          `Current mode: ${currentMode.icon} ${currentMode.name} (${currentMode.id})`,
+          "info",
+        );
         ctx.ui.notify(currentMode.description, "info");
         ctx.ui.notify(`System prompt:\n${currentMode.systemPrompt}`, "info");
       } else {
