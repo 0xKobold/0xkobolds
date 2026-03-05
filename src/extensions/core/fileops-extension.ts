@@ -7,7 +7,7 @@
 
 import type { ExtensionAPI } from '@mariozechner/pi-coding-agent';
 import { $ } from 'bun';
-import { join, resolve, dirname } from 'path';
+import { join, resolve as pathResolve, dirname } from 'path';
 import {
   existsSync,
   statSync,
@@ -18,6 +18,12 @@ import {
 } from 'fs';
 import { readFile, writeFile as writeFileAsync } from 'fs/promises';
 import { glob } from 'glob';
+import {
+  getWorkingDir,
+  resolvePath,
+  validatePathWithinWorkspace,
+  getRelativePath,
+} from '../../utils/working-dir.js';
 
 // Security configuration
 const MAX_FILE_SIZE = 1024 * 1024; // 1MB
@@ -40,28 +46,14 @@ const DANGEROUS_COMMANDS = [
 ];
 
 /**
- * Validate path to prevent directory traversal attacks
+ * Validate path - delegates to shared utility with extension-specific error handling
  */
 function validatePath(inputPath: string): { valid: boolean; error?: string; resolvedPath: string } {
-  try {
-    const resolvedPath = resolve(inputPath);
-    const cwd = process.cwd();
-
-    // Check for directory traversal attempts
-    if (resolvedPath.includes('..')) {
-      return { valid: false, error: 'Path contains invalid traversal sequence', resolvedPath };
-    }
-
-    // Additional check: ensure path doesn't escape working directory
-    if (!resolvedPath.startsWith(cwd) && !resolvedPath.startsWith('/tmp')) {
-      // Allow absolute paths that exist within reasonable bounds
-      // This is a relaxed check for flexibility
-    }
-
-    return { valid: true, resolvedPath };
-  } catch (error) {
-    return { valid: false, error: `Invalid path: ${error}`, resolvedPath: inputPath };
+  const result = validatePathWithinWorkspace(inputPath);
+  if (result.valid) {
+    return { valid: true, resolvedPath: result.resolvedPath };
   }
+  return { valid: false, error: result.error, resolvedPath: result.resolvedPath };
 }
 
 /**
@@ -682,18 +674,16 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
     async execute(args) {
       try {
         const command = String(args.command);
-        const cwd = args.cwd ? String(args.cwd) : undefined;
+        const cwd = args.cwd ? String(args.cwd) : getWorkingDir();
         const timeout = typeof args.timeout === 'number' ? args.timeout : SHELL_TIMEOUT_DEFAULT;
 
-        // Validate cwd if provided
-        if (cwd) {
-          const cwdCheck = validatePath(cwd);
-          if (!cwdCheck.valid) {
-            return {
-              content: [{ type: 'text', text: `CWD validation failed: ${cwdCheck.error}` }],
-              details: { error: cwdCheck.error },
-            };
-          }
+        // Validate cwd
+        const cwdCheck = validatePath(cwd);
+        if (!cwdCheck.valid) {
+          return {
+            content: [{ type: 'text', text: `CWD validation failed: ${cwdCheck.error}` }],
+            details: { error: cwdCheck.error },
+          };
         }
 
         // Security check
@@ -705,12 +695,8 @@ export default function fileOpsExtension(pi: ExtensionAPI) {
           };
         }
 
-        // Execute command using Bun
-        const options: { cwd?: string; timeout?: number } = { timeout };
-        if (cwd) options.cwd = cwd;
-
-        // Use Bun's shell
-        const result = await $`sh -c ${command}`.text();
+        // Execute command using Bun shell with working directory
+        const result = await $`sh -c ${command}`.cwd(cwd).text();
 
         return {
           content: [
