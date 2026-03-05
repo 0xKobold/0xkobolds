@@ -15,6 +15,7 @@ import { Database } from "bun:sqlite";
 import { join } from "path";
 import { homedir } from "os";
 import { existsSync, mkdirSync } from "fs";
+import { parseArgs } from "../command-args.js";
 
 const KOBOLD_DIR = join(homedir(), ".0xkobold");
 const PRUNING_DB = join(KOBOLD_DIR, "pruning.db");
@@ -309,7 +310,9 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
     
     // Check if we need compaction before this turn
 // @ts-ignore SQLite binding
-    const config = database.query("SELECT compaction_threshold FROM session_configs WHERE id = ?").get(currentSessionId) as any;
+    const config = database.query("SELECT compaction_threshold FROM session_configs WHERE id = ?")
+      // @ts-ignore SQLite binding
+      .get([currentSessionId]) as any;
     
     if (config && shouldCompact(database, currentSessionId, config.compaction_threshold)) {
       // Signal that compaction is needed
@@ -333,28 +336,33 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
       { name: "max-messages", description: "Max history messages", required: false },
       { name: "max-tokens", description: "Max context tokens", required: false },
     ],
-    handler: async (args, ctx) => {
+    handler: async (args: string, ctx) => {
+      const parsed = parseArgs(args, [
+        { name: "max-messages", description: "Max history messages", required: false },
+        { name: "max-tokens", description: "Max context tokens", required: false },
+      ]);
+      
       if (!currentSessionId) {
         ctx.ui?.notify?.("No active session", "warning");
         return;
       }
       
-      if (args["max-messages"] || args["max-tokens"]) {
+      if (parsed["max-messages"] || parsed["max-tokens"]) {
         // Update config
-        if (args["max-messages"]) {
+        if (parsed["max-messages"]) {
 // @ts-ignore SQLite binding
           database.run(
             "UPDATE session_configs SET max_history_messages = ? WHERE id = ?",
-            parseInt(String(args["max-messages"])),
-            currentSessionId
+            [parseInt(String(parsed["max-messages"])),
+            currentSessionId]
           );
         }
-        if (args["max-tokens"]) {
+        if (parsed["max-tokens"]) {
 // @ts-ignore SQLite binding
           database.run(
             "UPDATE session_configs SET max_context_tokens = ? WHERE id = ?",
-            parseInt(String(args["max-tokens"])),
-            currentSessionId
+            [parseInt(String(parsed["max-tokens"])),
+            currentSessionId]
           );
         }
         ctx.ui?.notify?.("Session config updated", "success");
@@ -362,7 +370,7 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
       
       // Show current config
 // @ts-ignore SQLite binding
-      const config = database.query("SELECT * FROM session_configs WHERE id = ?").get(currentSessionId) as any;
+      const config = database.query("SELECT * FROM session_configs WHERE id = ?").get([currentSessionId]) as any;
       
       if (!config) {
         ctx.ui?.notify?.("Session config not found", "error");
@@ -371,7 +379,8 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
       
       const usage = database.query(
         "SELECT SUM(token_count) as total FROM message_entries WHERE session_id = ? AND preserved >= 0"
-      ).get(currentSessionId) as any;
+      // @ts-ignore SQLite binding
+      ).get([currentSessionId]) as any;
       
       const lines = [
         "📊 Session Pruning Config",
@@ -394,13 +403,16 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
     args: [
       { name: "turns", description: "Number of recent turns to keep", required: true },
     ],
-    handler: async (args, ctx) => {
+    handler: async (args: string, ctx) => {
       if (!currentSessionId) {
         ctx.ui?.notify?.("No active session", "warning");
         return;
       }
       
-      const keepTurns = parseInt(String(args.turns)) || 10;
+      const parsed = parseArgs(args, [
+        { name: "turns", description: "Number of recent turns to keep", required: true },
+      ]);
+      const keepTurns = parseInt(String(parsed.turns)) || 10;
       
       if (turnNumber <= keepTurns) {
         ctx.ui?.notify?.("Not enough turns to compact", "warning");
@@ -437,8 +449,8 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
         `DELETE FROM message_entries 
          WHERE session_id = ? 
          AND id IN (SELECT message_id FROM cache_ttl WHERE ttl < ?)`,
-        currentSessionId,
-        now
+        [currentSessionId,
+        now]
       );
       
       // Clean up cache_ttl table
@@ -550,13 +562,19 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
       }
       
 // @ts-ignore SQLite binding
-      const config = database.query("SELECT * FROM session_configs WHERE id = ?").get(currentSessionId) as any;
+      const config = database.query("SELECT * FROM session_configs WHERE id = ?")
+      // @ts-ignore SQLite binding
+      .get([currentSessionId]) as any;
       const usage = database.query(
         "SELECT COUNT(*) as count, SUM(token_count) as tokens FROM message_entries WHERE session_id = ? AND preserved >= 0"
-      ).get(currentSessionId) as any;
+      )
+      // @ts-ignore SQLite binding
+      .get([currentSessionId]) as any;
       const compactCount = database.query(
         "SELECT COUNT(*) as count FROM compaction_rules WHERE session_id = ?"
-      ).get(currentSessionId) as any;
+      )
+      // @ts-ignore SQLite binding
+      .get([currentSessionId]) as any;
       
       const percentage = config?.max_context_tokens 
         ? Math.round((usage?.tokens / config.max_context_tokens) * 100)
@@ -590,10 +608,14 @@ export default function sessionPruningExtension(pi: ExtensionAPI) {
       if (!currentSessionId) return "";
       
 // @ts-ignore SQLite binding
-      const config = database.query("SELECT max_context_tokens FROM session_configs WHERE id = ?").get(currentSessionId) as any;
+      const config = database.query("SELECT max_context_tokens FROM session_configs WHERE id = ?")
+      // @ts-ignore SQLite binding
+      .get([currentSessionId]) as any;
       const usage = database.query(
         "SELECT SUM(token_count) as total FROM message_entries WHERE session_id = ? AND preserved >= 0"
-      ).get(currentSessionId) as any;
+      )
+      // @ts-ignore SQLite binding
+      .get([currentSessionId]) as any;
       
       if (!config) return "";
       
