@@ -140,23 +140,14 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
 
     console.log(`[SelfUpdate] Update available: ${latestVersion} (current: ${currentVersion})`);
 
-    // @ts-ignore sendMessage type
-// @ts-ignore sendMessage type
-    pi.sendMessage({
-      customType: 'self-update.available',
-      content: [{
-        type: 'text',
-        text: `🐉 0xKobold update available: ${latestVersion}\n\nRun /self-update:install to update and restart.`
-      }],
-      // @ts-ignore Content type
-      display: { type: 'text', text: `⏳ 0xKobold ${latestVersion} available` },
-      details: { currentVersion, latestVersion },
-    });
+    // Store update info for commands to access
+    // @ts-ignore
+    pi.__selfUpdateInfo = { hasUpdate: true, currentVersion, latestVersion };
   }
 
   // Check on session start - only in main process
   if (checkOnStartup) {
-    pi.on('session_start', async () => {
+    pi.on('session_start', async (_event, ctx) => {
       // Skip in subagent sessions
       const isSubagent = process.env.KOBOLD_SUBAGENT === 'true' || process.env.PI_SESSION_PARENT;
       if (isSubagent) {
@@ -168,61 +159,55 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
         return;
       }
 
-      setTimeout(checkAndNotify, 3000);
+      // Delay to let UI initialize
+      setTimeout(async () => {
+        const { hasUpdate, latestVersion } = await checkForSelfUpdate();
+        
+        if (hasUpdate && ctx.ui?.notify) {
+          ctx.ui.notify(
+            `🐉 0xKobold update available: ${latestVersion}\nRun /self-update:install to update`,
+            'info'
+          );
+        }
+      }, 5000);
     });
   }
 
   // Register commands
   pi.registerCommand('self-update:check', {
     description: 'Check for 0xKobold updates',
-    handler: checkAndNotify,
+    handler: async (_args, ctx) => {
+      await checkAndNotify();
+      // Check stored info
+      // @ts-ignore
+      const info = pi.__selfUpdateInfo;
+      if (info?.hasUpdate) {
+        ctx.ui.notify(`🐉 Update available: ${info.latestVersion}\nRun /self-update:install to update`, 'info');
+      } else {
+        ctx.ui.notify('✅ 0xKobold is up to date', 'info');
+      }
+    },
   });
 
   pi.registerCommand('self-update:install', {
     description: 'Install 0xKobold update and restart',
-    handler: async () => {
+    handler: async (_args, ctx) => {
       const { hasUpdate, latestVersion } = await checkForSelfUpdate();
 
       if (!hasUpdate) {
-        // @ts-ignore sendMessage type
-// @ts-ignore sendMessage type
-        pi.sendMessage({
-          customType: 'self-update.none',
-          content: [{ type: 'text', text: 'No updates available.' }],
-      // @ts-ignore Content type
-          display: { type: 'text', text: 'No updates' },
-        });
+        ctx.ui.notify('✅ No updates available', 'info');
         return;
       }
 
-      // @ts-ignore sendMessage type
-// @ts-ignore sendMessage type
-      pi.sendMessage({
-        customType: 'self-update.installing',
-        content: [{ type: 'text', text: `Updating to ${latestVersion}...` }],
-      // @ts-ignore Content type
-        display: { type: 'text', text: 'Updating...' },
-      });
+      ctx.ui.notify(`🔄 Updating to ${latestVersion}...`, 'info');
 
       const success = await performSelfUpdate(latestVersion);
 
       if (success) {
-// @ts-ignore sendMessage type
-        pi.sendMessage({
-          customType: 'self-update.restarting',
-          content: [{ type: 'text', text: 'Update complete. Restarting...' }],
-      // @ts-ignore Content type
-          display: { type: 'text', text: 'Restarting...' },
-        });
+        ctx.ui.notify('✅ Update complete. Restarting...', 'info');
         await restartApplication();
       } else {
-// @ts-ignore sendMessage type
-        pi.sendMessage({
-          customType: 'self-update.failed',
-          content: [{ type: 'text', text: 'Update failed. Check console for errors.' }],
-      // @ts-ignore Content type
-          display: { type: 'text', text: 'Update failed' },
-        });
+        ctx.ui.notify('❌ Update failed. Check console for errors.', 'error');
       }
     },
   });

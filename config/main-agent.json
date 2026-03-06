@@ -3,7 +3,13 @@
   "//_": "0xKobold Main Agent Configuration",
   "//__": "This is the primary configuration file for the Kobold AI agent.",
   "//___": "It defines the agent's identity, capabilities, and behavioral settings.",
-  "//═══════════════════════════════════════════════════════════════════": "",
+  "//════": "═══════════════════════════════════════════════════════════════════",
+
+  "// PRIMARY CONFIG": "════════════════════════════════════════════════════════",
+  "//_": "Main config is now in kobold.json (koclaw/openclaw style)",
+  "//__": "Location priority: ./kobold.json > ~/.config/kobold/kobold.json",
+  "//___": "Environment: KOBOLD_CONFIG_PATH overrides all",
+  "primaryConfig": "kobold.json",
 
   "agent": {
     "name": "Kobold",
@@ -100,5 +106,19 @@
     "code_style": "clean",
     "learning_mode": "adaptive",
     "privacy_level": "standard"
+  },
+
+  "// HEARTBEAT": "══════════════════════════════════════════════════════════════════",
+  "//_": "Heartbeat runs periodic check-ins to monitor agent health.",
+  "//__": "The agent reads HEARTBEAT.md from workspace and responds with HEARTBEAT_OK",
+  "//___": "if nothing needs attention, or an alert if something is wrong.",
+  "//____": "Configuration moved to kobold.json: agents.defaults.heartbeat",
+  "heartbeat": {
+    "enabled": true,
+    "every": "30m",
+    "target": "none",
+    "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
+    "ackMaxChars": 300,
+    "activeHours": null
   }
 }

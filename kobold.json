@@ -1,0 +1,219 @@
+{
+  "//": "═══════════════════════════════════════════════════════════════════",
+  "//_": "Kobold Configuration File",
+  "//__": "This is the main configuration for the Kobold AI agent.",
+  "//___": "Location: ~/.config/kobold/kobold.json or ./kobold.json (project)",
+  "//═══════════════════════════════════════════════════════════════════": "",
+
+  "meta": {
+    "version": "1.0.0",
+    "lastTouchedAt": null,
+    "description": "Kobold - A wise hermit AI assistant for code and craftsmanship"
+  },
+
+  "// AGENT DEFAULTS": "════════════════════════════════════════════════════════",
+  "//_": "Default settings for all agents. Per-agent overrides in agents.list.",
+  "agents": {
+    "defaults": {
+      "name": "Kobold",
+      "model": "ollama/kimi-k2.5:cloud",
+      "workspace": "./",
+      
+      "// HEARTBEAT": "Periodically check for tasks requiring attention",
+      "heartbeat": {
+        "enabled": true,
+        "every": "30m",
+        "prompt": "Read HEARTBEAT.md if it exists. Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
+        "ackMaxChars": 300,
+        "activeHours": null,
+        "lightContext": true,
+        "includeReasoning": false
+      },
+      
+      "// CONTEXT PRUNING": "Auto-compact long sessions",
+      "contextPruning": {
+        "mode": "cache-ttl",
+        "ttl": "30m",
+        "keepLastAssistants": 5,
+        "softTrimRatio": 0.3,
+        "hardClearRatio": 0.8
+      },
+      
+      "thinkingDefault": "medium",
+      "verboseDefault": "off",
+      "timeoutSeconds": 300
+    },
+    
+    "// PER-AGENT CONFIG": "Override defaults for specific agents",
+    "list": [
+      {
+        "id": "default",
+        "name": "Kobold",
+        "default": true,
+        "skills": ["code", "analysis", "planning"]
+      },
+      {
+        "id": "code-scribe",
+        "name": "Code Scribe",
+        "model": "ollama/kimi-k2.5:cloud",
+        "skills": ["code", "refactor", "review"],
+        "heartbeat": {
+          "enabled": false
+        }
+      },
+      {
+        "id": "system-ops",
+        "name": "System Ops",
+        "heartbeat": {
+          "every": "15m",
+          "prompt": "Check system health, pending deployments, and alerts. Reply HEARTBEAT_OK if clear."
+        }
+      }
+    ]
+  },
+
+  "// MODELS": "═══════════════════════════════════════════════════════════════",
+  "//_": "Model registration and overrides",
+  "models": {
+    "catalog": {
+      "ollama/kimi-k2.5:cloud": {
+        "alias": "kimi-cloud",
+        "streaming": true
+      },
+      "ollama/kimi-k2.5:edge": {
+        "alias": "kimi-edge",
+        "streaming": true
+      }
+    },
+    "envVarPriority": [
+      "KOBOLD_MODEL",
+      "OLLAMA_MODEL"
+    ]
+  },
+
+  "// MEMORY": "═══════════════════════════════════════════════════════════════",
+  "memory": {
+    "enabled": true,
+    "backend": "sqlite",
+    "dbPath": "~/.config/kobold/memory.db",
+    "compressionThreshold": 100,
+    "search": {
+      "enabled": true,
+      "vectorStore": "faiss",
+      "dimensions": 1536
+    }
+  },
+
+  "// EXTENSIONS": "══════════════════════════════════════════════════════════",
+  "extensions": {
+    "enabled": [
+      "ollama-provider",
+      "session-bridge",
+      "persona-loader",
+      "context-aware",
+      "mode-manager",
+      "heartbeat",
+      "task-manager",
+      "mcp",
+      "gateway"
+    ],
+    "settings": {
+      "heartbeat": {
+        "autoInit": true,
+        "createTemplate": true
+      },
+      "gateway": {
+        "port": 18789,
+        "host": "127.0.0.1",
+        "cors": {
+          "origins": ["http://localhost:3000", "http://localhost:5173"]
+        }
+      },
+      "mcp": {
+        "autoDiscover": true,
+        "servers": [
+          "filesystem",
+          "github"
+        ]
+      }
+    }
+  },
+
+  "// DISCORD INTEGRATION": "═══════════════════════════════════════════════════",
+  "discord": {
+    "enabled": false,
+    "autoReply": true,
+    "channels": {
+      "notify": {
+        "id": null,
+        "alertOnError": true
+      }
+    },
+    "//_": "Set DISCORD_BOT_TOKEN env var for bot authentication"
+  },
+
+  "// GATEWAY": "══════════════════════════════════════════════════════════════",
+  "gateway": {
+    "enabled": true,
+    "port": 18789,
+    "host": "127.0.0.1",
+    "heartbeat": {
+      "enabled": true,
+      "intervalSeconds": 30
+    },
+    "cors": {
+      "enabled": true,
+      "origins": ["*"]
+    }
+  },
+
+  "// SKILLS": "═══════════════════════════════════════════════════════════════",
+  "skills": {
+    "paths": [
+      "./skills",
+      "~/.config/kobold/skills"
+    ],
+    "autoLoad": ["core", "coding", "git"]
+  },
+
+  "// SESSIONS": "══════════════════════════════════════════════════════════════",
+  "session": {
+    "storageDir": "~/.config/kobold/sessions",
+    "autoSave": true,
+    "maxSize": "100mb",
+    "backup": {
+      "enabled": true,
+      "retention": "7d",
+      "maxBackups": 10
+    }
+  },
+
+  "// UPDATES": "═══════════════════════════════════════════════════════════════",
+  "update": {
+    "checkOnStartup": true,
+    "autoInstall": false,
+    "channel": "stable"
+  },
+
+  "// ENVIRONMENT": "═══════════════════════════════════════════════════════════",
+  "env": {
+    "//_": "Values here can be referenced as ${VAR} or overridden by actual env vars",
+    "KOBOLD_LOG_LEVEL": "info",
+    "KOBOLD_TEMP_DIR": "~/.config/kobold/tmp"
+  },
+
+  "// CLI": "═══════════════════════════════════════════════════════════════",
+  "cli": {
+    "keybindings": {
+      "ctrl+c": "interrupt",
+      "ctrl+d": "shutdown",
+      "ctrl+l": "clear",
+      "f1": "help",
+      "f2": "toggle_mode",
+      "ctrl+t": "toggle_tree",
+      "ctrl+n": "new_chat"
+    },
+    "theme": "default",
+    "confirmDestructive": true
+  }
+}

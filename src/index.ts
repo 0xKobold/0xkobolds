@@ -46,7 +46,17 @@ async function main(): Promise<void> {
     '--extension', resolve(packageRoot, 'src/extensions/core/context-aware-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/onboarding-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/mode-manager-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/questionnaire-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/session-name-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/handoff-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/pi-notify-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/env-loader-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/heartbeat-extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/discord-channel-extension.ts'),
     '--extension', resolve(packageRoot, 'src/extensions/core/task-manager-extension.ts'),
+    // Context management (OpenClaw-style)
+    '--extension', resolve(packageRoot, 'src/extensions/core/context-pruning/extension.ts'),
+    '--extension', resolve(packageRoot, 'src/extensions/core/compaction-safeguard.ts'),
     // Note: pi-coding-agent has built-in compaction via /compact command
     
     // Multi-Channel

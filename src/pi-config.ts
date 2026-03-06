@@ -28,7 +28,12 @@ export const config: Config = {
     './src/extensions/core/context-aware-extension.ts', // Local mode context
     './src/extensions/core/onboarding-extension.ts', // First-run setup
     './src/extensions/core/mode-manager-extension.ts',    // Plan/Build mode switching
+    './src/extensions/core/questionnaire-extension.ts', // Question/questionnaire tools
+    './src/extensions/core/session-name-extension.ts', // Session naming
+    './src/extensions/core/handoff-extension.ts', // Context handoff to new session
+    './src/extensions/core/pi-notify-extension.ts', // Native desktop notifications
     './src/extensions/core/task-manager-extension.ts', // Task board and workflow
+    './src/extensions/core/heartbeat-extension.ts',       // Koclaw-style heartbeat monitoring
     // Note: pi-coding-agent has built-in compaction, no need for custom pruning
     
     // Multi-Channel (for future Discord/Web)
@@ -80,6 +85,12 @@ export const config: Config = {
     // Update settings
     '0xkobold.update.checkOnStartup': true,
     '0xkobold.update.autoInstall': true,
+    // Heartbeat settings (koclaw-style)
+    // Configure via environment variables:
+    //   HEARTBEAT_ENABLED=true|false (default: true)
+    //   HEARTBEAT_EVERY=30m|1h|2h30m (default: 30m)
+    //   HEARTBEAT_ACK_MAX_CHARS=300 (default: 300)
+    // See HEARTBEAT.md in workspace for checklist contents
   },
 };
 

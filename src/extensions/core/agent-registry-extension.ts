@@ -424,7 +424,7 @@ export default function agentRegistryExtension(pi: ExtensionAPI) {
   (pi.registerTool as any)({
     label: "Agent Spawn",
     name: "agent_spawn",
-    description: "Spawn an agent",
+    description: `Spawn an agent to handle a task. Valid agent types: ${AGENT_TYPES.join(", ")}`,
     parameters: {
       type: "object",
       properties: {

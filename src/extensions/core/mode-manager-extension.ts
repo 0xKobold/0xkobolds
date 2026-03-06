@@ -90,6 +90,8 @@ You have access to READ-ONLY tools:
 - Web search for documentation
 - Code analysis and exploration
 - Spawn agents for multi-agent collaboration
+- Ask questions using 'question' or 'questionnaire' tools
+- Request mode change to 'build' when ready to implement (requires user approval)
 - No file modifications or shell execution
 
 Before writing code, explain:
@@ -102,12 +104,19 @@ Before writing code, explain:
       "grep",
       "find",
       "ls",
-      "bash",           // Added: but filtered to read-only commands
+      "bash",
       "web_search",
       "web_fetch",
       "agent_spawn",
       "agent_list",
       "agent_delegate",
+      "question",
+      "questionnaire",
+      "request_mode_change",
+      "set_session_name",
+      "get_session_name",
+      "generate_handoff_prompt",
+      "send_discord_message",
     ],
     color: "blue",
   },
@@ -129,7 +138,11 @@ You have access to ALL tools including:
 - File read/write/modification (read, edit, write)
 - Search tools (find, grep, ls)
 - Shell commands (bash)
+- Ask questions using 'question' or 'questionnaire' tools
+- Agent spawning, delegation, and task breakdown
+  - Valid agent types: coordinator, specialist, worker, reviewer, researcher, planner, executor
 - Code generation and refactoring
+- Request mode change to 'plan' for investigation (requires user approval)
 
 Be concise and focused on delivering working code.`,
     allowedTools: [
@@ -142,9 +155,18 @@ Be concise and focused on delivering working code.`,
       "bash",
       "web_search",
       "web_fetch",
-      "view_web_document",
-      "ask_user",
       "fetch_webpage",
+      "question",
+      "questionnaire",
+      "request_mode_change",
+      "set_session_name",
+      "get_session_name",
+      "generate_handoff_prompt",
+      "send_discord_message",
+      "task_breakdown",
+      "agent_spawn",
+      "agent_delegate",
+      "agent_list",
     ],
     color: "green",
   },
@@ -215,8 +237,6 @@ export default function modeManagerExtension(pi: ExtensionAPI) {
   const modes = getAllModes(config);
   let currentMode: Mode = modes[config.currentMode] || DEFAULT_MODES.build;
   MODE_MANAGER_STATE.currentModeId = currentMode.id;
-  // Track which tools are available
-  const allTools = new Map<string, any>();
 
   /**
    * Set the current mode
@@ -245,26 +265,13 @@ export default function modeManagerExtension(pi: ExtensionAPI) {
     const statusText = `${currentMode.icon} ${currentMode.name}`;
 
     // Use ctx.ui.setStatus if available
-    if (ctx.ui) {
-      ctx.ui.setStatus?.("mode", statusText);
+    if (ctx.ui?.setStatus) {
+      try {
+        ctx.ui.setStatus("mode", statusText);
+      } catch (err) {
+        console.log("[ModeManager] Failed to set status:", err);
+      }
     }
-  }
-
-  /**
-   * Filter tools based on current mode
-   */
-  function filterTools(tools: any[]): any[] {
-    if (!currentMode.allowedTools || currentMode.allowedTools.length === 0) {
-      return tools;
-    }
-
-    return tools.filter((tool: any) => {
-      const toolName = tool.name || tool.id || "";
-      const allowed = currentMode.allowedTools.some(
-        (allowed) => toolName.toLowerCase().includes(allowed.toLowerCase())
-      );
-      return allowed;
-    });
   }
 
   // Register mode switch commands
@@ -344,8 +351,12 @@ export default function modeManagerExtension(pi: ExtensionAPI) {
     },
   });
 
-  // Debounce guard for shortcut
-  let shortcutDebounce = false;
+  // Debounce guards for shortcuts (separate to avoid conflicts)
+  let ctrlShiftMDebounce = false;
+  let f2Debounce = false;
+
+  // Track pending mode change requests from the agent
+  let pendingModeRequest: { requestedMode: string; reason: string; timestamp: number } | null = null;
 
   // Register keyboard shortcut for quick mode toggle (ctrl+shift+m - avoiding ctrl+m which conflicts with Enter)
   // Only register if the API supports it (not in test mocks)
@@ -354,15 +365,15 @@ export default function modeManagerExtension(pi: ExtensionAPI) {
       description: "Toggle between plan/build modes",
       handler: async (ctx) => {
         // Debounce protection - skip if already processing
-        if (shortcutDebounce) {
-          console.log("[ModeManager] Shortcut debounced, skipping");
+        if (ctrlShiftMDebounce) {
+          console.log("[ModeManager] Ctrl+Shift+M debounced, skipping");
           return;
         }
-        shortcutDebounce = true;
+        ctrlShiftMDebounce = true;
 
         try {
           const currentModeId = MODE_MANAGER_STATE.currentModeId;
-          console.log(`[ModeManager] Shortcut triggered: switching from ${currentModeId}`);
+          console.log(`[ModeManager] Ctrl+Shift+M triggered: switching from ${currentModeId}`);
 
           const newMode = currentModeId === "plan" ? "build" : "plan";
 
@@ -374,7 +385,7 @@ export default function modeManagerExtension(pi: ExtensionAPI) {
         } finally {
           // Release debounce after a short delay
           setTimeout(() => {
-            shortcutDebounce = false;
+            ctrlShiftMDebounce = false;
           }, 300);
         }
       },
@@ -384,11 +395,11 @@ export default function modeManagerExtension(pi: ExtensionAPI) {
     pi.registerShortcut("f2", {
       description: "Toggle between plan/build modes (F2)",
       handler: async (ctx) => {
-        if (shortcutDebounce) {
+        if (f2Debounce) {
           console.log("[ModeManager] F2 debounced, skipping");
           return;
         }
-        shortcutDebounce = true;
+        f2Debounce = true;
 
         try {
           const currentModeId = MODE_MANAGER_STATE.currentModeId;
@@ -403,32 +414,172 @@ export default function modeManagerExtension(pi: ExtensionAPI) {
           }
         } finally {
           setTimeout(() => {
-            shortcutDebounce = false;
+            f2Debounce = false;
           }, 300);
         }
       },
     });
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // AGENT MODE REQUESTS - LLM can request mode changes, user approves
+  // ═══════════════════════════════════════════════════════════════
+
+  // Register tool for agent to request mode changes
+  pi.registerTool({
+    name: "request_mode_change",
+    label: "request_mode_change",
+    description: "Request to switch to a different mode (plan or build). Requires user approval. Use when you need to investigate (plan) or when you're ready to implement (build).",
+    // @ts-ignore TSchema mismatch
+    parameters: {
+      type: "object",
+      properties: {
+        target_mode: {
+          type: "string",
+          enum: ["plan", "build"],
+          description: "The mode to request switching to",
+        },
+        reason: {
+          type: "string",
+          description: "Why you want to switch modes. Be specific about what you need to do.",
+        },
+      },
+      required: ["target_mode", "reason"],
+    },
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const { target_mode, reason } = params as { target_mode: string; reason: string };
+      
+      console.log(`[ModeManager] Agent requested mode change: ${target_mode} - ${reason}`);
+
+      // Check if already in that mode
+      if (currentMode.id === target_mode) {
+        return {
+          content: [{ type: "text", text: `Already in ${target_mode} mode.` }],
+          details: { success: true, alreadyInMode: true },
+        };
+      }
+
+      // Store the pending request
+      pendingModeRequest = {
+        requestedMode: target_mode,
+        reason,
+        timestamp: Date.now(),
+      };
+
+      // Notify user about the request
+      if (ctx.ui?.notify) {
+        ctx.ui.notify(
+          `🔄 Mode Change Requested\nAgent wants to switch to: ${target_mode.toUpperCase()} mode\nReason: ${reason}\n\nType "/approve" to allow or "/deny" to reject.`,
+          "info"
+        );
+      }
+
+      return {
+        content: [{ 
+          type: "text", 
+          text: `Requested switch to ${target_mode} mode.\nReason: ${reason}\n\nWaiting for user approval...` 
+        }],
+        details: { 
+          success: true, 
+          requested: target_mode, 
+          reason,
+          requiresApproval: true 
+        },
+      };
+    },
+  });
+
+  // Command for user to approve a pending mode change
+  pi.registerCommand("approve", {
+    description: "Approve a pending mode change request from the agent",
+    handler: async (_args, ctx) => {
+      if (!pendingModeRequest) {
+        ctx.ui.notify("No pending mode change request to approve.", "warning");
+        return;
+      }
+
+      const { requestedMode, reason, timestamp } = pendingModeRequest;
+      const age = Math.round((Date.now() - timestamp) / 1000);
+
+      console.log(`[ModeManager] User approved mode change to ${requestedMode} (requested ${age}s ago)`);
+
+      if (setMode(requestedMode)) {
+        const modes = getAllModes(config);
+        const mode = modes[requestedMode];
+        ctx.ui.notify(
+          `✅ Approved! Switched to ${mode.icon} ${mode.name} mode\nReason: ${reason}`,
+          "info"
+        );
+        pendingModeRequest = null;
+      }
+    },
+  });
+
+  // Command for user to deny a pending mode change
+  pi.registerCommand("deny", {
+    description: "Deny a pending mode change request from the agent",
+    handler: async (_args, ctx) => {
+      if (!pendingModeRequest) {
+        ctx.ui.notify("No pending mode change request to deny.", "warning");
+        return;
+      }
+
+      const { requestedMode, reason } = pendingModeRequest;
+      console.log(`[ModeManager] User denied mode change to ${requestedMode}`);
+
+      ctx.ui.notify(
+        `❌ Denied mode change to ${requestedMode}\nReason given: ${reason}\n\nCurrent mode: ${currentMode.icon} ${currentMode.name}`,
+        "info"
+      );
+      
+      pendingModeRequest = null;
+    },
+  });
+
+  // Command to check if there's a pending request
+  pi.registerCommand("pending", {
+    description: "Check if there's a pending mode change request",
+    handler: async (_args, ctx) => {
+      if (!pendingModeRequest) {
+        ctx.ui.notify(`No pending mode change requests.\nCurrent mode: ${currentMode.icon} ${currentMode.name}`, "info");
+        return;
+      }
+
+      const { requestedMode, reason, timestamp } = pendingModeRequest;
+      const age = Math.round((Date.now() - timestamp) / 1000);
+      
+      ctx.ui.notify(
+        `⏳ Pending Mode Change Request:\n` +
+        `  Mode: ${requestedMode.toUpperCase()}\n` +
+        `  Reason: ${reason}\n` +
+        `  Age: ${age}s ago\n\n` +
+        `Type "/approve" or "/deny"`,
+        "info"
+      );
+    },
+  });
+
   // Log initialization for debugging
   console.log(`[ModeManager] Extension initialized. Mode: ${currentMode.id}, Shortcut: ctrl+shift+m`);
 
   // Hook into session start to set up UI
   pi.on("session_start", async (_event, ctx) => {
-    // Set initial status on the mode manager extension itself
-    updateModeStatus(ctx);
-
-    // Register the mode in the status bar
-    if (ctx.ui) {
-      ctx.ui.setStatus?.("mode", `${currentMode.icon} ${currentMode.name}`);
+    // Set initial status - but only if UI is fully ready
+    if (ctx.ui?.setStatus && ctx.hasUI) {
+      try {
+        ctx.ui.setStatus("mode", `${currentMode.icon} ${currentMode.name}`);
+      } catch (err) {
+        console.log("[ModeManager] Status setup deferred:", err);
+      }
     }
   });
 
-  // Hook into before agent start to apply system prompt
+  // Hook into before agent start to apply mode-specific system prompt
   pi.on("before_agent_start", async (_event) => {
-    // Note: System prompt is set via the mode-specific commands
-    // The extension framework doesn't allow modifying system prompt
-    // at runtime through ReadonlySessionManager
+    // Return mode-specific system prompt modification
+    return {
+      systemPrompt: currentMode.systemPrompt + "\n\nCurrent mode: " + currentMode.name + " " + currentMode.icon
+    };
   });
 
   // Filter tools based on mode
@@ -455,6 +606,50 @@ export default function modeManagerExtension(pi: ExtensionAPI) {
     }
     
     console.log(`[ModeManager] ALLOWED: "${toolName}"`);
+  });
+
+  // Filter bash commands in plan mode
+  // @ts-ignore - UserBash handler signature
+  pi.on("user_bash", async (event, _ctx) => {
+    if (currentMode.id !== "plan") {
+      return; // Allow all bash in build mode
+    }
+
+    const command = event.command.trim();
+    const baseCommand = command.split(/\s+/)[0].toLowerCase();
+    
+    console.log(`[ModeManager] Bash command: "${command}" | Mode: ${currentMode.id}`);
+
+    // Check if explicitly blocked
+    const isBlocked = BLOCKED_BASH_COMMANDS.some(
+      blocked => command.toLowerCase().startsWith(blocked.toLowerCase()) || baseCommand === blocked.toLowerCase()
+    );
+
+    if (isBlocked) {
+      const msg = `Command "${command}" is not allowed in Plan mode.`;
+      console.log(`[ModeManager] BLOCKED bash: ${msg}`);
+      return {
+        result: {
+          stdout: "",
+          stderr: msg + "\nAllowed commands: " + READONLY_BASH_COMMANDS.join(", ") + "\nSwitch to build mode with: /build",
+          exitCode: 1,
+        }
+      };
+    }
+
+    // Check if explicitly allowed
+    const isAllowed = READONLY_BASH_COMMANDS.some(
+      allowed => command.toLowerCase().startsWith(allowed.toLowerCase()) || baseCommand === allowed.toLowerCase()
+    );
+
+    if (!isAllowed) {
+      const msg = `Command "${command}" may not be safe in Plan mode.`;
+      console.log(`[ModeManager] WARNING bash: ${msg}`);
+      // Allow but warn - or could block here if strict
+      return;
+    }
+
+    console.log(`[ModeManager] ALLOWED bash: "${command}"`);
   });
 
   console.log(`Mode Manager Extension loaded. Current mode: ${currentMode.id}`);
