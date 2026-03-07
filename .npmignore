@@ -55,3 +55,6 @@ demo*.sh
 
 # Node modules
 node_modules/
+
+.env
+.npmrc
