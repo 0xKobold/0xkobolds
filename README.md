@@ -64,15 +64,15 @@ npx 0xkobold start
 
 ```bash
 # Clone and install
-git clone https://github.com/yourusername/0xkobold.git
+git clone https://github.com/moikapy/0xkobold.git
 cd 0xkobold
 bun install
 
 # Start Ollama (in another terminal)
 ollama run kimi-k2.5:cloud
 
-# Start the server
-bun run start
+# Start the TUI
+bun run tui
 ```
 
 ## Project Structure
@@ -153,32 +153,58 @@ The `spawn_subagent` skill is built-in and lets agents create child agents autom
 ## Commands
 
 ```bash
-bun run start     # Start server
-bun run tui       # Start TUI
-bun run cli       # CLI commands
+# Global install (recommended)
+npm install -g 0xkobold
+
+# Interactive TUI (default)
+0xkobold
+# or explicitly
+0xkobold tui
+
+# Project mode (per-directory config)
+0xkobold local
+
+# Gateway service
+0xkobold start        # Start daemon
+0xkobold start -f     # Start foreground
+0xkobold stop         # Stop daemon
+0xkobold status       # Check status
+0xkobold logs         # View logs
+
+# Using npx (no install)
+npx 0xkobold
+npx 0xkobold tui --local
 ```
 
 ## Configuration
 
-Config is stored in `~/.0xkobold/config.json5`:
+Config is stored in `~/.config/kobold/kobold.json`:
 
-```json5
+```json
 {
-  agents: {
-    default: {
-      model: 'ollama/kimi-k2.5:cloud',
-      capabilities: ['chat', 'code'],
-    },
+  "meta": {
+    "version": "1.0.0"
   },
-  gateway: {
-    enabled: true,
-    port: 18789,
+  "providers": {
+    "ollama": {
+      "enabled": true,
+      "model": "kimi-k2.5:cloud"
+    }
   },
-  discord: {
-    enabled: false,
-    token: '${DISCORD_BOT_TOKEN}',
+  "gateway": {
+    "enabled": true,
+    "port": 18789
   },
+  "discord": {
+    "enabled": false,
+    "token": "${DISCORD_BOT_TOKEN}"
+  }
 }
+```
+
+Or use **Local Mode** for per-project configs:
+```bash
+0xkobold local   # Creates/uses ./kobold.json in current directory
 ```
 
 ## Architecture Differences from OpenClaw
