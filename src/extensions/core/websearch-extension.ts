@@ -22,6 +22,30 @@ interface SearchResponse {
 }
 
 /**
+ * Robust argument extraction helper
+ * Handles multiple argument formats from pi-coding-agent:
+ * - Direct: { query: "..." }
+ * - Nested: { parameters: { query: "..." } }
+ * - Array: [{ query: "..." }]
+ * - Input: { input: { query: "..." } }
+ * - Arguments: { arguments: { query: "..." } }
+ */
+function extractArg<T = any>(args: any, key: string, defaultVal?: T): T | undefined {
+  if (!args) return defaultVal;
+  // Direct property
+  if (args[key] !== undefined) return args[key];
+  // Nested in parameters
+  if (args.parameters?.[key] !== undefined) return args.parameters[key];
+  // Array format
+  if (Array.isArray(args) && args[0]?.[key] !== undefined) return args[0][key];
+  // Tool call format with nested input
+  if (args.input?.[key] !== undefined) return args.input[key];
+  // Arguments wrapper
+  if (args.arguments?.[key] !== undefined) return args.arguments[key];
+  return defaultVal;
+}
+
+/**
  * Perform web search using available methods
  */
 async function performWebSearch(query: string, limit: number = 5): Promise<SearchResponse> {
@@ -339,12 +363,10 @@ export default function webSearchExtension(pi: ExtensionAPI) {
       required: ["query"],
     },
     async execute(args: any) {
-  // @ts-ignore Command args property
       console.log("[WebSearch] Received args:", JSON.stringify(args, null, 2));
       
-      // Handle different argument structures
-      const query = args?.query || args?.parameters?.query || args?.[0]?.query;
-      const limit = args?.limit || args?.parameters?.limit || args?.[0]?.limit || 5;
+      const query = extractArg(args, 'query');
+      const limit = extractArg(args, 'limit', 5);
       
       console.log("[WebSearch] Extracted query:", query, "limit:", limit);
 
@@ -352,7 +374,7 @@ export default function webSearchExtension(pi: ExtensionAPI) {
         return {
           content: [{ 
             type: "text", 
-            text: `Invalid search query: received "${query}" (type: ${typeof query})` 
+            text: `Invalid search query: received "${query}" (type: ${typeof query}). Please provide a valid string query.` 
           }],
           details: { error: "invalid_query", received: args },
         };
@@ -411,12 +433,10 @@ export default function webSearchExtension(pi: ExtensionAPI) {
       required: ["url"],
     },
     async execute(args: any) {
-  // @ts-ignore Command args property
       console.log("[WebFetch] Received args:", JSON.stringify(args, null, 2));
       
-      // Handle different argument structures that pi-coding-agent might send
-      const url = args?.url || args?.parameters?.url || args?.[0]?.url;
-      const max_length = args?.max_length || args?.parameters?.max_length || args?.[0]?.max_length || 5000;
+      const url = extractArg(args, 'url');
+      const max_length = extractArg(args, 'max_length', 5000);
       
       console.log("[WebFetch] Extracted url:", url, "max_length:", max_length);
 
@@ -482,12 +502,10 @@ export default function webSearchExtension(pi: ExtensionAPI) {
       required: ["question"],
     },
     async execute(args: any) {
-  // @ts-ignore Command args property
       console.log("[WebQA] Received args:", JSON.stringify(args, null, 2));
       
-      // Handle different argument structures
-      const question = args?.question || args?.parameters?.question || args?.[0]?.question;
-      const sources = args?.sources || args?.parameters?.sources || args?.[0]?.sources || 3;
+      const question = extractArg(args, 'question');
+      const sources = extractArg(args, 'sources', 3);
       
       console.log("[WebQA] Extracted question:", question, "sources:", sources);
 
@@ -495,7 +513,7 @@ export default function webSearchExtension(pi: ExtensionAPI) {
         return {
           content: [{ 
             type: "text", 
-            text: `Invalid question: received "${question}" (type: ${typeof question})` 
+            text: `Invalid question: received "${question}" (type: ${typeof question}). Please provide a valid string question.` 
           }],
           details: { error: "invalid_question", received: args },
         };
