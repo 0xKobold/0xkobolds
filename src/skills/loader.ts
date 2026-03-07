@@ -2,14 +2,15 @@
  * Skill Loader
  *
  * Hot-reload skill system using Bun's file watcher.
- * Skills are plain .ts files in the skills/ directory.
+ * Skills are plain .ts/.md files in the skills directories.
  */
 
 import { watch } from 'fs';
-import { readdir, stat } from 'fs/promises';
+import { readdir, stat, readFile } from 'fs/promises';
 import { join, basename, extname, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
+import { homedir } from 'os';
 import type { Skill, SkillEntry, SkillModule } from './types';
 import { eventBus, createEventEmitter } from '../event-bus';
 
@@ -20,12 +21,58 @@ const getDirname = () => {
   return dirname(fileURLToPath(import.meta.url));
 };
 
-// Built-in skills path - relative to project root
+// Built-in skills path - relative to project root (for dev)
 const PROJECT_ROOT = join(getDirname(), '..', '..');
-const BUILTIN_SKILLS_DIR = join(PROJECT_ROOT, 'src', 'skills', 'builtin');
+const DEV_BUILTIN_SKILLS_DIR = join(PROJECT_ROOT, 'src', 'skills', 'builtin');
 
-// User skills path
-const USER_SKILLS_DIR = join(PROJECT_ROOT, 'skills');
+// Production built-in skills path (in dist/)
+const PROD_BUILTIN_SKILLS_DIR = join(PROJECT_ROOT, '..', 'skills', 'builtin');
+
+// User skills directories
+function getGlobalSkillsDir(): string {
+  // Use ~/.0xkobold/skills instead of .agents/skills for better organization
+  return join(homedir(), '.0xkobold', 'skills');
+}
+
+function getLocalSkillsDir(): string {
+  return join(process.cwd(), 'skills');
+}
+
+function getAgentSkillsDir(): string {
+  // Support skills installed via 'skills' CLI to .agents/skills
+  const agentSkills = join(homedir(), '.agents', 'skills');
+  if (existsSync(agentSkills)) {
+    return agentSkills;
+  }
+  return getGlobalSkillsDir();
+}
+
+/**
+ * Get bundled skills directory (shipped with npm package)
+ */
+function getBundledSkillsDir(): string {
+  // In dev: use .agents/skills from project root
+  // In prod: use .agents/skills from package root (next to dist/)
+  const devPath = join(PROJECT_ROOT, '.agents', 'skills');
+  const prodPath = join(PROJECT_ROOT, '..', '.agents', 'skills');
+  
+  if (existsSync(devPath)) {
+    return devPath;
+  }
+  return prodPath;
+}
+
+/**
+ * Get built-in skills directory (handles both dev and prod)
+ */
+function getBuiltInSkillsDir(): string {
+  // Prefer dev path if it exists
+  if (existsSync(DEV_BUILTIN_SKILLS_DIR)) {
+    return DEV_BUILTIN_SKILLS_DIR;
+  }
+  // Fall back to production path
+  return PROD_BUILTIN_SKILLS_DIR;
+}
 
 /**
  * Skill Registry
@@ -146,7 +193,15 @@ export const skillRegistry = new SkillRegistry();
  */
 async function loadSkillFile(path: string): Promise<Skill[]> {
   try {
-    // Dynamic import - Bun handles TypeScript natively
+    // Handle .md skills (from skills CLI)
+    if (path.endsWith('.md')) {
+      const content = await readFile(path, 'utf-8');
+      // Parse SKILL.md format - extract frontmatter and create skill
+      const skill = parseSkillMarkdown(content, path);
+      return skill ? [skill] : [];
+    }
+
+    // Handle .ts/.js skills (dynamic import)
     const module = (await import(path)) as SkillModule;
 
     // Try to get skill(s) from default export or named export
@@ -172,6 +227,65 @@ async function loadSkillFile(path: string): Promise<Skill[]> {
   } catch (err) {
     console.error(`[Skills] Failed to load ${path}:`, err);
     return [];
+  }
+}
+
+/**
+ * Parse SKILL.md format into Skill object
+ */
+function parseSkillMarkdown(content: string, sourcePath: string): Skill | null {
+  try {
+    // Extract frontmatter
+    const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+    if (!frontmatterMatch) {
+      console.warn(`[Skills] No frontmatter found in ${sourcePath}`);
+      return null;
+    }
+
+    const [_, frontmatter, body] = frontmatterMatch;
+    
+    // Parse YAML-like frontmatter
+    const meta: Record<string, string> = {};
+    for (const line of frontmatter.split('\n')) {
+      const match = line.match(/^([^:]+):\s*(.*)$/);
+      if (match) {
+        const [, key, value] = match;
+        meta[key.trim()] = value.trim().replace(/^["']|["']$/g, '');
+      }
+    }
+
+    const name = meta.name || basename(dirname(sourcePath));
+    const description = meta.description || `Skill: ${name}`;
+    const risk = (meta.risk as 'safe' | 'medium' | 'high') || 'medium';
+
+    // Create a skill that returns the markdown content as context
+    return {
+      name,
+      description,
+      risk,
+      toolDefinition: {
+        type: 'function',
+        function: {
+          name,
+          description,
+          parameters: {
+            type: 'object',
+            properties: {},
+            required: [],
+          },
+        },
+      },
+      execute: async () => {
+        return {
+          content: body,
+          source: sourcePath,
+          meta,
+        };
+      },
+    };
+  } catch (err) {
+    console.error(`[Skills] Failed to parse ${sourcePath}:`, err);
+    return null;
   }
 }
 
@@ -237,28 +351,38 @@ async function registerSkillFile(path: string, hotReload = true): Promise<void> 
 /**
  * Load all skills from a directory
  */
-async function loadSkillsFromDir(dir: string, hotReload = true): Promise<void> {
+async function loadSkillsFromDir(dir: string, hotReload = true): Promise<number> {
   // Check if directory exists first
   if (!existsSync(dir)) {
     console.log(`[Skills] Directory not found: ${dir}`);
-    return;
+    return 0;
   }
 
+  let count = 0;
   try {
-    const entries = await readdir(dir);
+    const entries = await readdir(dir, { withFileTypes: true });
 
     for (const entry of entries) {
-      const path = join(dir, entry);
-      const stats = await stat(path);
-
-      if (stats.isFile() && (entry.endsWith('.ts') || entry.endsWith('.js'))) {
+      const path = join(dir, entry.name);
+      
+      if (entry.isFile() && (entry.name.endsWith('.ts') || entry.name.endsWith('.js') || entry.name.endsWith('.md'))) {
         await registerSkillFile(path, hotReload);
+        count++;
+      } else if (entry.isDirectory()) {
+        // Check for SKILL.md in subdirectory
+        const skillMdPath = join(path, 'SKILL.md');
+        if (existsSync(skillMdPath)) {
+          await registerSkillFile(skillMdPath, hotReload);
+          count++;
+        }
       }
     }
 
-    console.log(`[Skills] Loaded ${skillRegistry.list().length} skills from ${dir}`);
+    console.log(`[Skills] Loaded ${count} skills from ${dir}`);
+    return count;
   } catch (err) {
     console.error(`[Skills] Error loading skills from ${dir}:`, err);
+    return 0;
   }
 }
 
@@ -268,11 +392,28 @@ async function loadSkillsFromDir(dir: string, hotReload = true): Promise<void> {
 export async function initSkills(): Promise<void> {
   console.log('[Skills] Initializing...');
 
-  // Load built-in skills
-  await loadSkillsFromDir(BUILTIN_SKILLS_DIR, false);
+  // Load built-in skills (from src/skills/builtin)
+  await loadSkillsFromDir(getBuiltInSkillsDir(), false);
 
-  // Load user skills with hot-reload
-  await loadSkillsFromDir(USER_SKILLS_DIR, true);
+  // Load bundled skills (shipped with npm package at .agents/skills)
+  const bundledSkillsDir = getBundledSkillsDir();
+  if (existsSync(bundledSkillsDir)) {
+    await loadSkillsFromDir(bundledSkillsDir, false); // no hot-reload for bundled
+    console.log(`[Skills] Loaded bundled skills from ${bundledSkillsDir}`);
+  }
+
+  // Load agent-installed skills (from 'skills' CLI at ~/.agents/skills)
+  const agentSkillsDir = getAgentSkillsDir();
+  await loadSkillsFromDir(agentSkillsDir, true);
+
+  // Load global user skills (at ~/.0xkobold/skills)
+  await loadSkillsFromDir(getGlobalSkillsDir(), true);
+
+  // Load local project skills (if they exist at ./skills)
+  const localSkillsDir = getLocalSkillsDir();
+  if (existsSync(localSkillsDir)) {
+    await loadSkillsFromDir(localSkillsDir, true);
+  }
 
   console.log(`[Skills] Total skills loaded: ${skillRegistry.list().length}`);
 }

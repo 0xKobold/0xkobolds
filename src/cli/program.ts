@@ -52,8 +52,26 @@ export function createCli(): Command {
     .command("tui", { isDefault: true })
     .description("Start interactive TUI (default)")
     .option("--mode <mode>", "Start in specific mode (plan|build)")
+    .option("--local", "Run in local project mode (uses CWD settings)")
     .action(async (opts) => {
+      // Set local mode if flag is present
+      if (opts.local) {
+        process.env.KOBOLD_LOCAL_MODE = 'true';
+        process.argv.push('--local');
+      }
       // Launch TUI
+      const { main } = await import("../index.js");
+      await main();
+    });
+
+  // Local mode command (explicit)
+  program
+    .command("local")
+    .description("Start TUI in local project mode (uses CWD for settings)")
+    .option("--mode <mode>", "Start in specific mode (plan|build)")
+    .action(async (opts) => {
+      process.env.KOBOLD_LOCAL_MODE = 'true';
+      process.argv.push('--local');
       const { main } = await import("../index.js");
       await main();
     });

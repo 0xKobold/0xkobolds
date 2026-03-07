@@ -1,6 +1,40 @@
-# 0xKobold 🐲
+# 0xKobold
 
-> *Your digital familiar - a personal AI assistant that learns, evolves, and helps you code 24/7*
+```
+                         ..
+            .                                        ..
+                 . ,^   .                   .   .....          ......
+            ,^ ... :: .  .                   ...     ,;.    ...
+           .lI^ I.`I,.. ;;..             . `l}^ ^:;+td]^..      ^:!!i .
+           . ,:^I^I< . :+,..             ..l+tI`!?o@f,     .,~fWQft?<..
+        `:. ^<l>,!I>^`<!^              .. `?_-11COQYI:;l!l+1o@#[l
+         !<`l.ii,~l^iI-,`!I..   .. ...   ^l>??}JOoUUZ1]-fYXB@fl    ,+i..
+     . `.:<+:<ll>~l>+-<:~!^    .      I_>_?<+?}Bb+M8%oOf}-_+_!~~+[CQJ:..
+     `:,lI,:Ii!<:`!iii>_+^ :!^  ^``^,l+?<_}+fJ?1ItJ1<>?[?JX1YdOOodtl  ..
+    . li:^~Il, :Il`::,:i!,I>I`^l_~--<i_<>?+~?_-CY}~i+-?~]fO@@@@@Ml
+     ..,!``I,!]JZXJ{]I,,~~;,  I[_<-t}1doCdfdQCOB%oJ{+?{ddMO@@@#@o>` .:-< .
+      .``l;;{QW%###WQZ+;>>I ...<YfZ{]}Xb!IQ@@8%W@@QJ{[-JJZ@@@@@@%dZbMX[,..
+     . II ,I]bo%8%%MQd?>;  .    ;li   . ,Z@@@@#@MI]~ZUOX}YB@@@@@8oQY};
+      . ^>^.^~fbXXdZf_,, Il .         I~d@@#MOIY>l[ZoW@@@@@@@@@UIMO{.   .
+        `I!<` ,lllll :,i;,^`    ...~+<d#oJQQbIIJdUB@@@@@@@#%OU8WW@@81+,`
+       .,i[l:i!, `:I<-l<-, ^^`  ..:]ZodXIdbC1i1Z#@@@@@@%%BWWoO%@@@@%bQf[^.
+       .J-I ~I!.iCU->-1_<`ii>~:....:_1}It}!.::+tX%#@%MbMBQ%@@@@@@%%WbY]+-~`.
+        XWOUMO{,Z@B-;1B]:I_->i^      ...   `;;JOB#QB#M8@@@@@@8OOOQdZ{~i!i!:.
+       ..iJB@@M[1@%Y<X@o][]]>:III,^,    ....,Z@@@@@@@@@@@@@@8#WOMoZI~~~~+I..
+           `~M@8X#@8Zf#@BUWb1{1?]1}]<!^ ...:b@@@@@@@@@@@@@8BW#dXZf[?-+l:`..
+         ..  :JB@@@@%%@@@B#@%W%OQ8BMQbU> ..>M%@@@@@@@@@@@#8WBMZII]_I:^
+           ..  ^?1YbMWO#@@@@@@@@@@@@@@OZ-` d@#@@@@@@@@#%W8##OoXZXQCi^ ...
+             ..     .`.:!~-CXd%@@@@@@@8oQ}}%@@@@@@@@@@@BWWBWMMdbf[->>^..
+               .....          :{@@@@@@@OYUCQ8@@@@@@@@8BB8WMQModU?++:!I..
+                    ..........  _@@B8%@#QMdYJO@@@@%BB%obO%obbXZ{?-~l,;..
+                              .. {ooQB%o@%OO-{Z@%oOooWOXZYYII}?_~iiI.`
+                              . ^+IoQWQbOQXdJbfU#BdUZYJI[{[--l>:`
+                                `><+-]1??_~>++~!]J{}~>i>>;!;`     ..
+                                                   `         . ..
+                                 ........ ......... .........
+```
+
+> *"Your digital familiar - a personal AI assistant that learns, evolves, and helps you code 24/7"*
 
 ## Hybrid Architecture
 

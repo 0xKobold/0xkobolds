@@ -123,6 +123,11 @@ async function restartApplication(): Promise<void> {
 export default function selfUpdateExtension(pi: ExtensionAPI) {
   const checkOnStartup = pi.getFlag('self-update-check') as boolean | undefined ?? true;
 
+  // Only check for updates in development mode (running from src/, not dist/)
+  // This prevents update notifications when running from global install
+  const isDevMode = typeof __dirname !== 'undefined' && 
+    (__dirname.includes('/src/') || __dirname.includes('\\src\\'));
+
   // Register flags
   pi.registerFlag('self-update-check', {
     description: 'Check for 0xKobold updates on startup',
@@ -145,8 +150,8 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
     pi.__selfUpdateInfo = { hasUpdate: true, currentVersion, latestVersion };
   }
 
-  // Check on session start - only in main process
-  if (checkOnStartup) {
+  // Check on session start - only in main process AND dev mode
+  if (checkOnStartup && isDevMode) {
     pi.on('session_start', async (_event, ctx) => {
       // Skip in subagent sessions
       const isSubagent = process.env.KOBOLD_SUBAGENT === 'true' || process.env.PI_SESSION_PARENT;
@@ -172,6 +177,9 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
       }, 5000);
     });
   }
+
+  // Log mode for debugging
+  console.log(`[SelfUpdate] Extension loaded (${isDevMode ? 'dev' : 'production'} mode)`);
 
   // Register commands
   pi.registerCommand('self-update:check', {
