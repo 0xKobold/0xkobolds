@@ -111,6 +111,20 @@
 
 ### 🌐 Integrations
 
+- [ ] **Ollama Cloud Support** (https://docs.ollama.com/cloud)
+  - Connect to ollama.com hosted models
+  - OLLAMA_API_KEY authentication support
+  - Cloud model access (gpt-oss:120b-cloud, etc.)
+  - Hybrid local/cloud mode (local for fast, cloud for powerful)
+  - Model streaming from cloud API
+  - Automatic fallback: local → cloud
+
+- [ ] **Multi-Provider LLM Support**
+  - OpenRouter integration
+  - Anthropic cloud models
+  - Provider routing based on model availability
+  - Cost optimization across providers
+
 - [ ] **Gateway Improvements**
   - WebSocket reconnection logic
   - Gateway authentication
@@ -200,6 +214,62 @@
 | 0.0.2 Development | Weeks 2-6 |
 | 0.0.2 Beta | Week 6 |
 | 0.0.2 Release | Week 8 |
+| 0.0.3 Scope (Ollama Cloud) | Week 9 |
+| 0.0.3 Development | Weeks 10-14 |
+| 0.0.3 Release | Week 16 |
+
+---
+
+## 🌩️ Ollama Cloud Integration (0.0.3 Focus)
+
+Based on https://docs.ollama.com/cloud, we should add:
+
+### Core Features
+- [ ] **Cloud API Connection**
+  - Support `OLLAMA_API_KEY` environment variable
+  - Connect to `https://ollama.com/api` instead of local `localhost:11434`
+  - Automatic authentication headers
+
+- [ ] **Cloud Model Access**
+  - Access large models (gpt-oss:120b-cloud, etc.)
+  - List available cloud models via `/api/tags`
+  - Model caching strategy
+
+- [ ] **Hybrid Mode**
+  - Configurable routing: small tasks → local, large tasks → cloud
+  - Fallback chain: local → cloud → error
+  - Cost-aware model selection
+
+- [ ] **Streaming Support**
+  - Implement streaming from Ollama Cloud API
+  - Token-by-token display
+  - Cancel long-running cloud requests
+
+### Configuration Example
+```json
+{
+  "providers": {
+    "ollama": {
+      "enabled": true,
+      "mode": "hybrid",
+      "local": {
+        "host": "http://localhost:11434",
+        "models": ["llama3.2", "phi4"]
+      },
+      "cloud": {
+        "host": "https://ollama.com",
+        "apiKey": "$OLLAMA_API_KEY",
+        "models": ["gpt-oss:120b-cloud", "qwen2.5:72b"]
+      },
+      "routing": {
+        "default": "local",
+        "largeContext": "cloud",
+        "threshold": 32000
+      }
+    }
+  }
+}
+```
 
 ---
 
