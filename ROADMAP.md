@@ -222,28 +222,44 @@
 
 ## 🌩️ Ollama Cloud Integration (0.0.3 Focus)
 
-Based on https://docs.ollama.com/cloud, we should add:
+Based on https://docs.ollama.com/cloud, we should add support for users who don't have Ollama installed locally.
+
+### Current State
+- ✅ Local Ollama works (connects to `localhost:11434`)
+- ✅ Can pull `:cloud` tagged models like `kimi-k2.5:cloud` locally
+- ❌ No support for direct cloud API connection without local Ollama
+
+### Goal
+Allow users to connect **directly** to `ollama.com` cloud API when they don't have Ollama installed locally.
 
 ### Core Features
-- [ ] **Cloud API Connection**
+- [ ] **Direct Cloud API Connection**
   - Support `OLLAMA_API_KEY` environment variable
-  - Connect to `https://ollama.com/api` instead of local `localhost:11434`
-  - Automatic authentication headers
+  - Connect to `https://ollama.com/api` (not through local `localhost`)
+  - Automatic `Authorization: Bearer $OLLAMA_API_KEY` headers
+  - Alternative to local Ollama, not a fallback
+
+- [ ] **Provider Selection**
+  - `local` - Use local Ollama (current behavior)
+  - `cloud` - Connect directly to ollama.com API
+  - Configurable per provider in settings
 
 - [ ] **Cloud Model Access**
-  - Access large models (gpt-oss:120b-cloud, etc.)
+  - Access cloud-only models via ollama.com
   - List available cloud models via `/api/tags`
-  - Model caching strategy
-
-- [ ] **Hybrid Mode**
-  - Configurable routing: small tasks → local, large tasks → cloud
-  - Fallback chain: local → cloud → error
-  - Cost-aware model selection
+  - Model availability checking
 
 - [ ] **Streaming Support**
   - Implement streaming from Ollama Cloud API
   - Token-by-token display
-  - Cancel long-running cloud requests
+  - Same UX as local Ollama
+
+### Use Cases
+| Scenario | Current | After 0.0.3 |
+|----------|---------|-------------|
+| User has Ollama installed | ✅ Works via localhost | ✅ Same |
+| User has no Ollama, has API key | ❌ Fails | ✅ Connects to cloud |
+| User wants cloud-only model | ❌ Must install Ollama | ✅ Direct cloud access |
 
 ### Configuration Example
 ```json
@@ -251,25 +267,19 @@ Based on https://docs.ollama.com/cloud, we should add:
   "providers": {
     "ollama": {
       "enabled": true,
-      "mode": "hybrid",
-      "local": {
-        "host": "http://localhost:11434",
-        "models": ["llama3.2", "phi4"]
-      },
+      "connection": "cloud",
       "cloud": {
         "host": "https://ollama.com",
-        "apiKey": "$OLLAMA_API_KEY",
-        "models": ["gpt-oss:120b-cloud", "qwen2.5:72b"]
-      },
-      "routing": {
-        "default": "local",
-        "largeContext": "cloud",
-        "threshold": 32000
+        "apiKey": "$OLLAMA_API_KEY"
       }
     }
   }
 }
 ```
+
+### API Endpoints
+- Cloud: `https://ollama.com/api/chat` (with auth header)
+- Local: `http://localhost:11434/api/chat` (no auth)
 
 ---
 
