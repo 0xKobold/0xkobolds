@@ -362,7 +362,8 @@ export default function webSearchExtension(pi: ExtensionAPI) {
       },
       required: ["query"],
     },
-    async execute(args: any) {
+    async execute(toolCallId: string, args: any, signal: AbortSignal | undefined, onUpdate: any, ctx: any) {
+      console.log("[WebSearch] toolCallId:", toolCallId);
       console.log("[WebSearch] Received args:", JSON.stringify(args, null, 2));
       
       const query = extractArg(args, 'query');
@@ -432,7 +433,8 @@ export default function webSearchExtension(pi: ExtensionAPI) {
       },
       required: ["url"],
     },
-    async execute(args: any) {
+    async execute(toolCallId: string, args: any, signal: AbortSignal | undefined, onUpdate: any, ctx: any) {
+      console.log("[WebFetch] toolCallId:", toolCallId);
       console.log("[WebFetch] Received args:", JSON.stringify(args, null, 2));
       
       const url = extractArg(args, 'url');
@@ -501,7 +503,8 @@ export default function webSearchExtension(pi: ExtensionAPI) {
       },
       required: ["question"],
     },
-    async execute(args: any) {
+    async execute(toolCallId: string, args: any, signal: AbortSignal | undefined, onUpdate: any, ctx: any) {
+      console.log("[WebQA] toolCallId:", toolCallId);
       console.log("[WebQA] Received args:", JSON.stringify(args, null, 2));
       
       const question = extractArg(args, 'question');
