@@ -75,6 +75,7 @@ function verifyExtensions(): string[] {
     // Context management (OpenClaw-style)
     '--extension', ext('context-pruning/extension'),
     '--extension', ext('compaction-safeguard'),
+    '--extension', ext('auto-compact-on-error-extension'),
     
     // Multi-Channel
     '--extension', ext('multi-channel-extension'),
