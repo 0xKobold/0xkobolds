@@ -1,5 +1,127 @@
 # 0xKobold Release Assessment & Roadmap
 
+## 📊 0.0.3 Release Assessment
+
+### ✅ PASSED (Ready for Release)
+
+| Category | Status | Notes |
+|----------|--------|-------|
+| **Build** | ✅ PASS | TypeScript compiles without errors |
+| **Tests** | ✅ PASS | 111 tests passing, 7 skipped, 0 failed |
+| **Ollama Cloud** | ✅ DONE | Full OAuth, routing, models |
+| **Documentation** | ✅ UPDATED | CHANGELOG, README with cloud setup |
+
+## 🗺️ Roadmap for 0.0.4 (koclaw-inspired)
+
+### 🧠 Memory System (koclaw: memory-core)
+Based on OpenClaw's memory system with file-backed storage:
+
+- [ ] **Long-term Memory**
+  - `memory_search` tool for semantic search
+  - `memory_get` tool for retrieval by key
+  - JSONL-based storage in `~/.0xkobold/memory/`
+  - Session-to-session persistence
+  
+- [ ] **Memory Commands**
+  - `/memory-save <name>` - Save conversation snapshot
+  - `/memory-search <query>` - Search saved memories
+  - `/memory-list` - Browse saved memories
+  - `/memory-forget <name>` - Delete memory
+
+- [ ] **Auto-Memory**
+  - Automatic extraction of key decisions
+  - Important context auto-saved
+  - Configurable memory triggers
+
+### 📝 LLM Task Execution (koclaw: llm-task)
+Structured JSON-only tasks for workflows:
+
+- [ ] **Task Tool**
+  - `llm_task` tool for structured JSON responses
+  - JSON Schema validation
+  - Retry logic for failed tasks
+  - Timeout configuration
+
+- [ ] **Use Cases**
+  - Classifying user intent
+  - Summarizing long conversations
+  - Drafting structured content
+  - Multi-step workflows
+
+- [ ] **Workflow Integration**
+  - Chain tasks together
+  - Conditional branching
+  - Result caching
+
+### 📊 Diagnostics & Telemetry (koclaw: diagnostics-otel)
+OpenTelemetry-based observability:
+
+- [ ] **Usage Analytics**
+  - Token usage tracking per session
+  - Cost estimation by provider
+  - Model performance metrics
+  - Request latency tracking
+
+- [ ] **Health Monitoring**
+  - Provider availability monitoring
+  - Response time alerting
+  - Error rate tracking
+  - Dashboard view with `/diagnostics`
+
+- [ ] **Export Options**
+  - Prometheus metrics export
+  - JSON/CSV export
+  - Integration with external dashboards
+
+### 🧵 Thread Management (koclaw: thread-ownership)
+Better conversation threading:
+
+- [ ] **Thread Commands**
+  - `/thread-new` - Start a new topic thread
+  - `/thread-switch <id>` - Switch between threads
+  - `/thread-list` - View active threads
+  - `/thread-close` - Archive a thread
+
+- [ ] **Thread Persistence**
+  - Save thread state to disk
+  - Resume threads across restarts
+  - Thread-level memory isolation
+
+### 🔧 More Skills & Integrations
+
+- [ ] **GitHub Integration** (koclaw pattern)
+  - Create PRs from changes
+  - Comment on issues
+  - Review PR diffs
+  - GitHub Actions triggers
+
+- [ ] **Notion/Obsidian Export**
+  - Export conversations to notes
+  - Link to external knowledge base
+  - Bidirectional sync
+
+- [ ] **Web Dashboard**
+  - Browser-based TUI alternative
+  - Session replay
+  - Statistics visualization
+  - Settings management UI
+
+### 🚀 Performance Improvements
+
+- [ ] **Context Compression**
+  - Automatic message summarization
+  - Smart token budget management
+  - Configurable compression strategy
+
+- [ ] **Parallel Subagent Execution**
+  - Run multiple subagents concurrently
+  - Result aggregation
+  - Better load balancing
+
+---
+
+**Below: Previous versions roadmap**
+
 ## 📊 0.0.1 Readiness Assessment
 
 ### ✅ PASSED (Ready for Release)
