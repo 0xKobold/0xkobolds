@@ -1,6 +1,6 @@
 {
   "name": "0xkobold",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Your digital familiar - a personal AI assistant that learns and evolves",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -28,7 +28,8 @@
     "update:install": "bun run src/cli/index.ts update install",
     "update:framework": "bun run src/cli/index.ts update framework",
     "setup-hooks": "bash scripts/install-hooks.sh",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run build",
+    "postinstall": "node scripts/postinstall.js || echo 'Welcome to 0xKobold! Run: 0xkobold setup'"
   },
   "keywords": ["ai", "assistant", "cli", "agent", "kobold"],
   "author": "0xKobold Team",
@@ -63,6 +64,7 @@
   "private": false,
   "files": [
     "dist",
+    "scripts/postinstall.js",
     "README.md",
     "LICENSE",
     "package.json",
