@@ -84,16 +84,69 @@ export default function ollamaCloudExtension(pi: ExtensionAPI) {
     
     models: [
       {
-        id: "gpt-oss:120b-cloud",
-        name: "GPT-OSS 120B",
+        id: "ollama/gpt-oss:120b-cloud",
+        name: "GPT-OSS 120B (Cloud)",
         reasoning: false,
         input: ["text"],
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
         contextWindow: 128000,
         maxTokens: 8192,
       },
+      {
+        id: "ollama/qwen2.5:72b",
+        name: "Qwen 2.5 72B (Cloud)",
+        reasoning: false,
+        input: ["text"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 128000,
+        maxTokens: 8192,
+      },
+      {
+        id: "ollama/qwen2.5:32b",
+        name: "Qwen 2.5 32B (Cloud)",
+        reasoning: false,
+        input: ["text"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 128000,
+        maxTokens: 8192,
+      },
+      {
+        id: "ollama/deepseek-r1:671b",
+        name: "DeepSeek R1 671B (Cloud)",
+        reasoning: true,
+        input: ["text"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 128000,
+        maxTokens: 8192,
+      },
+      {
+        id: "ollama/llama3.2:latest",
+        name: "Llama 3.2 (Cloud)",
+        reasoning: false,
+        input: ["text"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 128000,
+        maxTokens: 4096,
+      },
     ],
   });
 
   console.log("[OllamaCloud] Provider registered. Run /login to authenticate.");
+  
+  // Register /ollama-status command to check connection
+  pi.registerCommand("ollama-status", {
+    description: "Check Ollama Cloud connection status",
+    handler: async (_args, ctx) => {
+      const authStorage = (ctx as any).authStorage;
+      const hasAuth = authStorage?.has?.("ollama-cloud") ?? false;
+      
+      if (hasAuth) {
+        ctx.ui?.notify?.("🌩️ Ollama Cloud: Authenticated", "info");
+        ctx.ui?.notify?.("   Run /models to see available cloud models", "info");
+      } else {
+        ctx.ui?.notify?.("❌ Ollama Cloud: Not authenticated", "warning");
+        ctx.ui?.notify?.("   Run /login to connect", "info");
+      }
+    },
+  });
 }

@@ -150,6 +150,44 @@ const result = await agent.spawn('Research this topic');
 
 The `spawn_subagent` skill is built-in and lets agents create child agents automatically.
 
+## Ollama Cloud 🌩️
+
+0xKobold now supports Ollama Cloud for access to larger models without running Ollama locally.
+
+### Setup Cloud Access
+
+1. Get your API key from [ollama.com/settings/keys](https://ollama.com/settings/keys)
+
+2. Login via the TUI:
+   ```
+   /login
+   # Select "Ollama Cloud"
+   # Paste your API key
+   ```
+
+3. Switch between modes:
+   ```
+   /ollama-mode cloud    # Use cloud exclusively
+   /ollama-mode local    # Use local Ollama
+   /ollama-mode auto     # Auto-detect (default)
+   ```
+
+### Cloud Models Available
+
+- **GPT-OSS 120B** - State-of-the-art open source
+- **Qwen 2.5 72B/32B** - Alibaba's instruction-tuned model
+- **DeepSeek R1 671B** - Reasoning-capable model
+- **Llama 3.2** - Meta's latest open weights
+
+### Quick Commands
+
+- `/ollama-mode` - Show current mode and status
+- `/ollama-status` - Check cloud connection
+- `/ollama-local` - Switch to local mode
+- `/ollama-cloud` - Switch to cloud mode
+
+Your API key is securely stored in `~/.0xkobold/auth.json` with 0600 permissions.
+
 ## Commands
 
 ```bash
