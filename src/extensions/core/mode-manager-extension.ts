@@ -515,6 +515,22 @@ export default function modeManagerExtension(pi: ExtensionAPI) {
           "info"
         );
         pendingModeRequest = null;
+        
+        // Update system prompt for the active session
+        // @ts-ignore sessionManager may expose setSystemPrompt
+        ctx.sessionManager?.setSystemPrompt?.(currentMode.systemPrompt);
+        
+        // Trigger agent to continue with the plan
+        // This sends a user message that will trigger a new turn
+        const continuationMessage = `I've approved your request to switch to ${requestedMode.toUpperCase()} mode. The mode is now active (${mode.icon} ${mode.name}).
+
+Please continue with your plan. You can now use the tools available in ${mode.name} mode.`;
+        
+        ctx.ui.notify("🚀 Continuing with plan...", "info");
+        
+        // Send user message to trigger agent continuation
+        // @ts-ignore sendUserMessage is available on pi
+        pi.sendUserMessage?.(continuationMessage);
       }
     },
   });

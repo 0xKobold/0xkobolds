@@ -11,7 +11,59 @@
 | **Ollama Cloud** | ✅ DONE | Full OAuth, routing, models |
 | **Documentation** | ✅ UPDATED | CHANGELOG, README with cloud setup |
 
-## 🗺️ Roadmap for 0.0.4 (koclaw-inspired)
+## 🗺️ Roadmap for 0.0.4 (koclaw-inspired + VPS Deployment)
+
+### 🚀 VPS Deployment (DigitalOcean Ready)
+Transform 0xKobold into a production-ready VPS service:
+
+- [ ] **Docker Containerization**
+  - `Dockerfile` with Bun + Node multi-stage build
+  - `docker-compose.yml` with volumes for persistence
+  - Health check endpoint in container
+  - Non-root user for security
+
+- [ ] **Systemd Service**
+  - `0xkobold.service` for auto-start on boot
+  - Process restart on failure (Restart=always)
+  - Proper logging to journald
+  - Environment file support
+
+- [ ] **Production Gateway Configuration**
+  - Bind to `0.0.0.0` for external connections
+  - Configurable host/port via env vars
+  - Gateway authentication (API key)
+  - Rate limiting
+
+- [ ] **Nginx Reverse Proxy**
+  - SSL/TLS termination with Let's Encrypt
+  - WebSocket proxy support
+  - Rate limiting
+  - Static asset serving
+  - `nginx.conf` template
+
+- [ ] **Health & Monitoring**
+  - `/health` endpoint (HTTP 200 = OK)
+  - `/metrics` endpoint for Prometheus
+  - Uptime monitoring
+  - Gateway connection status
+
+- [ ] **Deployment Automation**
+  - `scripts/deploy-vps.sh` - One-command deploy
+  - `scripts/setup-ssl.sh` - Certbot automation
+  - `scripts/backup.sh` - Data backup
+  - Auto-update mechanism
+
+- [ ] **Security Hardening**
+  - Firewall rules (ufw/iptables)
+  - Fail2ban for intrusion detection
+  - Non-root process execution
+  - Secret management (env files)
+
+- [ ] **Documentation**
+  - `docs/DEPLOYMENT.md` - Complete VPS setup guide
+  - DigitalOcean droplet tutorial
+  - SSL certificate renewal guide
+  - Troubleshooting runbook
 
 ### 🧠 Memory System (koclaw: memory-core)
 Based on OpenClaw's memory system with file-backed storage:
