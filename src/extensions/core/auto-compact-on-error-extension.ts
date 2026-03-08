@@ -5,7 +5,8 @@
  * triggers compaction to reduce context size, then retries the request.
  * 
  * This prevents the "prompt too long; exceeded max context length" errors
- * by proactively compacting when they occur.
+ * by proactively checking context size before requests and auto-compacting
+ * when errors occur.
  * 
  * Adapted from OpenClaw error handling patterns.
  */
@@ -14,12 +15,20 @@ import type {
   ExtensionAPI, 
   ExtensionContext,
   BeforeProviderRequestEvent,
-  ToolResultEvent,
+  TurnEndEvent,
 } from "@mariozechner/pi-coding-agent";
 
-// Track retry attempts to prevent infinite loops
-const retryAttempts = new Map<string, number>();
+// Track state per session
+interface SessionState {
+  retryAttempts: number;
+  lastCompactionTime?: number;
+  warnedAt90Percent: boolean;
+}
+
+const sessionStates = new Map<string, SessionState>();
 const MAX_RETRIES = 2;
+const RETRY_RESET_DELAY_MS = 30000; // Reset retry count after 30 seconds of no errors
+const COMPACTION_COOLDOWN_MS = 5000; // Don't compact more often than every 5 seconds
 
 // Context overflow error patterns (adapted from OpenClaw)
 const CONTEXT_OVERFLOW_PATTERNS = [
@@ -59,8 +68,6 @@ const TPM_PATTERNS = [
 function isContextOverflowError(errorMessage?: string): boolean {
   if (!errorMessage) return false;
   
-  const lower = errorMessage.toLowerCase();
-  
   // Exclude TPM/rate limit errors
   if (TPM_PATTERNS.some(p => p.test(errorMessage))) {
     return false;
@@ -85,11 +92,20 @@ function isReasoningConstraintError(errorMessage?: string): boolean {
 }
 
 /**
- * Get session key for tracking retries
+ * Get or create session state
  */
-function getSessionKey(ctx: ExtensionContext): string {
+function getSessionState(ctx: ExtensionContext): SessionState {
   // @ts-ignore - sessionManager may have getSessionId
-  return ctx.sessionManager?.getSessionId?.() ?? 'default';
+  const sessionId = ctx.sessionManager?.getSessionId?.() ?? 'default';
+  
+  if (!sessionStates.has(sessionId)) {
+    sessionStates.set(sessionId, {
+      retryAttempts: 0,
+      warnedAt90Percent: false,
+    });
+  }
+  
+  return sessionStates.get(sessionId)!;
 }
 
 /**
@@ -98,143 +114,203 @@ function getSessionKey(ctx: ExtensionContext): string {
 export default function autoCompactOnErrorExtension(pi: ExtensionAPI): void {
   console.log("[AutoCompactOnError] Extension loaded");
 
-  // Listen for tool results that might contain errors
-  pi.on("tool_result", async (event: ToolResultEvent, ctx: ExtensionContext) => {
-    // Check if this is a provider error tool result
-    if (event.toolName !== "provider_error" && event.toolName !== "llm_error") {
-      return;
-    }
-
-    const errorMsg = event.content
-      .filter(c => c.type === "text")
-      .map(c => c.text)
-      .join(" ");
-
-    if (!isContextOverflowError(errorMsg) || isReasoningConstraintError(errorMsg)) {
-      return;
-    }
-
-    const sessionKey = getSessionKey(ctx);
-    const attempts = retryAttempts.get(sessionKey) ?? 0;
-
-    if (attempts >= MAX_RETRIES) {
-      console.log(`[AutoCompactOnError] Max retries (${MAX_RETRIES}) reached for session ${sessionKey}`);
-      ctx.ui.notify(
-        `⚠️ Context overflow persisted after ${MAX_RETRIES} compaction attempts.\n` +
-        `You may need to start a new session with /new or manually compact with /compact.`,
-        "error"
-      );
-      retryAttempts.delete(sessionKey);
-      return;
-    }
-
-    console.log(`[AutoCompactOnError] Detected context overflow, attempt ${attempts + 1}/${MAX_RETRIES}`);
+  // Listen for turn_end to check for errors and detect context overflow
+  pi.on("turn_end", async (event: TurnEndEvent, ctx: ExtensionContext) => {
+    const message = event.message;
+    const state = getSessionState(ctx);
     
-    ctx.ui.notify(
-      `🗜️ Context overflow detected! Automatically compacting and retrying... (attempt ${attempts + 1}/${MAX_RETRIES})`,
-      "warning"
-    );
+    // Check if this is an error message
+    if (message.role === 'assistant' && message.errorMessage) {
+      // Extract error text - use errorMessage first, then check content
+      let errorText = message.errorMessage;
+      if (typeof message.content === 'string') {
+        errorText = message.content + ' ' + errorText;
+      } else if (Array.isArray(message.content)) {
+        const contentText = message.content
+          .filter(c => c.type === 'text')
+          .map(c => c.text)
+          .join(' ');
+        errorText = contentText + ' ' + errorText;
+      }
 
-    // Increment retry count
-    retryAttempts.set(sessionKey, attempts + 1);
+      // Check if it's a context overflow error
+      if (!isContextOverflowError(errorText) || isReasoningConstraintError(errorText)) {
+        // Reset retry count on non-context-overflow errors
+        state.retryAttempts = 0;
+        return;
+      }
 
-    // Trigger compaction
-    if (ctx.compact) {
-      try {
-        ctx.compact({
-          onComplete: (result: any) => {  // eslint-disable-line @typescript-eslint/no-explicit-any
-            console.log("[AutoCompactOnError] Compaction completed:", result);
-            const tokensInfo = result.tokensBefore ? ` (${result.tokensBefore} tokens)` : "";
-            ctx.ui.notify(
-              `✅ Compaction complete! Summarized${tokensInfo}.\n` +
-              `The request will be retried automatically.`,
-              "info"
-            );
-          },
-          onError: (error) => {
-            console.error("[AutoCompactOnError] Compaction failed:", error);
-            ctx.ui.notify(
-              `❌ Auto-compaction failed: ${error.message}\n` +
-              `Please try /compact manually or start a new session with /new.`,
-              "error"
-            );
-          }
-        });
-      } catch (err) {
-        console.error("[AutoCompactOnError] Error triggering compaction:", err);
+      // Context overflow error detected!
+      if (state.retryAttempts >= MAX_RETRIES) {
+        console.log(`[AutoCompactOnError] Max retries (${MAX_RETRIES}) reached`);
+        ctx.ui.notify(
+          `⚠️ Context overflow persisted after ${MAX_RETRIES} compaction attempts.\n` +
+          `You may need to start a new session with /new or manually compact with /compact.`,
+          "error"
+        );
+        // Don't reset here - let the user see the error
+        return;
+      }
+
+      // Check compaction cooldown
+      const now = Date.now();
+      if (state.lastCompactionTime && (now - state.lastCompactionTime) < COMPACTION_COOLDOWN_MS) {
+        ctx.ui.notify(
+          `⏳ Compaction cooldown active. Please wait a moment before retrying.`,
+          "warning"
+        );
+        return;
+      }
+
+      state.retryAttempts++;
+      state.lastCompactionTime = now;
+
+      console.log(`[AutoCompactOnError] Context overflow detected! Auto-compacting (attempt ${state.retryAttempts}/${MAX_RETRIES})`);
+      
+      ctx.ui.notify(
+        `🗜️ Context overflow detected!\n` +
+        `Automatically compacting conversation... (attempt ${state.retryAttempts}/${MAX_RETRIES})`,
+        "warning"
+      );
+
+      // Trigger compaction
+      if (ctx.compact) {
+        try {
+          let compactionCompleted = false;
+          
+          ctx.compact({
+            onComplete: (result) => {
+              compactionCompleted = true;
+              console.log("[AutoCompactOnError] Compaction completed:", result);
+              ctx.ui.notify(
+                `✅ Compaction complete! Summarized ${result.tokensBefore.toLocaleString()} tokens.\n` +
+                `The conversation is ready to continue. Please retry your request.`,
+                "info"
+              );
+            },
+            onError: (error) => {
+              console.error("[AutoCompactOnError] Compaction failed:", error);
+              ctx.ui.notify(
+                `❌ Auto-compaction failed: ${error.message}\n` +
+                `Please try /compact manually or start a new session with /new.`,
+                "error"
+              );
+            }
+          });
+
+          // Note: We can't automatically retry here because the turn has already ended with an error.
+          // The user will need to send their message again, but now with compacted context.
+        } catch (err) {
+          console.error("[AutoCompactOnError] Error triggering compaction:", err);
+          ctx.ui.notify(
+            `❌ Failed to trigger compaction: ${err}`,
+            "error"
+          );
+        }
+      } else {
+        ctx.ui.notify(
+          `⚠️ Context is full and auto-compaction is not available.\n` +
+          `Please run /compact manually or start a new session with /new.`,
+          "error"
+        );
+      }
+    } else {
+      // Successful turn - reset retry count after delay
+      if (state.retryAttempts > 0) {
+        const now = Date.now();
+        if (state.lastCompactionTime && (now - state.lastCompactionTime) > RETRY_RESET_DELAY_MS) {
+          state.retryAttempts = 0;
+          state.warnedAt90Percent = false;
+          console.log("[AutoCompactOnError] Reset retry count after successful period");
+        }
       }
     }
   });
 
-  // Also listen for before_provider_request to check payload size
+  // Proactive warning when context is getting full
   pi.on("before_provider_request", async (event: BeforeProviderRequestEvent, ctx: ExtensionContext) => {
     const usage = ctx.getContextUsage?.();
+    const state = getSessionState(ctx);
     
     if (!usage || usage.tokens === null) {
       return;
     }
 
-    // Calculate warning threshold (90% of context window)
-    const warningThreshold = usage.contextWindow * 0.9;
+    // Warning at 85% (before we hit the 90% danger zone)
+    const warningThreshold = usage.contextWindow * 0.85;
+    const dangerThreshold = usage.contextWindow * 0.95;
     
-    if (usage.tokens > warningThreshold) {
-      const sessionKey = getSessionKey(ctx);
-      const attempts = retryAttempts.get(sessionKey) ?? 0;
-      
-      // Only warn and suggest compaction, don't auto-trigger yet
-      // This gives the user a heads up before it fails
-      if (attempts === 0) {
-        ctx.ui.notify(
-          `⚠️ Context is ${usage.percent?.toFixed(1)}% full (${usage.tokens}/${usage.contextWindow} tokens).\n` +
-          `Consider running /compact soon to prevent overflow errors.`,
-          "warning"
-        );
-      }
+    if (usage.tokens > dangerThreshold) {
+      // Very close to limit - suggest immediate compaction
+      ctx.ui.notify(
+        `🚨 Context is ${usage.percent?.toFixed(1)}% full (${usage.tokens?.toLocaleString()}/${usage.contextWindow.toLocaleString()} tokens).\n` +
+        `⚠️  Dangerously close to overflow! Consider running /compact now.`,
+        "error"
+      );
+    } else if (usage.tokens > warningThreshold && !state.warnedAt90Percent) {
+      // First time crossing 85% - warn user
+      state.warnedAt90Percent = true;
+      ctx.ui.notify(
+        `⚠️  Context is ${usage.percent?.toFixed(1)}% full (${usage.tokens?.toLocaleString()}/${usage.contextWindow.toLocaleString()} tokens).\n` +
+        `Consider running /compact soon to prevent overflow errors.`,
+        "warning"
+      );
     }
   });
 
-  // Reset retry count on successful turn end
-  pi.on("turn_end", async (_event, ctx: ExtensionContext) => {
-    const sessionKey = getSessionKey(ctx);
-    if (retryAttempts.has(sessionKey)) {
-      retryAttempts.delete(sessionKey);
-      console.log(`[AutoCompactOnError] Reset retry count for session ${sessionKey}`);
-    }
-  });
-
-  // Register command for manual triggering
-  pi.registerCommand("compact-on-error", {
+  // Register command for manual triggering and status
+  pi.registerCommand("auto-compact", {
     description: "Configure auto-compaction on context overflow errors",
     handler: async (args: string, ctx: ExtensionContext) => {
       const parts = args.trim().split(" ");
       const subcommand = parts[0];
+      const state = getSessionState(ctx);
 
       if (subcommand === "status") {
-        const sessionKey = getSessionKey(ctx);
-        const attempts = retryAttempts.get(sessionKey) ?? 0;
+        const usage = ctx.getContextUsage?.();
         ctx.ui.notify(
-          `Auto-compact on error:\n` +
+          `Auto-compact status:\n` +
           `  Max retries: ${MAX_RETRIES}\n` +
-          `  Current attempts: ${attempts}\n` +
-          `  Session: ${sessionKey}`,
+          `  Current retry attempts: ${state.retryAttempts}\n` +
+          `  Last compaction: ${state.lastCompactionTime ? new Date(state.lastCompactionTime).toLocaleTimeString() : 'never'}\n` +
+          `  Context usage: ${usage ? `${usage.percent?.toFixed(1)}% (${usage.tokens?.toLocaleString()}/${usage.contextWindow.toLocaleString()})` : 'unknown'}`,
           "info"
         );
         return;
       }
 
       if (subcommand === "reset") {
-        const sessionKey = getSessionKey(ctx);
-        retryAttempts.delete(sessionKey);
-        ctx.ui.notify("Retry attempts reset for current session.", "info");
+        state.retryAttempts = 0;
+        state.warnedAt90Percent = false;
+        ctx.ui.notify("Auto-compact state reset for current session.", "info");
+        return;
+      }
+
+      if (subcommand === "compact") {
+        // Manual trigger for testing
+        ctx.ui.notify("Triggering compaction...", "info");
+        if (ctx.compact) {
+          ctx.compact({
+            onComplete: (result) => {
+              ctx.ui.notify(
+                `✅ Compaction complete! Summarized ${result.tokensBefore.toLocaleString()} tokens.`,
+                "info"
+              );
+            },
+            onError: (error) => {
+              ctx.ui.notify(`❌ Compaction failed: ${error.message}`, "error");
+            }
+          });
+        }
         return;
       }
 
       ctx.ui.notify(
-        `Usage: /compact-on-error [status|reset]\n\n` +
-        `Auto-compact is enabled by default and triggers when:\n` +
-        `• "prompt too long" errors occur\n` +
-        `• "context length exceeded" errors occur\n\n` +
-        `Max ${MAX_RETRIES} automatic retries before giving up.`,
+        `Usage: /auto-compact [status|reset|compact]\n\n` +
+        `Auto-compact automatically triggers when:\n` +
+        `• "prompt too long" or "context overflow" errors occur\n` +
+        `• Up to ${MAX_RETRIES} automatic retries before giving up\n\n` +
+        `Proactive warnings appear at 85% context usage.`,
         "info"
       );
     },
