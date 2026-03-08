@@ -2,6 +2,35 @@
 
 All notable changes to 0xKobold will be documented in this file.
 
+## [Unreleased] - 0.0.5
+
+### Subagent System 🤖
+- **New**: Spawn parallel sub-agents with isolated context windows
+  - Three execution modes: single, parallel, chain
+  - Concurrency limiting: 4 concurrent, 8 max
+  - Built-in agent types: scout, planner, worker, reviewer
+  - Agent definitions in markdown with YAML frontmatter
+  - Timeout protection (5 min per agent)
+- **Commands**:
+  - `/agents` - List available agents
+  - `/implement <feature>` - Workflow: scout → planner → worker
+  - `/scout-and-plan <feature>` - Scout → planner (no implementation)
+  - `/parallel "task1" "task2"` - Run multiple scouts in parallel
+- **Tool**:
+  - `agent_spawn` - Single, parallel, or chained subagents
+    - `agent + task` - Single mode
+    - `tasks[]` - Parallel mode (up to 8)
+    - `chain[]` - Sequential mode with {previous} placeholder
+- **Agent Definitions**:
+  - `scout` - Fast codebase reconnaissance (read-only)
+  - `planner` - Create implementation plans
+  - `worker` - Full implementation with write access
+  - `reviewer` - Code review specialist
+- **Security**:
+  - User agents: `~/.0xkobold/agents/` (trusted)
+  - Project agents: `.0xkobold/agents/` (prompts for confirmation)
+- **Documentation**: `docs/SUBAGENT-IMPLEMENTATION.md`
+
 ## [0.0.4] - 2026-03-08
 
 ### Perennial Memory System 🏛️

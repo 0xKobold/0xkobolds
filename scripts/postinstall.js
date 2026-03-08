@@ -1,18 +1,55 @@
 #!/usr/bin/env node
 /**
- * Post-install welcome message
- * Shows when users install 0xKobold via npm
+ * Post-install script
+ * - Shows welcome message
+ * - Copies default agents to ~/.0xkobold/agents/
  */
 
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { existsSync } from "node:fs";
+import { mkdir, copyFile, readdir } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const isCiEnvironment = () => {
   return process.env.CI || 
          process.env.CONTINUOUS_INTEGRATION ||
          process.env.NODE_ENV === "test";
 };
+
+async function copyDefaultAgents() {
+  const agentsDir = join(homedir(), ".0xkobold", "agents");
+  const sourceDir = join(__dirname, "..", "src", "extensions", "agents");
+  
+  try {
+    // Create agents directory
+    await mkdir(agentsDir, { recursive: true });
+    
+    // Check if source exists (development mode)
+    if (!existsSync(sourceDir)) {
+      return; // In production, agents are bundled differently
+    }
+    
+    // Copy default agents if they don't exist
+    const files = await readdir(sourceDir);
+    for (const file of files) {
+      if (file.endsWith('.md')) {
+        const sourcePath = join(sourceDir, file);
+        const targetPath = join(agentsDir, file);
+        
+        if (!existsSync(targetPath)) {
+          await copyFile(sourcePath, targetPath);
+        }
+      }
+    }
+    
+    console.log(`   📁 Agents installed to: ${agentsDir}`);
+  } catch (error) {
+    // Silently fail - not critical
+  }
+}
 
 const showWelcome = () => {
   const configPath = join(homedir(), ".0xkobold", "config.json");
@@ -68,4 +105,9 @@ const showWelcome = () => {
 };
 
 // Only show in actual install, not CI
-showWelcome();
+async function main() {
+  await copyDefaultAgents();
+  showWelcome();
+}
+
+main();
