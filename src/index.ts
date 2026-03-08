@@ -92,6 +92,7 @@ function verifyExtensions(): string[] {
     '--extension', ext('gateway-extension'),
     '--extension', ext('agent-registry-extension'),
     '--extension', ext('websearch-extension'),
+    '--extension', ext('memory-extension'),
     // Note: pi-coding-agent updates disabled - user manages dependencies manually
     // '--extension', ext('update-extension'),
     // Self-update for 0xKobold only (shows in dev mode)
