@@ -1,5 +1,46 @@
 # 0xKobold Release Assessment & Roadmap
 
+## 🗺️ Roadmap for 0.0.5 (Subagent System) - IN PROGRESS
+
+### 🤖 Subagent System
+Spawn parallel sub-agents with isolated context:
+
+- [x] **Core Infrastructure**
+  - `agent_spawn` tool
+  - Agent discovery from `.0xkobold/agents/`
+  - Single mode execution
+  - 5-minute timeout protection
+
+- [x] **Parallel Execution**
+  - `tasks[]` support
+  - Concurrency limiting (4 concurrent, 8 max)
+  - Progress notifications
+  - Result aggregation
+
+- [x] **Chained Workflows**
+  - `chain[]` support
+  - `{previous}` placeholder
+  - Step-by-step execution
+  - Error handling
+
+- [x] **Default Agents**
+  - `scout` - Fast reconnaissance (read-only)
+  - `planner` - Implementation planning
+  - `worker` - Full implementation
+  - `reviewer` - Code review
+
+- [x] **Workflow Commands**
+  - `/implement` - Scout → planner → worker
+  - `/scout-and-plan` - Scout → planner
+  - `/parallel` - Run multiple scouts
+  - `/agents` - List available agents
+
+- [ ] **Advanced Features**
+  - Subagent stream handling (TUI)
+  - Custom agent definitions
+  - Agent result merging
+  - Project-specific agents (`.0xkobold/agents/`)
+
 ## 📊 0.0.3 Release Assessment
 
 ### ✅ PASSED (Ready for Release)
