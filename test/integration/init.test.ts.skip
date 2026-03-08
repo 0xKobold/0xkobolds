@@ -1,16 +1,24 @@
+/**
+ * Initialization Tests
+ * 
+ * NOTE: These tests are skipped in CI because they require
+ * home directory access which is restricted in CI environments.
+ */
+
 import { describe, test, expect } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
 const KOBOLD_DIR = join(homedir(), ".0xkobold");
+const isCI = process.env.CI === 'true' || process.env.GITEA_ACTIONS === 'true';
 
 describe("0xKobold Initialization", () => {
-  test("should create global config directory", () => {
+  test.skipIf(isCI)("should create global config directory", () => {
     expect(existsSync(KOBOLD_DIR)).toBe(true);
   });
 
-  test("should have required global files", () => {
+  test.skipIf(isCI)("should have required global files", () => {
     expect(existsSync(join(KOBOLD_DIR, "config.json"))).toBe(true);
     expect(existsSync(join(KOBOLD_DIR, "MEMORY.md"))).toBe(true);
     expect(existsSync(join(KOBOLD_DIR, "kobold.db"))).toBe(true);
