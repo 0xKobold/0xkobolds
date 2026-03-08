@@ -553,6 +553,14 @@ Please continue with your plan. You can now use the tools available in ${mode.na
       );
       
       pendingModeRequest = null;
+      
+      // Inform the agent that the request was denied
+      // @ts-ignore sendUserMessage is available on pi
+      pi.sendUserMessage?.(
+        `I've denied your request to switch to ${requestedMode.toUpperCase()} mode. ` +
+        `Please continue working in ${currentMode.name.toUpperCase()} mode with the currently available tools, ` +
+        `or explain why you need the mode change if you'd like to request again.`
+      );
     },
   });
 

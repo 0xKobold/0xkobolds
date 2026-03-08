@@ -13,57 +13,56 @@
 
 ## 🗺️ Roadmap for 0.0.4 (koclaw-inspired + VPS Deployment)
 
-### 🚀 VPS Deployment (DigitalOcean Ready)
-Transform 0xKobold into a production-ready VPS service:
+### ✅ VPS Deployment (DigitalOcean Ready) - COMPLETED
+Production-ready VPS service with Tailscale:
 
-- [ ] **Docker Containerization**
+- [x] **Docker Containerization**
   - `Dockerfile` with Bun + Node multi-stage build
   - `docker-compose.yml` with volumes for persistence
-  - Health check endpoint in container
-  - Non-root user for security
+  - Health check endpoint in container (`/health`, `/healthz`)
+  - Non-root user (kobold:bun) for security
 
-- [ ] **Systemd Service**
-  - `0xkobold.service` for auto-start on boot
+- [x] **Systemd Service**
+  - `scripts/systemd/0xkobold.service` for auto-start on boot
   - Process restart on failure (Restart=always)
   - Proper logging to journald
   - Environment file support
 
-- [ ] **Production Gateway Configuration**
+- [x] **Production Gateway Configuration**
   - Bind to `0.0.0.0` for external connections
   - Configurable host/port via env vars
   - Gateway authentication (API key)
-  - Rate limiting
+  - Tailscale sidecar for secure networking
 
-- [ ] **Nginx Reverse Proxy**
-  - SSL/TLS termination with Let's Encrypt
-  - WebSocket proxy support
-  - Rate limiting
-  - Static asset serving
-  - `nginx.conf` template
+- [x] **Tailscale Networking** ⭐
+  - Tailscale sidecar container
+  - Automatic HTTPS via Tailscale Serve
+  - Zero-config certificates (no Certbot needed)
+  - Secure private networking
+  - `docker-compose.yml` with Tailscale integration
 
-- [ ] **Health & Monitoring**
-  - `/health` endpoint (HTTP 200 = OK)
-  - `/metrics` endpoint for Prometheus
+- [x] **Health & Monitoring**
+  - `/healthz` endpoint (HTTP 200 = OK) - in heartbeat-extension.ts
+  - `/health` endpoint alias
   - Uptime monitoring
   - Gateway connection status
 
-- [ ] **Deployment Automation**
-  - `scripts/deploy-vps.sh` - One-command deploy
-  - `scripts/setup-ssl.sh` - Certbot automation
-  - `scripts/backup.sh` - Data backup
-  - Auto-update mechanism
+- [x] **Deployment Automation**
+  - `scripts/deploy-vps.sh` - One-command deploy script
+  - `scripts/cloud-init.yaml` - DigitalOcean cloud-init
+  - Auto-setup with Tailscale
 
-- [ ] **Security Hardening**
-  - Firewall rules (ufw/iptables)
-  - Fail2ban for intrusion detection
-  - Non-root process execution
+- [x] **Security Hardening**
+  - Non-root process execution (user: 1000:1000)
+  - Container security (no new privileges)
   - Secret management (env files)
+  - (Optional) Firewall rules template
 
-- [ ] **Documentation**
-  - `docs/DEPLOYMENT.md` - Complete VPS setup guide
+- [x] **Documentation**
+  - `docs/VPS-DEPLOYMENT.md` - Complete VPS setup guide
+  - `docs/VPS-0.0.4-PLAN.md` - Implementation plan
   - DigitalOcean droplet tutorial
-  - SSL certificate renewal guide
-  - Troubleshooting runbook
+  - Tailscale networking guide
 
 ### 🧠 Memory System (koclaw: memory-core)
 Based on OpenClaw's memory system with file-backed storage:

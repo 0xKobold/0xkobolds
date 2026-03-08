@@ -385,6 +385,54 @@ If something needs attention → brief alert message (no HEARTBEAT_OK token)
   });
 
   // ═══════════════════════════════════════════════════════════════
+  // HEALTH CHECK COMMAND (for VPS deployment)
+  // ═══════════════════════════════════════════════════════════════
+
+  pi.registerCommand("healthz", {
+    description: "Health check endpoint for VPS/container monitoring",
+    handler: async (_args, ctx) => {
+      const uptime = process.uptime();
+      const memory = process.memoryUsage();
+      const now = new Date().toISOString();
+
+      const status = {
+        status: "healthy",
+        timestamp: now,
+        uptime: `${Math.floor(uptime / 86400)}d ${Math.floor((uptime % 86400) / 3600)}h ${Math.floor((uptime % 3600) / 60)}m ${Math.floor(uptime % 60)}s`,
+        uptimeSeconds: Math.floor(uptime),
+        version: process.env.npm_package_version || "0.0.3",
+        extensions: {
+          heartbeat: {
+            enabled: config.enabled,
+            interval: config.every,
+            lastCheck: lastHeartbeat ? new Date(lastHeartbeat).toISOString() : null
+          }
+        },
+        memory: {
+          heapUsed: Math.round(memory.heapUsed / 1024 / 1024) + " MB",
+          heapTotal: Math.round(memory.heapTotal / 1024 / 1024) + " MB",
+          rss: Math.round(memory.rss / 1024 / 1024) + " MB"
+        }
+      };
+
+      // Return JSON for programmatic access
+      ctx.ui.notify(JSON.stringify(status, null, 2), "info");
+    },
+  });
+
+  // Also register /health as alias
+  pi.registerCommand("health", {
+    description: "Health check (alias for /healthz)",
+    handler: async (_args, ctx) => {
+      // Forward to healthz
+      const healthzCmd = (pi as any).getCommands?.()?.find((c: any) => c.name === "healthz");
+      if (healthzCmd) {
+        await healthzCmd.handler("", ctx);
+      }
+    },
+  });
+
+  // ═══════════════════════════════════════════════════════════════
   // AUTO-HEARTBEAT SCHEDULER
   // ═══════════════════════════════════════════════════════════════
 
