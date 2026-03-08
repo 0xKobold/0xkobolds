@@ -1,0 +1,119 @@
+# 0xKobold Production Deployment with Tailscale
+# This configuration deploys 0xKobold with Tailscale for secure remote access
+#
+# Usage:
+#   1. Get Tailscale auth key from https://login.tailscale.com/admin/settings/keys
+#   2. Set environment: export TS_AUTH_KEY="tskey-auth-..."
+#   3. Deploy: docker-compose up -d
+
+version: "3.8"
+
+services:
+  # Main 0xKobold Application
+  kobold:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: 0xkobold-app
+    restart: unless-stopped
+    user: "1000:1000"  # Run as non-root
+    environment:
+      - NODE_ENV=production
+      - GATEWAY_HOST=127.0.0.1  # Listen on localhost only (Tailscale will proxy)
+      - GATEWAY_PORT=18789
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
+      - TS_AUTH_KEY=${TS_AUTH_KEY:-}
+    volumes:
+      - kobold-data:/home/kobold/.0xkobold
+      - kobold-logs:/app/logs
+    # Uses Tailscale container's network
+    network_mode: "service:tailscale"
+    healthcheck:
+      test: ["CMD", "bun", "run", "dist/src/cli/index.js", "healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - tailscale
+
+  # Tailscale Sidecar - Provides secure networking
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: 0xkobold-tailscale
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv6.conf.all.forwarding=1
+    volumes:
+      - tailscale-data:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - TS_AUTH_KEY=${TS_AUTH_KEY:-}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=0  # Enable kernel networking
+      - TS_EXTRA_ARGS=--accept-dns --advertise-exit-node
+    # Gateway port exposed through Tailscale
+    expose:
+      - "18789"
+    command: >
+      sh -c "
+        /usr/local/bin/containerboot &
+        sleep 5
+        # Serve 0xKobold gateway on Tailscale network
+        echo 'Setting up Tailscale Serve...'
+        tailscale serve --bg https / http://127.0.0.1:18789
+        # Optional: Funnel for public access (comment out for private-only)
+        # tailscale funnel --bg 443
+        tail -f /dev/null
+      "
+    healthcheck:
+      test: ["CMD", "tailscale", "status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Optional: Ollama sidecar (if running local models)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: 0xkobold-ollama
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+    environment:
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_HOST=0.0.0.0
+    expose:
+      - "11434"
+    profiles:
+      - with-ollama
+
+  # Monitoring: Optional Prometheus metrics
+  # metrics:
+  #   image: prom/prometheus:latest
+  #   container_name: 0xkobold-metrics
+  #   volumes:
+  #     - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  #   ports:
+  #     - "127.0.0.1:9090:9090"
+  #   profiles:
+  #     - monitoring
+
+volumes:
+  kobold-data:
+    driver: local
+  kobold-logs:
+    driver: local
+  tailscale-data:
+    driver: local
+  ollama-models:
+    driver: local
+
+networks:
+  default:
+    driver: bridge

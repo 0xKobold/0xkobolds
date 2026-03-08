@@ -515,6 +515,22 @@ export default function modeManagerExtension(pi: ExtensionAPI) {
           "info"
         );
         pendingModeRequest = null;
+        
+        // Update system prompt for the active session
+        // @ts-ignore sessionManager may expose setSystemPrompt
+        ctx.sessionManager?.setSystemPrompt?.(currentMode.systemPrompt);
+        
+        // Trigger agent to continue with the plan
+        // This sends a user message that will trigger a new turn
+        const continuationMessage = `I've approved your request to switch to ${requestedMode.toUpperCase()} mode. The mode is now active (${mode.icon} ${mode.name}).
+
+Please continue with your plan. You can now use the tools available in ${mode.name} mode.`;
+        
+        ctx.ui.notify("🚀 Continuing with plan...", "info");
+        
+        // Send user message to trigger agent continuation
+        // @ts-ignore sendUserMessage is available on pi
+        pi.sendUserMessage?.(continuationMessage);
       }
     },
   });
@@ -537,6 +553,14 @@ export default function modeManagerExtension(pi: ExtensionAPI) {
       );
       
       pendingModeRequest = null;
+      
+      // Inform the agent that the request was denied
+      // @ts-ignore sendUserMessage is available on pi
+      pi.sendUserMessage?.(
+        `I've denied your request to switch to ${requestedMode.toUpperCase()} mode. ` +
+        `Please continue working in ${currentMode.name.toUpperCase()} mode with the currently available tools, ` +
+        `or explain why you need the mode change if you'd like to request again.`
+      );
     },
   });
 

@@ -75,6 +75,7 @@ function verifyExtensions(): string[] {
     // Context management (OpenClaw-style)
     '--extension', ext('context-pruning/extension'),
     '--extension', ext('compaction-safeguard'),
+    '--extension', ext('auto-compact-on-error-extension'),
     
     // Multi-Channel
     '--extension', ext('multi-channel-extension'),
@@ -91,6 +92,10 @@ function verifyExtensions(): string[] {
     '--extension', ext('gateway-extension'),
     '--extension', ext('agent-registry-extension'),
     '--extension', ext('websearch-extension'),
+    '--extension', ext('memory-extension'),
+    '--extension', ext('perennial-memory-extension'),
+    '--extension', ext('diagnostics-extension'),
+    '--extension', ext('memory-synthesis-extension'),
     // Note: pi-coding-agent updates disabled - user manages dependencies manually
     // '--extension', ext('update-extension'),
     // Self-update for 0xKobold only (shows in dev mode)

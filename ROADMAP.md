@@ -11,7 +11,58 @@
 | **Ollama Cloud** | ✅ DONE | Full OAuth, routing, models |
 | **Documentation** | ✅ UPDATED | CHANGELOG, README with cloud setup |
 
-## 🗺️ Roadmap for 0.0.4 (koclaw-inspired)
+## 🗺️ Roadmap for 0.0.4 (koclaw-inspired + VPS Deployment)
+
+### ✅ VPS Deployment (DigitalOcean Ready) - COMPLETED
+Production-ready VPS service with Tailscale:
+
+- [x] **Docker Containerization**
+  - `Dockerfile` with Bun + Node multi-stage build
+  - `docker-compose.yml` with volumes for persistence
+  - Health check endpoint in container (`/health`, `/healthz`)
+  - Non-root user (kobold:bun) for security
+
+- [x] **Systemd Service**
+  - `scripts/systemd/0xkobold.service` for auto-start on boot
+  - Process restart on failure (Restart=always)
+  - Proper logging to journald
+  - Environment file support
+
+- [x] **Production Gateway Configuration**
+  - Bind to `0.0.0.0` for external connections
+  - Configurable host/port via env vars
+  - Gateway authentication (API key)
+  - Tailscale sidecar for secure networking
+
+- [x] **Tailscale Networking** ⭐
+  - Tailscale sidecar container
+  - Automatic HTTPS via Tailscale Serve
+  - Zero-config certificates (no Certbot needed)
+  - Secure private networking
+  - `docker-compose.yml` with Tailscale integration
+
+- [x] **Health & Monitoring**
+  - `/healthz` endpoint (HTTP 200 = OK) - in heartbeat-extension.ts
+  - `/health` endpoint alias
+  - Uptime monitoring
+  - Gateway connection status
+
+- [x] **Deployment Automation**
+  - `scripts/deploy-vps.sh` - One-command deploy script
+  - `scripts/cloud-init.yaml` - DigitalOcean cloud-init
+  - Auto-setup with Tailscale
+
+- [x] **Security Hardening**
+  - Non-root process execution (user: 1000:1000)
+  - Container security (no new privileges)
+  - Secret management (env files)
+  - (Optional) Firewall rules template
+
+- [x] **Documentation**
+  - `docs/VPS-DEPLOYMENT.md` - Complete VPS setup guide
+  - `docs/VPS-0.0.4-PLAN.md` - Implementation plan
+  - DigitalOcean droplet tutorial
+  - Tailscale networking guide
 
 ### 🧠 Memory System (koclaw: memory-core)
 Based on OpenClaw's memory system with file-backed storage:

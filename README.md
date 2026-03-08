@@ -52,15 +52,31 @@ Best of both worlds:
 ### Via NPM (Recommended)
 
 ```bash
-# Install globally
+# 1. Install Bun (if not already installed)
+curl -fsSL https://bun.sh/install | bash
+# Restart your terminal after installing Bun
+
+# 2. Install 0xKobold globally
 npm install -g 0xkobold
 
-# Or use with npx
-npx 0xkobold init
-npx 0xkobold start
+# 3. Run interactive setup
+0xkobold setup
+
+# 4. Start using it!
+0xkobold           # Start the TUI
+0xkobold --mode plan    # Or start in plan mode
+0xkobold --mode build   # Or start in build mode
 ```
 
-### From Source
+### Quick Start with npx (No Install)
+
+```bash
+# Just want to try it out? Use npx:
+npx 0xkobold setup
+npx 0xkobold
+```
+
+### From Source (Development)
 
 ```bash
 # Clone and install

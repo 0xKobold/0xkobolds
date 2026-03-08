@@ -1,0 +1,31 @@
+[Unit]
+Description=0xKobold Gateway
+Documentation=https://github.com/kobolds/0xKobolds
+Requires=docker.service
+After=docker.service tailscaled.service network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/0xkobold
+User=root
+
+# Commands
+ExecStartPre=-/usr/local/bin/docker-compose -f /opt/0x Kobold/docker-compose.yml down
+ExecStartPre=/usr/local/bin/docker-compose -f /opt/0xKobold/docker-compose.yml pull
+ExecStart=/usr/local/bin/docker-compose -f /opt/0xKobold/docker-compose.yml up -d
+ExecStop=/usr/local/bin/docker-compose -f /opt/0xKobold/docker-compose.yml down
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+StartLimitInterval=60s
+StartLimitBurst=3
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

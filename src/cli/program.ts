@@ -16,6 +16,7 @@ import { createLogsCommand } from "./commands/logs.js";
 
 // System commands
 import { createSystemCommand } from "./commands/system.js";
+import { setupCommand } from "./commands/setup.js";
 
 // Extension CLI registrations
 import { registerDiscordCli } from "./extensions/discord.js";
@@ -41,6 +42,9 @@ export function createCli(): Command {
   // System management (install/uninstall)
   const systemCmd = createSystemCommand();
   program.addCommand(systemCmd);
+
+  // Setup wizard
+  program.addCommand(setupCommand);
 
   // Extension CLIs
   registerDiscordCli(program);

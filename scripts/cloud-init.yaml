@@ -1,0 +1,111 @@
+#cloud-config
+
+# 0xKobold DigitalOcean Cloud-Init Script
+# Use this when creating a new droplet to auto-deploy 0xKobold
+#
+# Usage:
+#   1. Get Tailscale auth key from https://login.tailscale.com/admin/settings/keys
+#   2. Replace TS_AUTH_KEY_PLACEHOLDER with your key
+#   3. Create droplet with this cloud-init config
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - curl
+  - ca-certificates
+  - git
+  - apt-transport-https
+  - gnupg
+  - software-properties-common
+  - jq
+
+users:
+  - name: kobold
+    groups: docker
+    shell: /bin/bash
+    home: /home/kobold
+    lock_passwd: true
+
+runcmd:
+  # Install Docker
+  - curl -fsSL https://get.docker.com -o get-docker.sh
+  - sh get-docker.sh
+  - usermod -aG docker kobold
+
+  # Install Docker Compose
+  - curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  - chmod +x /usr/local/bin/docker-compose
+
+  # Install Tailscale
+  - curl -fsSL https://tailscale.com/install.sh | sh
+
+  # Setup 0xKobold
+  - mkdir -p /opt/0xkobold
+  - git clone https://github.com/kobolds/0xKobolds.git /opt/0xkobold
+  - chown -R kobold:kobold /opt/0xkobold
+
+  # Create environment file
+  - |
+    cat > /opt/0xkobold/.env << EOF
+    TS_AUTH_KEY=TS_AUTH_KEY_PLACEHOLDER
+    NODE_ENV=production
+    GATEWAY_HOST=127.0.0.1
+    GATEWAY_PORT=18789
+    EOF
+
+  # Start Tailscale
+  - tailscale up --auth-key TS_AUTH_KEY_PLACEHOLDER
+
+  # Build and start 0xKobold
+  - cd /opt/0xkobold && docker-compose build
+  - cd /opt/0xkobold && docker-compose up -d
+
+  # Setup Tailscale Serve
+  - sleep 10
+  - tailscale serve --bg https / http://127.0.0.1:18789
+
+  # Create systemd service for persistence
+  - |
+    cat > /etc/systemd/system/0xkobold.service << 'SERVICE'
+    [Unit]
+    Description=0xKobold Gateway
+    After=docker.service network.target
+    Wants=docker.service
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=yes
+    WorkingDirectory=/opt/0xkobold
+    ExecStart=/usr/local/bin/docker-compose up -d
+    ExecStop=/usr/local/bin/docker-compose down
+    User=root
+
+    [Install]
+    WantedBy=multi-user.target
+    SERVICE
+
+  - systemctl daemon-reload
+  - systemctl enable 0xkobold
+
+  # Cleanup
+  - rm -f get-docker.sh
+
+final_message: |
+  ════════════════════════════════════════════════════════
+  ✅ 0xKobold Deployed Successfully!
+  ════════════════════════════════════════════════════════
+
+  Your 0xKobold instance is now running with:
+  • Containerized deployment via Docker
+  • Secure Tailscale networking
+  • Auto-restart on boot
+
+  To check status:
+    docker-compose -f /opt/0xkobold/docker-compose.yml ps
+
+  To view logs:
+    docker-compose -f /opt/0xkobold/docker-compose.yml logs -f
+
+  To access via Tailscale:
+    https://$(tailscale status --json | jq -r '.Self.DNSName' 2>/dev/null || echo 'your-device').ts.net
