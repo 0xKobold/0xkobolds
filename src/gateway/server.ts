@@ -17,7 +17,7 @@ export interface GatewayConfig {
 export interface WSConnection {
   id: string;
   socket?: WebSocket;  // Optional for external integrations
-  type: "discord" | "telegram" | "web" | "internal";
+  type: "discord" | "telegram" | "whatsapp" | "web" | "internal";
   channel?: string;
   user?: string;
   connectedAt: Date;
