@@ -72,6 +72,14 @@ export interface CronJob {
   exact?: boolean;
   /** Max tokens allowed for this job */
   tokenLimit?: number;
+  /** Notification settings */
+  notify?: {
+    channel: 'telegram' | 'discord' | 'slack' | 'whatsapp';
+    recipient: string;
+    onSuccess?: boolean;
+    onError?: boolean;
+    prefix?: string;
+  };
 }
 
 /**
@@ -131,6 +139,13 @@ export interface AddJobOptions {
   deleteAfterRun?: boolean;
   wake?: boolean;
   workingDir?: string;
+  notify?: {
+    channel: 'telegram' | 'discord' | 'slack' | 'whatsapp';
+    recipient: string;
+    onSuccess?: boolean;
+    onError?: boolean;
+    prefix?: string;
+  };
   message: string;
 }
 

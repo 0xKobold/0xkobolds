@@ -79,7 +79,30 @@ cronCommand
   )
   .option("-w, --wake", "Wake main session after completion")
   .option("--working-dir <dir>", "Working directory")
+  .option("--notify <channel:recipient>", "Notify channel (telegram:CHAT_ID, discord:CHANNEL_ID, slack:WEBHOOK_URL)")
+  .option("--notify-on-success", "Notify on success (default: true)", true)
+  .option("--notify-on-error", "Notify on error (default: true)", true)
+  .option("--notify-prefix <text>", "Add prefix to notification message")
   .action(async (options) => {
+    // Parse notification option
+    let notifyConfig: AddJobOptions['notify'] | undefined;
+    if (options.notify) {
+      const parts = options.notify.split(':');
+      if (parts.length < 2) {
+        console.error('❌ Error: --notify must be in format channel:recipient (e.g., telegram:123456 or discord:789012)');
+        process.exit(1);
+      }
+      const channel = parts[0] as 'telegram' | 'discord' | 'slack' | 'whatsapp';
+      const recipient = parts.slice(1).join(':'); // Handle URLs that contain colons
+      
+      notifyConfig = {
+        channel,
+        recipient,
+        onSuccess: options.notifyOnSuccess,
+        onError: options.notifyOnError,
+        prefix: options.notifyPrefix,
+      };
+    }
     if (!options.cron && !options.at) {
       console.error("❌ Error: Either --cron or --at is required");
       console.error("   --cron '0 9 * * *'   (recurring)");
@@ -107,6 +130,7 @@ cronCommand
         deleteAfterRun: options.delete,
         wake: options.wake,
         workingDir: options.workingDir,
+        notify: notifyConfig,
       });
 
       console.log(`\n✅ Job created: ${job.name}`);

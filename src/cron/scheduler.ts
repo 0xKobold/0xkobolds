@@ -87,7 +87,12 @@ export class CronScheduler extends EventEmitter {
         delete_after_run INTEGER DEFAULT 0,
         wake_after_run INTEGER DEFAULT 0,
         stagger INTEGER DEFAULT 0,
-        exact INTEGER DEFAULT 0
+        exact INTEGER DEFAULT 0,
+        notify_channel TEXT,
+        notify_recipient TEXT,
+        notify_on_success INTEGER DEFAULT 1,
+        notify_on_error INTEGER DEFAULT 1,
+        notify_prefix TEXT
       );
 
       CREATE INDEX IF NOT EXISTS idx_cron_jobs_next_run 
@@ -330,6 +335,7 @@ export class CronScheduler extends EventEmitter {
       deleteAfterRun: options.deleteAfterRun,
       wakeAfterRun: options.wake,
       workingDir: options.workingDir,
+      notify: options.notify,
     };
     
     // Insert into database
@@ -338,8 +344,9 @@ export class CronScheduler extends EventEmitter {
         id, name, cron_expression, at, at_duration, timezone,
         session_type, message, model, thinking_level, working_dir, token_limit,
         enabled, created_at, next_run_at, run_count, error_count,
-        delete_after_run, wake_after_run
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        delete_after_run, wake_after_run,
+        notify_channel, notify_recipient, notify_on_success, notify_on_error, notify_prefix
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         job.id,
         job.name,
@@ -360,6 +367,11 @@ export class CronScheduler extends EventEmitter {
         job.errorCount,
         job.deleteAfterRun ? 1 : 0,
         job.wakeAfterRun ? 1 : 0,
+        job.notify?.channel || null,
+        job.notify?.recipient || null,
+        job.notify?.onSuccess !== false ? 1 : 0,
+        job.notify?.onError !== false ? 1 : 0,
+        job.notify?.prefix || null,
       ]
     );
     

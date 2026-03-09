@@ -8,6 +8,7 @@
 import { CronJob, JobResult } from "./types.js";
 import { OllamaProvider, AnthropicProvider } from "../llm/index.js";
 import type { LLMProvider, Message } from "../llm/types.js";
+import { sendNotification } from "./notifications.js";
 
 // Provider cache
 const providers: Map<string, LLMProvider> = new Map();
@@ -50,21 +51,33 @@ export async function runJobRunner(job: CronJob): Promise<JobResult> {
   const startTime = Date.now();
   
   try {
+    let result: JobResult;
+    
     if (job.session === "isolated") {
-      return await runIsolatedSession(job);
+      result = await runIsolatedSession(job);
     } else {
-      return await runMainSession(job);
+      result = await runMainSession(job);
     }
+    
+    // Send notification if configured
+    await sendNotification(job, result);
+    
+    return result;
+    
   } catch (error) {
     const duration = Date.now() - startTime;
-    
-    return {
+    const errorResult: JobResult = {
       success: false,
       output: "",
       tokensUsed: 0,
       duration,
       error: error instanceof Error ? error.message : String(error),
     };
+    
+    // Send error notification
+    await sendNotification(job, errorResult);
+    
+    return errorResult;
   }
 }
 
