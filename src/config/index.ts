@@ -1,20 +1,11 @@
-/**
- * Config module for Kobold
- * 
- * Similar to koclaw/openclaw's config module
- * Provides types, paths, and loader for kobold.json
- */
-
-export * from "./types.js";
-export * from "./paths.js";
+// Config Module - v0.3.0
 export {
-  loadConfig,
-  loadConfigFromFile,
-  getConfig,
-  getConfigSnapshot,
-  clearConfigCache,
-  writeConfig,
-  getConfigValue,
-  setConfigValue,
-  parseConfigJson,
-} from "./loader.js";
+  ConfigManager,
+  getConfigManager,
+  resetConfigManager,
+  DEFAULT_CONFIG,
+  type ConfigSchema,
+} from "./manager.js";
+
+// Re-export existing types
+export type { DiscordConfig } from "./types.js";
