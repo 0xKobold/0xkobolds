@@ -23,3 +23,20 @@ export type { UserProfile, UserPreferences, LearnedPreferences, Workflow } from 
 
 // Dynamic Personality (Phase 1.2)
 export { loadPersonalityState, savePersonalityState, recordInteraction, adaptPersonality, getDynamicPersona, getPersonalityInsights, resetPersonality } from "./dynamic-personality.js";
+
+// Context Pruning (Phase 1.3)
+export { 
+  calculateTokenUsage, 
+  shouldPrune, 
+  pruneContext, 
+  recommendStrategy, 
+  autoPrune, 
+  estimateTokens,
+  oldestFirstStrategy,
+  importanceStrategy,
+  smartCompactionStrategy,
+  smartestPruningStrategy,
+  DEFAULT_BUDGET,
+  BUDGET_PRESETS 
+} from "./context-pruning.js";
+export type { ContextBudget, ContextItem, PruningStrategy, PruningResult } from "./context-pruning.js";

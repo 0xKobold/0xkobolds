@@ -28,16 +28,15 @@
 - [x] Per-project memory isolation
 
 ### 1.2 Persona System ✅
-
-**Status:** Implemented (Hybrid Embedded Mode)
+**Status:** Complete
 
 - [x] `SOUL.md` - Personality, tone, boundaries (auto-created)
 - [x] `IDENTITY.md` - Name, vibe, emoji (auto-created)  
 - [x] Bootstrap file loader with truncation support
 - [x] System prompt builder with bootstrap injection
 - [x] Embedded runner for custom system prompt control
-- [ ] `USER.md` - User profile (learned and explicit)
-- [ ] Dynamic personality that adapts over time
+- [x] `USER.md` - User profile with learned preferences
+- [x] Dynamic personality adaptation (5 traits)
 
 ### 1.3 Context Pruning
 - [ ] Automatic context management
