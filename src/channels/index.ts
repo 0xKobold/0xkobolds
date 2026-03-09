@@ -16,3 +16,12 @@ export {
   type TelegramMessage,
   type TelegramConfig,
 } from "./telegram/bot.js";
+
+// Slack Integration
+export {
+  SlackIntegration,
+  getSlackIntegration,
+  resetSlackIntegration,
+  type SlackMessage,
+  type SlackConfig,
+} from "./slack/webhook.js";
