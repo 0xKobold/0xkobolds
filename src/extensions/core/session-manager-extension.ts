@@ -430,4 +430,22 @@ export default function sessionManagerExtension(pi: ExtensionAPI) {
   });
 
   console.log("[SessionManager] Extension loaded");
+
+  // ═══════════════════════════════════════════════════════════════
+  // SESSION NAMING (consolidated from session-name-extension.ts)
+  // ═══════════════════════════════════════════════════════════════
+
+  pi.registerCommand("session-name", {
+    description: "Set or show session name",
+    handler: async (args, ctx) => {
+      const name = args.trim();
+      if (name) {
+        pi.setSessionName?.(name);
+        ctx.ui.notify(`Session named: ${name}`, "info");
+      } else {
+        const current = pi.getSessionName?.();
+        ctx.ui.notify(current ? `Session: ${current}` : "No name set", "info");
+      }
+    },
+  });
 }
