@@ -32,6 +32,9 @@ import { createWhatsAppCommand } from "./commands/whatsapp.js";
 // v0.3.0: Telegram
 import { createTelegramCommand } from "./commands/telegram.js";
 
+// v0.4.0: Cron
+import { cronCommand } from "./commands/cron.js";
+
 // v0.3.0: Migration
 import { migrateCommand } from "./commands/migrate.js";
 
@@ -80,6 +83,9 @@ export function createCli(): Command {
   program.addCommand(checkCommand);
   
   program.addCommand(createEmbeddedCommand());
+
+  // v0.4.0: Cron jobs
+  program.addCommand(cronCommand);
 
   // Extension CLIs
   registerDiscordCli(program);
