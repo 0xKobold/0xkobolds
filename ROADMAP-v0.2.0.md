@@ -28,8 +28,14 @@
 - [x] Per-project memory isolation
 
 ### 1.2 Persona System ✅
-- [x] `SOUL.md` - Personality, tone, boundaries
-- [x] `IDENTITY.md` - Name, vibe, emoji
+
+**Status:** Implemented (Hybrid Embedded Mode)
+
+- [x] `SOUL.md` - Personality, tone, boundaries (auto-created)
+- [x] `IDENTITY.md` - Name, vibe, emoji (auto-created)  
+- [x] Bootstrap file loader with truncation support
+- [x] System prompt builder with bootstrap injection
+- [x] Embedded runner for custom system prompt control
 - [ ] `USER.md` - User profile (learned and explicit)
 - [ ] Dynamic personality that adapts over time
 
@@ -42,11 +48,15 @@
 
 ## Phase 2: Natural Interaction (Weeks 3-4)
 
-### 2.1 Remove Explicit Commands
-- [ ] Remove `/implement` ✅ Done
+### 2.1 Remove Explicit Commands ✅
+
+**Status:** Implemented via v0.2.0 philosophy
+
+- [x] Remove `/implement` - Not present
+- [x] Remove all persona commands (bootstrap, persona-reload, etc.)
+- [x] Philosophy: Agent reads files naturally, no explicit commands
 - [ ] Natural language triggers for subagents
 - [ ] Agent persona guides natural detection
-- [ ] "Use subagents for this" → automatic delegation
 
 ### 2.2 Heartbeat System
 - [ ] Scheduled check-ins (`HEARTBEAT.md`)
