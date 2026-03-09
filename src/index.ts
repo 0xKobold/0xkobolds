@@ -70,7 +70,7 @@ function verifyExtensions(): string[] {
     // '--extension', ext('subagent-extension'),
     // '--extension', ext('agent-lifecycle-extension'),
     // '--extension', ext('agent-workspace-extension'),
-    '--extension', ext('autonomous-subagent-extension'),
+    // '--extension', ext('autonomous-subagent-extension'),
     
     // Core Features
     '--extension', ext('persona-loader-extension'),
@@ -103,16 +103,18 @@ function verifyExtensions(): string[] {
     // Integrations
     '--extension', ext('mcp-extension'),
     '--extension', ext('gateway-extension'),
-    '--extension', ext('agent-workspace-extension'),
-    '--extension', ext('agent-lifecycle-extension'),
-    '--extension', ext('autonomous-subagent-extension'),
-    '--extension', ext('agent-registry-extension'),
+    // Deprecated: Use agent-orchestrator-extension instead
+    // '--extension', ext('agent-workspace-extension'),
+    // '--extension', ext('agent-lifecycle-extension'),
+    // '--extension', ext('autonomous-subagent-extension'),
+    // '--extension', ext('agent-registry-extension'),
     '--extension', ext('websearch-extension'),
     '--extension', ext('memory-extension'),
     '--extension', ext('perennial-memory-extension'),
     '--extension', ext('diagnostics-extension'),
     '--extension', ext('memory-synthesis-extension'),
-    '--extension', ext('subagent-extension'),
+    // Deprecated: Use agent-orchestrator-extension instead
+    // '--extension', ext('subagent-extension'),
     // Note: pi-coding-agent updates disabled - user manages dependencies manually
     // '--extension', ext('update-extension'),
     // Self-update for 0xKobold only (shows in dev mode)
