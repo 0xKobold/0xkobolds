@@ -71,115 +71,226 @@ async function fastFetch(url: string, maxLength: number): Promise<ScrapingResult
 }
 
 /**
- * Method 2: Playwright scraper for JavaScript-heavy sites
- * Uses native Node.js Playwright with improved timeout handling
- * 
- * Changes made:
- * - domcontentloaded instead of networkidle (faster, less hanging)
- * - Configurable timeout (default 15s)
- * - Shorter wait for JS rendering (1s vs 2s)
+ * Browser Manager - Singleton pattern for browser reuse
+ */
+class BrowserManager {
+  private browser: any = null;
+  private context: any = null;
+  private lastUsed: number = 0;
+  private readonly POOL_TTL_MS = 120000; // 2 minutes
+  
+  async getBrowser() {
+    const { chromium } = await import('playwright');
+    
+    // Check if existing browser is still alive
+    if (this.browser && Date.now() - this.lastUsed < this.POOL_TTL_MS) {
+      try {
+        // Test if browser is still responsive
+        await this.browser.contexts();
+        this.lastUsed = Date.now();
+        return { browser: this.browser, context: this.context, newBrowser: false };
+      } catch {
+        // Browser died, recreate
+        await this.close();
+      }
+    }
+    
+    // Create new browser
+    console.log("[WebSearch] Creating new browser instance");
+    this.browser = await chromium.launch({ 
+      headless: true,
+      args: [
+        '--no-sandbox', 
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--no-first-run',
+        '--disable-background-networking'
+      ]
+    });
+    
+    this.context = await this.browser.newContext({
+      viewport: { width: 1280, height: 720 },
+      userAgent: 'Mozilla/5.0 (compatible; 0xKobold/0.2)'
+    });
+    
+    this.lastUsed = Date.now();
+    return { browser: this.browser, context: this.context, newBrowser: true };
+  }
+  
+  async close() {
+    if (this.browser) {
+      try {
+        await this.browser.close();
+      } catch {}
+      this.browser = null;
+      this.context = null;
+    }
+  }
+}
+
+const browserManager = new BrowserManager();
+
+// Request queue
+type QueuedRequest = {
+  url: string;
+  maxLength: number;
+  timeoutMs: number;
+  resolve: (value: ScrapingResult | null) => void;
+  reject: (reason: any) => void;
+  startTime: number;
+};
+
+const requestQueue: QueuedRequest[] = [];
+let isProcessing = false;
+const MAX_CONCURRENT = 2;
+const MAX_RETRIES = 3;
+
+/**
+ * Process queue with limited concurrency
+ */
+async function processQueue(): Promise<void> {
+  if (isProcessing) return;
+  isProcessing = true;
+  
+  while (requestQueue.length > 0) {
+    // Take up to MAX_CONCURRENT requests
+    const batch = requestQueue.splice(0, MAX_CONCURRENT);
+    
+    // Process batch in parallel
+    await Promise.all(batch.map(req => processRequest(req)));
+    
+    // Small delay between batches to avoid rate limiting
+    if (requestQueue.length > 0) {
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+  
+  isProcessing = false;
+}
+
+/**
+ * Process a single request with retries
+ */
+async function processRequest(req: QueuedRequest, attempt = 1): Promise<void> {
+  try {
+    const result = await playwrightFetchWithTimeout(req.url, req.maxLength, req.timeoutMs);
+    req.resolve(result);
+  } catch (error) {
+    if (attempt < MAX_RETRIES) {
+      // Exponential backoff: 2s, 4s, 8s
+      const delay = Math.min(2000 * Math.pow(2, attempt - 1), 30000);
+      console.log(`[WebFetch] Retry ${attempt + 1}/${MAX_RETRIES} for ${req.url} after ${delay}ms`);
+      await new Promise(r => setTimeout(r, delay));
+      await processRequest(req, attempt + 1);
+    } else {
+      console.log(`[WebFetch] Failed after ${MAX_RETRIES} attempts: ${req.url}`);
+      req.resolve(null);
+    }
+  }
+}
+
+/**
+ * Playwright fetch with strict timeout enforcement
+ */
+async function playwrightFetchWithTimeout(
+  url: string, 
+  maxLength: number, 
+  timeoutMs: number = 15000
+): Promise<ScrapingResult | null> {
+  const startTime = Date.now();
+  
+  // Create abort controller for this request
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs + 2000); // +2s buffer
+  
+  try {
+    const { context, newBrowser } = await browserManager.getBrowser();
+    
+    // Create page with request timeout
+    const page = await context.newPage();
+    
+    // Set very aggressive timeouts
+    page.setDefaultTimeout(Math.min(timeoutMs, 10000));
+    page.setDefaultNavigationTimeout(Math.min(timeoutMs, 10000));
+    
+    // Watch for abort signal
+    controller.signal.addEventListener('abort', () => {
+      page.close().catch(() => {});
+    });
+    
+    try {
+      // Quick navigation - no waiting for full load
+      const response = await page.goto(url, { 
+        waitUntil: 'commit', // Fastest: just wait for headers
+        timeout: Math.min(timeoutMs, 10000)
+      });
+      
+      if (!response) {
+        throw new Error("No response");
+      }
+      
+      // Give it a moment to start rendering
+      await page.waitForTimeout(500);
+      
+      // Extract whatever we have
+      const extracted = await page.evaluate((maxLen: number) => {
+        const doc = (globalThis as any).document;
+        
+        // Try main content areas quickly
+        const main = doc.querySelector('main, article, .content, [role="main"]');
+        if (main?.innerText?.trim().length > 100) {
+          return main.innerText.slice(0, maxLen);
+        }
+        
+        // Fallback: body text
+        const bodyText = doc.body?.innerText || '';
+        return bodyText.slice(0, maxLen);
+      }, maxLength);
+      
+      const title = await page.title().catch(() => 'Untitled');
+      
+      if (!extracted || extracted.length < 50) {
+        throw new Error("Insufficient content");
+      }
+      
+      return {
+        content: extracted,
+        title: title,
+        url,
+        method: newBrowser ? 'playwright-new' : 'playwright-pooled'
+      };
+    } finally {
+      await page.close();
+      clearTimeout(timeoutId);
+    }
+  } catch (error) {
+    console.log(`[WebFetch] Error: ${error}`);
+    throw error; // Will trigger retry
+  }
+}
+
+/**
+ * Queue-based Playwright fetch
  */
 async function playwrightFetch(
   url: string, 
   maxLength: number, 
   timeoutMs: number = 15000
 ): Promise<ScrapingResult | null> {
-  let browser = null;
-  const startTime = Date.now();
-  
-  try {
-    const { chromium } = await import('playwright');
-    
-    browser = await chromium.launch({ 
-      headless: true,
-      args: [
-        '--no-sandbox', 
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu'
-      ]
+  return new Promise((resolve, reject) => {
+    requestQueue.push({
+      url,
+      maxLength,
+      timeoutMs,
+      resolve,
+      reject,
+      startTime: Date.now()
     });
     
-    const context = await browser.newContext({
-      viewport: { width: 1280, height: 720 }, // Smaller for speed
-      userAgent: 'Mozilla/5.0 (compatible; 0xKobold/0.2)'
-    });
-    
-    const page = await context.newPage();
-    
-    // Set aggressive timeouts
-    page.setDefaultTimeout(timeoutMs);
-    page.setDefaultNavigationTimeout(timeoutMs);
-    
-    // Navigate with domcontentloaded (much faster than networkidle)
-    await page.goto(url, { 
-      waitUntil: 'domcontentloaded', 
-      timeout: timeoutMs 
-    });
-    
-    // Quick content check - if we have <2000 chars, wait for networkidle
-    const quickCheck = await page.evaluate(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const doc = (globalThis as any).document;
-      return doc.body?.innerText?.length || 0;
-    });
-    
-    if (quickCheck < 1000) {
-      // Page seems light, wait a bit more
-      const remaining = timeoutMs - (Date.now() - startTime);
-      if (remaining > 2000) {
-        await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
-      }
-    }
-    
-    // Wait just 1s for JS (vs 2s before)
-    await page.waitForTimeout(1000);
-    
-    // Extract content
-    const extracted = await page.evaluate((maxLen: number) => {
-      const selectors = [
-        'article', 'main', '.content', '#content',
-        '[role="main"]', '.prose', '.markdown-body',
-        '.documentation', '.article-body'
-      ];
-      
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const win = (globalThis as any);
-      const doc = win.document;
-      
-      for (const sel of selectors) {
-        const el = doc.querySelector(sel);
-        if (el && el.innerText?.trim().length > 200) {
-          return el.innerText.slice(0, maxLen);
-        }
-      }
-      
-      // Clean body fallback
-      const bad = doc.querySelectorAll('script, style, nav, footer, header, aside');
-      bad.forEach((e: any) => e.remove());
-      return doc.body?.innerText?.slice(0, maxLen) || '';
-    }, maxLength);
-    
-    const title = await page.title();
-    
-    if (!extracted || extracted.length < 100) {
-      return null;
-    }
-    
-    return {
-      content: extracted,
-      title: title || 'Untitled',
-      method: 'playwright',
-      url
-    };
-  } catch (error) {
-    console.log(`[WebSearch] Playwright error: ${error}`);
-    return null;
-  } finally {
-    if (browser) {
-      await browser.close().catch(() => {});
-    }
-  }
+    // Start processing
+    processQueue();
+  });
 }
 
 /**
