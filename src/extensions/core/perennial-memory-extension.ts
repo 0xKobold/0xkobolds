@@ -38,8 +38,15 @@ async function initDatabase(): Promise<Database> {
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA synchronous = NORMAL;");
   
-  // Get current version
-  const version = (db.query("SELECT value FROM _metadata WHERE key = 'schema_version'").get() as { value: string } | undefined)?.value || "0";
+  // Get current version (handle first-run case where _metadata doesn't exist)
+  let version = "0";
+  try {
+    const result = db.query("SELECT value FROM _metadata WHERE key = 'schema_version'").get() as { value: string } | undefined;
+    version = result?.value || "0";
+  } catch {
+    // _metadata table doesn't exist yet - this is a fresh database
+    version = "0";
+  }
   
   // Run migrations
   const migrations: Record<number, string> = {
