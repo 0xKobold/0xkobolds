@@ -16,6 +16,7 @@ import { createLogsCommand } from "./commands/logs.js";
 // System commands
 import { createSystemCommand } from "./commands/system.js";
 import { setupCommand } from "./commands/setup.js";
+import { initCommand } from "./commands/init.js";
 
 // Extension CLI registrations
 import { registerDiscordCli } from "./extensions/discord.js";
@@ -58,6 +59,7 @@ export function createCli(): Command {
   // System management
   program.addCommand(createSystemCommand());
   program.addCommand(setupCommand);
+  program.addCommand(initCommand);
 
   // v0.2.0: Gateway server
   program.addCommand(createGatewayCommand());
