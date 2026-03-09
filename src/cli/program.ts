@@ -31,6 +31,9 @@ import { createWhatsAppCommand } from "./commands/whatsapp.js";
 // v0.3.0: Telegram
 import { createTelegramCommand } from "./commands/telegram.js";
 
+// v0.3.0: Migration
+import { migrateCommand } from "./commands/migrate.js";
+
 // v0.3.0: Duplicate check
 import { checkCommand } from "./commands/check.js";
 
@@ -67,6 +70,9 @@ export function createCli(): Command {
   
   // v0.3.0: Tailscale VPN
   program.addCommand(createTailscaleCommand());
+  
+  // v0.3.0: Migration from OpenClaw
+  program.addCommand(migrateCommand);
   
   // v0.3.0: Duplicate detection
   program.addCommand(checkCommand);
