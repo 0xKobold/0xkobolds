@@ -786,45 +786,6 @@ export default async function unifiedOrchestratorExtension(pi: ExtensionAPI) {
     },
   });
   
-  // /implement <task> - Enhanced with auto-delegate
-  pi.registerCommand("implement", {
-    description: "Implement with auto-delegation: /implement <feature>",
-    handler: async (args: string, ctx: ExtensionContext) => {
-      if (!args.trim()) {
-        ctx.ui.notify("❌ Usage: /implement <feature>", "error");
-        return;
-      }
-      
-      const analysis = analyzeTask(args);
-      ctx.ui.notify(`🤖 Analyzing: "${args}"`, "info");
-      ctx.ui.notify(`Complexity: ${analysis.complexity} | Strategy: ${analysis.suggestedStrategy}`, "info");
-      
-      // Check if should delegate
-      let shouldDelegate = false;
-      switch (autonomyMode) {
-        case "always": shouldDelegate = true; break;
-        case "complex": shouldDelegate = analysis.complexity === "complex"; break;
-        case "medium": shouldDelegate = analysis.complexity !== "simple"; break;
-        case "simple": shouldDelegate = analysis.complexity === "complex"; break;
-        case "off": shouldDelegate = false; break;
-      }
-      
-      if (!shouldDelegate) {
-        ctx.ui.notify("Task is simple - handle directly without subagents", "info");
-        return;
-      }
-      
-      ctx.ui.notify(`Delegating: ${analysis.suggestedStrategy}`, "info");
-      
-      // For demo, show what would happen
-      if (analysis.complexity === "medium") {
-        ctx.ui.notify("Would spawn: scout → worker", "info");
-      } else {
-        ctx.ui.notify("Would spawn: scout → planner → workers → reviewer", "info");
-      }
-    },
-  });
-  
   console.log(`[Orchestrator] Ready with ${mainAgents.size} main agents, ${subagentAgents.size} subagents`);
   console.log("[Orchestrator] Use /agent commands or agent_orchestrate tool");
   console.log("[Orchestrator] ⚠️  agent_spawn and subagent_spawn are deprecated, use agent_orchestrate");
