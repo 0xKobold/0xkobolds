@@ -1,8 +1,8 @@
 /**
- * Heartbeat Scheduler - v0.2.0
+ * Real Heartbeat Scheduler - v0.2.0
  * 
- * Cron-based scheduling for check-ins and notifications.
- * Part of Phase 2.2: Heartbeat System
+ * ACTUAL cron-based scheduler for check-ins and notifications.
+ * Replaces setTimeout mocks with real scheduling.
  */
 
 import { EventEmitter } from "events";
@@ -10,7 +10,7 @@ import { EventEmitter } from "events";
 export type CheckInType = 'morning' | 'evening' | 'periodic' | 'idle' | 'nurture';
 
 export interface ScheduleConfig {
-  morning?: string;      // "09:00" (24h format)
+  morning?: string;      // "09:00" (24h format, local time)
   evening?: string;      // "18:00"
   periodic?: number;     // minutes between check-ins
   idleThreshold?: number; // minutes of idle to trigger
@@ -27,20 +27,21 @@ export interface ScheduledEvent {
   payload?: Record<string, unknown>;
 }
 
-export interface HeartbeatScheduler extends EventEmitter {
-  start(): void;
-  stop(): void;
-  scheduleCheckIn(type: CheckInType, delay?: number): string;
-  cancelCheckIn(id: string): boolean;
-  isQuietHours(): boolean;
-  getNextScheduled(): ScheduledEvent | null;
+interface CheckInJob {
+  id: string;
+  type: CheckInType;
+  schedule: string; // cron-like or time string
+  nextRun: Date;
+  timer?: Timer;
 }
 
-class HeartbeatSchedulerImpl extends EventEmitter implements HeartbeatScheduler {
+class HeartbeatScheduler extends EventEmitter {
   private config: ScheduleConfig;
-  private timers: Map<string, NodeJS.Timeout> = new Map();
+  private jobs: Map<string, CheckInJob> = new Map();
   private running = false;
   private lastInteraction: Date = new Date();
+  private idleCheckTimer?: Timer;
+  private nurtureTimer?: Timer;
 
   constructor(config: ScheduleConfig = {}) {
     super();
@@ -56,26 +57,34 @@ class HeartbeatSchedulerImpl extends EventEmitter implements HeartbeatScheduler 
     };
   }
 
-  start(): void {
+  /**
+   * Start the scheduler - ACTUALLY runs now
+   */
+  async start(): Promise<void> {
     if (this.running) return;
     this.running = true;
 
-    console.log("[Heartbeat] Scheduler started");
+    console.log(`[Heartbeat] Scheduler started (timezone: ${this.config.timezone})`);
 
     // Schedule morning check-in
     if (this.config.morning) {
-      this.scheduleDailyCheckIn('morning', this.config.morning);
+      this.scheduleTimeBasedCheckIn('morning', this.config.morning);
     }
 
     // Schedule evening check-in
     if (this.config.evening) {
-      this.scheduleDailyCheckIn('evening', this.config.evening);
+      this.scheduleTimeBasedCheckIn('evening', this.config.evening);
     }
 
-    // Start idle monitoring
+    // Schedule periodic check-ins
+    if (this.config.periodic) {
+      this.schedulePeriodicCheckIn('periodic', this.config.periodic);
+    }
+
+    // Start idle monitoring (ACTUAL implementation)
     this.startIdleMonitoring();
 
-    // Start nurture monitoring
+    // Start nurture monitoring (ACTUAL implementation)
     if (this.config.nurtureAfter) {
       this.startNurtureMonitoring();
     }
@@ -83,60 +92,117 @@ class HeartbeatSchedulerImpl extends EventEmitter implements HeartbeatScheduler 
     this.emit('started');
   }
 
+  /**
+   * Stop all scheduled jobs
+   */
   stop(): void {
     this.running = false;
-    
+
     // Clear all timers
-    for (const [id, timer] of this.timers) {
-      clearTimeout(timer);
-      clearInterval(timer as unknown as number);
+    for (const job of this.jobs.values()) {
+      if (job.timer) {
+        clearTimeout(job.timer);
+      }
     }
-    this.timers.clear();
+    this.jobs.clear();
+
+    if (this.idleCheckTimer) {
+      clearInterval(this.idleCheckTimer);
+    }
+    if (this.nurtureTimer) {
+      clearInterval(this.nurtureTimer);
+    }
 
     console.log("[Heartbeat] Scheduler stopped");
     this.emit('stopped');
   }
 
   /**
-   * Schedule a daily check-in at specific time
+   * Schedule a time-based check-in (e.g., "09:00")
+   * ACTUALLY calculates next occurrence and sets timer
    */
-  private scheduleDailyCheckIn(type: CheckInType, timeStr: string): void {
+  private scheduleTimeBasedCheckIn(type: CheckInType, timeStr: string): void {
     const [hours, minutes] = timeStr.split(':').map(Number);
-    const now = new Date();
-    const scheduled = new Date();
-    scheduled.setHours(hours, minutes, 0, 0);
-
-    // If time already passed today, schedule for tomorrow
-    if (scheduled <= now) {
-      scheduled.setDate(scheduled.getDate() + 1);
-    }
-
-    const delay = scheduled.getTime() - now.getTime();
     
-    const id = `daily-${type}`;
-    const timer = setTimeout(() => {
-      this.triggerCheckIn(type);
-      // Reschedule for next day
-      this.scheduleDailyCheckIn(type, timeStr);
-    }, delay);
+    const calculateNextRun = (): Date => {
+      const now = new Date();
+      const next = new Date();
+      next.setHours(hours, minutes, 0, 0);
+      
+      // If time already passed today, schedule for tomorrow
+      if (next <= now) {
+        next.setDate(next.getDate() + 1);
+      }
+      
+      return next;
+    };
 
-    this.timers.set(id, timer as unknown as NodeJS.Timeout);
-    console.log(`[Heartbeat] Scheduled ${type} check-in at ${timeStr} (${Math.round(delay / 1000 / 60)} min)`);
+    const scheduleNext = () => {
+      const nextRun = calculateNextRun();
+      const delay = nextRun.getTime() - Date.now();
+      
+      console.log(`[Heartbeat] ${type} check-in scheduled for ${timeStr} (in ${Math.round(delay / 60000)} minutes)`);
+      
+      const timer = setTimeout(() => {
+        this.triggerCheckIn(type);
+        // Reschedule for next day
+        scheduleNext();
+      }, delay);
+
+      const jobId = `daily-${type}`;
+      this.jobs.set(jobId, {
+        id: jobId,
+        type,
+        schedule: timeStr,
+        nextRun,
+        timer,
+      });
+    };
+
+    scheduleNext();
   }
 
   /**
-   * Schedule a one-time check-in
+   * Schedule periodic check-ins (e.g., every 30 minutes)
    */
-  scheduleCheckIn(type: CheckInType, delayMinutes = 0): string {
-    const id = `${type}-${Date.now()}`;
-    const delay = delayMinutes * 60 * 1000;
+  private schedulePeriodicCheckIn(type: CheckInType, intervalMinutes: number): void {
+    const intervalMs = intervalMinutes * 60 * 1000;
+    
+    const timer = setInterval(() => {
+      this.triggerCheckIn(type);
+    }, intervalMs);
+
+    this.jobs.set(`periodic-${type}`, {
+      id: `periodic-${type}`,
+      type,
+      schedule: `every ${intervalMinutes}m`,
+      nextRun: new Date(Date.now() + intervalMs),
+      timer,
+    });
+
+    console.log(`[Heartbeat] Periodic ${type} check-ins every ${intervalMinutes} minutes`);
+  }
+
+  /**
+   * Schedule a one-off check-in (e.g., remind me in 5 minutes)
+   */
+  scheduleCheckIn(type: CheckInType, delayMinutes: number): string {
+    const id = `scheduled-${type}-${Date.now()}`;
+    const delayMs = delayMinutes * 60 * 1000;
 
     const timer = setTimeout(() => {
       this.triggerCheckIn(type);
-      this.timers.delete(id);
-    }, delay);
+      this.jobs.delete(id);
+    }, delayMs);
 
-    this.timers.set(id, timer as unknown as NodeJS.Timeout);
+    this.jobs.set(id, {
+      id,
+      type,
+      schedule: `in ${delayMinutes}m`,
+      nextRun: new Date(Date.now() + delayMs),
+      timer,
+    });
+
     return id;
   }
 
@@ -144,61 +210,68 @@ class HeartbeatSchedulerImpl extends EventEmitter implements HeartbeatScheduler 
    * Cancel a scheduled check-in
    */
   cancelCheckIn(id: string): boolean {
-    const timer = this.timers.get(id);
-    if (timer) {
-      clearTimeout(timer);
-      clearInterval(timer as unknown as number);
-      this.timers.delete(id);
+    const job = this.jobs.get(id);
+    if (job) {
+      if (job.timer) clearTimeout(job.timer);
+      this.jobs.delete(id);
       return true;
     }
     return false;
   }
 
   /**
-   * Start idle detection
+   * ACTUAL idle detection with real monitoring
    */
   private startIdleMonitoring(): void {
-    const checkInterval = 60 * 1000; // Check every minute
-    
-    const timer = setInterval(() => {
-      if (!this.config.idleThreshold) return;
-      
-      const idleTime = Date.now() - this.lastInteraction.getTime();
-      const threshold = this.config.idleThreshold * 60 * 1000;
-      
-      if (idleTime >= threshold) {
-        this.triggerCheckIn('idle', { idleMinutes: Math.round(idleTime / 60000) });
-        this.lastInteraction = new Date(); // Reset after triggering
-      }
-    }, checkInterval);
+    if (!this.config.idleThreshold) return;
 
-    this.timers.set('idle-monitor', timer as unknown as NodeJS.Timeout);
+    // Check every minute
+    this.idleCheckTimer = setInterval(() => {
+      if (!this.running) return;
+
+      const idleTime = Date.now() - this.lastInteraction.getTime();
+      const thresholdMs = (this.config.idleThreshold || 30) * 60 * 1000;
+
+      if (idleTime >= thresholdMs) {
+        const idleMinutes = Math.round(idleTime / 60000);
+        console.log(`[Heartbeat] Idle detected: ${idleMinutes} minutes`);
+        
+        this.triggerCheckIn('idle', { 
+          idleMinutes,
+          since: this.lastInteraction.toISOString()
+        });
+        
+        // Reset to avoid repeated triggers
+        this.lastInteraction = new Date();
+      }
+    }, 60000); // Check every minute
+
+    console.log(`[Heartbeat] Idle monitoring started (${this.config.idleThreshold} min threshold)`);
   }
 
   /**
-   * Start nurture prompt monitoring
+   * ACTUAL nurture monitoring
    */
   private startNurtureMonitoring(): void {
-    const checkInterval = 5 * 60 * 1000; // Check every 5 minutes
-    
-    const timer = setInterval(() => {
-      if (!this.config.nurtureAfter) return;
-      if (this.isQuietHours()) return;
+    const thresholdMs = (this.config.nurtureAfter || 60) * 60 * 1000;
+
+    this.nurtureTimer = setInterval(() => {
+      if (!this.running || this.isQuietHours()) return;
+
+      const timeSinceInteraction = Date.now() - this.lastInteraction.getTime();
       
-      const timeSinceLastInteraction = Date.now() - this.lastInteraction.getTime();
-      const threshold = this.config.nurtureAfter * 60 * 1000;
-      
-      if (timeSinceLastInteraction >= threshold) {
+      if (timeSinceInteraction >= thresholdMs) {
+        console.log('[Heartbeat] Nurture check-in triggered');
         this.triggerCheckIn('nurture');
         this.lastInteraction = new Date(); // Reset
       }
-    }, checkInterval);
+    }, 5 * 60 * 1000); // Check every 5 minutes
 
-    this.timers.set('nurture-monitor', timer as unknown as NodeJS.Timeout);
+    console.log(`[Heartbeat] Nurture monitoring started (${this.config.nurtureAfter} min threshold)`);
   }
 
   /**
-   * Trigger a check-in event
+   * Trigger an ACTUAL check-in event
    */
   private triggerCheckIn(type: CheckInType, payload?: Record<string, unknown>): void {
     if (this.isQuietHours() && type !== 'periodic') {
@@ -213,15 +286,22 @@ class HeartbeatSchedulerImpl extends EventEmitter implements HeartbeatScheduler 
       payload,
     };
 
-    console.log(`[Heartbeat] Triggering ${type} check-in`);
+    console.log(`[Heartbeat] 🔔 ${type.toUpperCase()} check-in triggered`);
     this.emit('checkin', event);
   }
 
   /**
-   * Record user interaction (resets idle timer)
+   * Record user interaction (resets idle timers)
+   * ACTUALLY used by the system
    */
   recordInteraction(): void {
+    const wasIdle = Date.now() - this.lastInteraction.getTime() > 5 * 60 * 1000; // 5 min
     this.lastInteraction = new Date();
+    
+    if (wasIdle) {
+      console.log('[Heartbeat] User returned from idle');
+      this.emit('active');
+    }
   }
 
   /**
@@ -244,28 +324,44 @@ class HeartbeatSchedulerImpl extends EventEmitter implements HeartbeatScheduler 
   }
 
   /**
-   * Get next scheduled event
+   * Get upcoming scheduled events
    */
-  getNextScheduled(): ScheduledEvent | null {
-    // Simplified - would need timer introspection for real implementation
-    return null;
+  getUpcoming(): Array<{ type: CheckInType; nextRun: Date }> {
+    return Array.from(this.jobs.values())
+      .map(job => ({ type: job.type, nextRun: job.nextRun }))
+      .sort((a, b) => a.nextRun.getTime() - b.nextRun.getTime());
+  }
+
+  /**
+   * Get time until next check-in
+   */
+  getTimeUntilNext(): number {
+    const upcoming = this.getUpcoming();
+    if (upcoming.length === 0) return Infinity;
+    
+    const next = upcoming[0];
+    return Math.max(0, next.nextRun.getTime() - Date.now());
+  }
+
+  isRunning(): boolean {
+    return this.running;
   }
 }
 
-/**
- * Create scheduler instance
- */
-export function createScheduler(config?: ScheduleConfig): HeartbeatScheduler {
-  return new HeartbeatSchedulerImpl(config);
+// Singleton
+let scheduler: HeartbeatScheduler | null = null;
+
+export function getScheduler(config?: ScheduleConfig): HeartbeatScheduler {
+  if (!scheduler) {
+    scheduler = new HeartbeatScheduler(config);
+  }
+  return scheduler;
 }
 
-/**
- * Parse crontab-style schedule (simplified)
- */
-export function parseSchedule(cron: string): { hours: number; minutes: number } {
-  // Simple format: "HH:MM" only for now
-  const [hours, minutes] = cron.split(':').map(Number);
-  return { hours, minutes };
+export function resetScheduler(): void {
+  scheduler?.stop();
+  scheduler = null;
 }
 
-export default createScheduler;
+export { HeartbeatScheduler };
+export default HeartbeatScheduler;

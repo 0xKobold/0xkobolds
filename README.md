@@ -34,7 +34,7 @@
                                  ........ ......... .........
 ```
 
-> *"Your digital familiar - a personal AI assistant that learns, evolves, and helps you code 24/7"*
+> *"Your digital familiar - a personal AI assistant that learns, evolves, and helps you Build 24/7"*
 
 ## Hybrid Architecture
 

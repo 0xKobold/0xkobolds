@@ -1,6 +1,14 @@
 // Heartbeat module exports
 
-export { createScheduler, parseSchedule, type HeartbeatScheduler } from './scheduler.js';
+export { 
+  HeartbeatScheduler,
+  getScheduler,
+  resetScheduler,
+  type CheckInType,
+  type ScheduleConfig,
+  type ScheduledEvent
+} from './scheduler.js';
+
 export { 
   type CheckInPrompt, 
   type CheckInResponse, 
@@ -12,6 +20,7 @@ export {
   detectIdle,
   getGreeting
 } from './checkin.js';
+
 export { 
   getNotificationManager, 
   resetNotificationManager, 
@@ -19,6 +28,3 @@ export {
   type Notification, 
   type NotificationStats 
 } from './notifications.js';
-
-// Re-export types from scheduler
-export { type CheckInType } from './scheduler.js';

@@ -1,198 +1,160 @@
-#!/usr/bin/env bun
+/**
+ * Gateway CLI Command - v0.2.0
+ * 
+ * Start/stop/manage the WebSocket gateway server.
+ */
 
 import { Command } from "commander";
-import { spawn, exec } from "node:child_process";
-import { writeFile, readFile, unlink } from "node:fs/promises";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-import { homedir } from "node:os";
-import { promisify } from "node:util";
+import { getRealGateway, resetRealGateway } from "../../gateway/index.js";
+import { getDiscordBot, resetDiscordBot } from "../../gateway/discord-bot.js";
 
-const execAsync = promisify(exec);
-const KOBOLD_DIR = join(homedir(), ".0xkobold");
-const GATEWAY_PID_FILE = join(KOBOLD_DIR, "gateway.pid");
+export function createGatewayCommand(): Command {
+  const cmd = new Command("gateway")
+    .description("Manage the WebSocket gateway server");
 
-async function isGatewayRunning(): Promise<boolean> {
-  try {
-    if (!existsSync(GATEWAY_PID_FILE)) return false;
-    const pid = parseInt(await readFile(GATEWAY_PID_FILE, "utf-8"));
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
-}
+  // Start gateway
+  cmd
+    .command("start")
+    .description("Start the WebSocket gateway server")
+    .option("-p, --port <port>", "Port to run on", "7777")
+    .option("-h, --host <host>", "Host to bind to", "localhost")
+    .option("--discord", "Enable Discord bot integration")
+    .option("--discord-token <token>", "Discord bot token")
+    .action(async (options) => {
+      const port = parseInt(options.port);
+      const host = options.host;
 
-async function getGatewayPid(): Promise<number | null> {
-  try {
-    if (!existsSync(GATEWAY_PID_FILE)) return null;
-    return parseInt(await readFile(GATEWAY_PID_FILE, "utf-8"));
-  } catch {
-    return null;
-  }
-}
-
-const startCommand = new Command("start")
-  .description("Start the 0xKobold WebSocket gateway")
-  .option("-p, --port <port>", "Port to listen on", "18789")
-  .option("-h, --host <host>", "Host to bind to", "127.0.0.1")
-  .option("-d, --detach", "Run in background", true)
-  .action(async (options) => {
-    try {
-      if (await isGatewayRunning()) {
-        const pid = await getGatewayPid();
-        console.log(`⚠️  Gateway is already running (PID: ${pid})`);
-        return;
-      }
-
-      console.log("🚀 Starting 0xKobold gateway...");
-
-      // Use the new extension-based gateway via pi-coding-agent
-      const mainScript = join(process.cwd(), "src/index.ts");
-
-      if (!existsSync(mainScript)) {
-        console.error("❌ Main script not found: src/index.ts");
-        process.exit(1);
-      }
-
-      const env = {
-        ...process.env,
-        KOBOLD_GATEWAY_PORT: options.port,
-        KOBOLD_GATEWAY_HOST: options.host,
-      };
-
-      if (options.detach) {
-        const child = spawn("bun", ["run", mainScript, "--command", "gateway:start", "--", `--port=${options.port}`], {
-          detached: true,
-          stdio: ["ignore", "ignore", "ignore"],
-          env,
-        });
-
-        child.unref();
-        if (child.pid) {
-          await writeFile(GATEWAY_PID_FILE, child.pid.toString());
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        if (await isGatewayRunning()) {
-          console.log(`✓ Gateway started (PID: ${child.pid}, ${options.host}:${options.port})`);
-        } else {
-          console.error("❌ Failed to start gateway");
-          process.exit(1);
-        }
-      } else {
-        const child = spawn("bun", ["run", mainScript, "--command", "gateway:start", "--", `--port=${options.port}`], {
-          stdio: "inherit",
-          env,
-        });
-
-        if (child.pid) {
-          await writeFile(GATEWAY_PID_FILE, child.pid.toString());
-        }
-
-        child.on("exit", async (code) => {
-          if (existsSync(GATEWAY_PID_FILE)) {
-            await unlink(GATEWAY_PID_FILE);
-          }
-          process.exit(code || 0);
-        });
-      }
-    } catch (error) {
-      console.error("❌ Failed to start gateway:", error);
-      process.exit(1);
-    }
-  });
-
-const stopCommand = new Command("stop")
-  .description("Stop the 0xKobold gateway")
-  .action(async () => {
-    try {
-      const pid = await getGatewayPid();
-
-      if (!pid) {
-        console.log("⚠️  Gateway is not running");
-        return;
-      }
-
-      console.log("🛑 Stopping gateway...");
+      console.log("🌐 Starting 0xKobold Gateway Server...\n");
 
       try {
-        process.kill(pid, "SIGTERM");
+        // Start main gateway
+        const gateway = getRealGateway();
+        (gateway as unknown as { config: { port: number; host: string; cors: boolean; heartbeatInterval: number } }).config = { 
+          port, 
+          host, 
+          cors: true, 
+          heartbeatInterval: 30000 
+        };
+        
+        await gateway.start();
 
-        let attempts = 0;
-        while ((await isGatewayRunning()) && attempts < 10) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          attempts++;
-        }
+        const address = `http://${host}:${port}`;
+        console.log(`✅ Gateway server running at: ${address}`);
+        console.log(`   WebSocket endpoint: ws://${host}:${port}/ws`);
+        console.log(`   Health check: ${address}/health`);
+        console.log(`   Status: ${address}/status\n`);
 
-        if (await isGatewayRunning()) {
-          process.kill(pid, "SIGKILL");
-          console.log("✓ Gateway force stopped");
-        } else {
-          console.log("✓ Gateway stopped gracefully");
-        }
-      } catch (error) {
-        console.log("⚠️  Gateway process not found, cleaning up...");
-      }
-
-      if (existsSync(GATEWAY_PID_FILE)) {
-        await unlink(GATEWAY_PID_FILE);
-      }
-    } catch (error) {
-      console.error("❌ Failed to stop gateway:", error);
-      process.exit(1);
-    }
-  });
-
-const statusCommand = new Command("status")
-  .description("Check gateway status")
-  .action(async () => {
-    try {
-      const running = await isGatewayRunning();
-      const pid = await getGatewayPid();
-
-      if (running && pid) {
-        console.log(`✓ Gateway is running (PID: ${pid})`);
-
-        // Also check HTTP endpoint
-        try {
-          const response = await fetch("http://127.0.0.1:18789/health");
-          if (response.ok) {
-            const data = await response.json() as { agents?: number; clients?: number };
-            console.log(`  WebSocket: ws://127.0.0.1:18789`);
-            console.log(`  Agents: ${data.agents || 0}`);
-            console.log(`  Clients: ${data.clients || 0}`);
+        // Start Discord bot if enabled
+        if (options.discord || process.env.DISCORD_TOKEN) {
+          const token = options.discordToken || process.env.DISCORD_TOKEN;
+          if (token) {
+            const bot = getDiscordBot({ token });
+            await bot.start();
+            console.log("🤖 Discord bot integration enabled\n");
+          } else {
+            console.warn("⚠️  Discord bot integration requested but no token provided");
+            console.log("   Set DISCORD_TOKEN env var or use --discord-token\n");
           }
-        } catch {
-          console.log("  (HTTP health check failed)");
+        }
+
+        console.log("Press Ctrl+C to stop\n");
+
+        // Keep running
+        process.on("SIGINT", async () => {
+          console.log("\n🛑 Shutting down...");
+          resetDiscordBot();
+          resetRealGateway();
+          console.log("✅ Gateway stopped");
+          process.exit(0);
+        });
+
+      } catch (error) {
+        console.error("❌ Failed to start gateway:", error);
+        process.exit(1);
+      }
+    });
+
+  // Stop gateway
+  cmd
+    .command("stop")
+    .description("Stop the WebSocket gateway server")
+    .action(async () => {
+      console.log("🛑 Stopping gateway server...");
+      resetDiscordBot();
+      resetRealGateway();
+      console.log("✅ Gateway server stopped");
+    });
+
+  // Status
+  cmd
+    .command("status")
+    .description("Check gateway server status")
+    .action(() => {
+      const gateway = getRealGateway();
+      
+      if (gateway.isRunning()) {
+        console.log("🟢 Gateway Status: Running");
+        console.log(`   Connections: ${gateway.getConnectionCount()}`);
+        
+        const discordBot = getDiscordBot();
+        const discordStatus = discordBot?.getStatus();
+        if (discordStatus?.connected) {
+          console.log(`   Discord Bot: Connected (${discordStatus.user})`);
+        } else {
+          console.log("   Discord Bot: Not running");
         }
       } else {
-        console.log("✗ Gateway is not running");
-
-        if (existsSync(GATEWAY_PID_FILE)) {
-          console.log("   (stale PID file detected, cleaning up...)");
-          await unlink(GATEWAY_PID_FILE);
-        }
+        console.log("🔴 Gateway Status: Stopped");
       }
-    } catch (error) {
-      console.error("❌ Failed to check status:", error);
-      process.exit(1);
-    }
-  });
+    });
 
-const restartCommand = new Command("restart")
-  .description("Restart the gateway")
-  .action(async () => {
-    console.log("🔄 Restarting gateway...");
-    await stopCommand.parseAsync([]);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    await startCommand.parseAsync([]);
-  });
+  // List connections
+  cmd
+    .command("connections")
+    .alias("ls")
+    .description("List active connections")
+    .action(() => {
+      const gateway = getRealGateway();
+      const connections = gateway.getConnections();
 
-export const gatewayCommand = new Command("gateway")
-  .description("Manage the 0xKobold WebSocket gateway")
-  .addCommand(startCommand)
-  .addCommand(stopCommand)
-  .addCommand(statusCommand)
-  .addCommand(restartCommand);
+      if (connections.length === 0) {
+        console.log("No active connections");
+        return;
+      }
+
+      console.log(`\nActive connections (${connections.length}):\n`);
+      
+      for (const conn of connections) {
+        const age = Math.round((Date.now() - conn.connectedAt.getTime()) / 1000);
+        console.log(`  ${conn.type.toUpperCase()} | ${conn.id.slice(0, 20)}... | ${age}s ago`);
+        if (conn.channel) console.log(`    Channel: ${conn.channel}`);
+        if (conn.user) console.log(`    User: ${conn.user}`);
+      }
+      console.log();
+    });
+
+  // Send test message
+  cmd
+    .command("send")
+    .description("Send a test message via gateway")
+    .option("-c, --channel <channel>", "Channel to send to")
+    .option("-m, --message <message>", "Message content", "Hello from 0xKobold!")
+    .action(async (options) => {
+      const gateway = getRealGateway();
+      
+      if (!gateway.isRunning()) {
+        console.error("❌ Gateway is not running. Start it with '0xkobold gateway start'");
+        return;
+      }
+
+      if (options.channel) {
+        const sent = gateway.broadcastToChannel(options.channel, options.message);
+        console.log(`✅ Sent to ${sent} connections in channel '${options.channel}'`);
+      } else {
+        gateway.broadcast(options.message);
+        console.log(`✅ Broadcast to ${gateway.getConnectionCount()} connections`);
+      }
+    });
+
+  return cmd;
+}

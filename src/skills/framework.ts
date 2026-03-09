@@ -51,6 +51,32 @@ class SkillRegistry {
   private skills: Map<string, LoadedSkill> = new Map();
   private builtinSkills: Map<string, SkillHandler> = new Map();
 
+  constructor() {
+    // Auto-register built-in skills from real-workers.ts
+    this.registerBuiltinSkills();
+  }
+
+  /**
+   * Register built-in worker skills
+   */
+  private async registerBuiltinSkills(): Promise<void> {
+    const { 
+      nextjsWorkerSkill,
+      sqlWorkerSkill,
+      apiWorkerSkill,
+      testWorkerSkill,
+      webResearchSkill
+    } = await import("./builtin/real-workers.js");
+
+    this.builtinSkills.set("nextjs-worker", nextjsWorkerSkill);
+    this.builtinSkills.set("sql-worker", sqlWorkerSkill);
+    this.builtinSkills.set("api-worker", apiWorkerSkill);
+    this.builtinSkills.set("test-worker", testWorkerSkill);
+    this.builtinSkills.set("web-research", webResearchSkill);
+
+    console.log("[Skills] Registered 5 built-in worker skills");
+  }
+
   /**
    * Register a built-in skill
    */
@@ -172,10 +198,20 @@ class SkillRegistry {
   }
 
   /**
-   * List all loaded skills
+   * List all loaded skills (including built-ins)
    */
-  listSkills(): Skill[] {
-    return Array.from(this.skills.values());
+  listSkills(): Array<Skill & { builtin?: boolean }> {
+    const loaded = Array.from(this.skills.values());
+    const builtins = Array.from(this.builtinSkills.keys()).map(id => ({
+      id,
+      name: id,
+      description: "Built-in skill",
+      version: "0.2.0",
+      tags: ["builtin"],
+      entryPoint: "builtin",
+      builtin: true,
+    }));
+    return [...loaded, ...builtins as unknown as Skill[]];
   }
 
   /**
@@ -183,6 +219,13 @@ class SkillRegistry {
    */
   hasSkill(skillId: string): boolean {
     return this.skills.has(skillId) || this.builtinSkills.has(skillId);
+  }
+
+  /**
+   * Get built-in skill names
+   */
+  getBuiltinSkills(): string[] {
+    return Array.from(this.builtinSkills.keys());
   }
 }
 
@@ -250,32 +293,39 @@ export function getSkillMarketplace(): Array<{
 }> {
   return [
     {
+      id: "nextjs-worker",
+      name: "Next.js Worker",
+      description: "React/Next.js specialist (built-in)",
+      author: "0xKobold",
+      tags: ["frontend", "react", "nextjs", "builtin"],
+    },
+    {
+      id: "sql-worker",
+      name: "SQL Worker",
+      description: "Database optimization (built-in)",
+      author: "0xKobold",
+      tags: ["database", "sql", "optimization", "builtin"],
+    },
+    {
+      id: "api-worker",
+      name: "API Worker",
+      description: "API design specialist (built-in)",
+      author: "0xKobold",
+      tags: ["api", "design", "rest", "builtin"],
+    },
+    {
+      id: "test-worker",
+      name: "Test Worker",
+      description: "Test generation (built-in)",
+      author: "0xKobold",
+      tags: ["testing", "automation", "builtin"],
+    },
+    {
       id: "web-research",
       name: "Web Research",
-      description: "Advanced web scraping with Playwright",
+      description: "Research specialist (built-in)",
       author: "0xKobold",
-      tags: ["research", "web", "scraping"],
-    },
-    {
-      id: "git-operations",
-      name: "Git Operations",
-      description: "Advanced git workflows and analysis",
-      author: "0xKobold",
-      tags: ["git", "version-control"],
-    },
-    {
-      id: "test-generation",
-      name: "Test Generation",
-      description: "Auto-generate tests from code",
-      author: "0xKobold",
-      tags: ["testing", "automation"],
-    },
-    {
-      id: "doc-generation",
-      name: "Documentation",
-      description: "Generate documentation from code",
-      author: "0xKobold",
-      tags: ["docs", "documentation"],
+      tags: ["research", "web", "builtin"],
     },
   ];
 }
