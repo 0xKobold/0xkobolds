@@ -29,7 +29,15 @@ describe("Tailscale Integration - v0.3.0", () => {
   });
 
   test("should generate gateway URL when connected", async () => {
+    // Skip if Tailscale not installed
     const ts = getTailscaleIntegration();
+    const status = await ts.getStatus();
+    
+    if (!status.installed) {
+      console.log("Skipping - Tailscale not installed");
+      return;
+    }
+    
     const url = await ts.getGatewayURL(7777);
     
     // Will be undefined if not connected

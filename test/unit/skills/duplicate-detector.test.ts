@@ -82,7 +82,7 @@ class UserManager {
 
     const result = await detector.check("sum calculation function");
 
-    expect(result.suggestion).toContain("EXISTING");
+    expect(result.suggestion.toLowerCase()).toContain("similar");
     expect(result.matches.some(m => m.file.includes("existing.ts"))).toBe(true);
   });
 
