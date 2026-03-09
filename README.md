@@ -287,6 +287,75 @@ Migrating from OpenClaw (koclaw)? We got you:
 
 Global config: `~/.0xkobold/config.json`
 
+### Option 1: Ollama (Local - Default)
+
+```json
+{
+  "version": "0.3.0",
+  "llm": {
+    "provider": "ollama",
+    "model": "qwen2.5-coder:14b",
+    "baseUrl": "http://localhost:11434",
+    "maxTokens": 4000,
+    "temperature": 0.7
+  },
+  "gateway": {
+    "port": 7777,
+    "host": "localhost"
+  }
+}
+```
+
+**Setup:**
+```bash
+# Install Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Pull a model
+ollama pull qwen2.5-coder:14b
+
+# Start Ollama
+ollama serve
+```
+
+### Option 2: Claude (Cloud)
+
+```json
+{
+  "version": "0.3.0",
+  "llm": {
+    "provider": "claude",
+    "model": "claude-3-sonnet-20240229",
+    "apiKey": "sk-ant-xxx",
+    "maxTokens": 4000,
+    "temperature": 0.7
+  }
+}
+```
+
+**Setup:**
+```bash
+# Get API key from https://console.anthropic.com
+export ANTHROPIC_API_KEY=sk-ant-xxx
+```
+
+### Option 3: OpenAI (Cloud)
+
+```json
+{
+  "version": "0.3.0",
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4",
+    "apiKey": "sk-xxx",
+    "maxTokens": 4000,
+    "temperature": 0.7
+  }
+}
+```
+
+### Full Example with All Features
+
 ```json
 {
   "version": "0.3.0",
@@ -294,15 +363,19 @@ Global config: `~/.0xkobold/config.json`
     "name": "0xKobold",
     "emoji": "🐉"
   },
+  "llm": {
+    "provider": "ollama",
+    "model": "qwen2.5-coder:14b",
+    "baseUrl": "http://localhost:11434",
+    "maxTokens": 4000,
+    "temperature": 0.7
+  },
   "gateway": {
+    "enabled": true,
     "port": 7777,
+    "host": "localhost",
     "remote": {
-      "enabled": true,
-      "url": "wss://your-vps.com:7777",
-      "token": "xxx"
-    },
-    "tailscale": {
-      "enabled": true
+      "enabled": false
     }
   },
   "channels": {
@@ -310,11 +383,6 @@ Global config: `~/.0xkobold/config.json`
     "whatsapp": { "enabled": true },
     "telegram": { "enabled": false },
     "slack": { "enabled": false }
-  },
-  "llm": {
-    "provider": "claude",
-    "model": "claude-3-sonnet-20240229",
-    "apiKey": "sk-ant-xxx"
   }
 }
 ```
