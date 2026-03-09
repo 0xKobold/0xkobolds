@@ -1,9 +1,9 @@
 # 🤖 Agent Self-Monitor Heartbeat
 
 **Session Active Since:** 2025-01-09 05:42 UTC  
-**Current Time:** ~17:00 UTC  
-**Version:** v0.4.1  
-**Status:** ✅ **CRON + NOTIFICATIONS + SYSTEMD - PRODUCTION READY**
+**Current Time:** ~17:30 UTC  
+**Version:** v0.4.3  
+**Status:** ✅ **AUTO-UPDATE + CRON + NOTIFICATIONS**
 
 ---
 
@@ -11,36 +11,34 @@
 
 | Metric | Value |
 |--------|-------|
-| **Version** | **0.4.1** (notifications + systemd) |
+| **Version** | **0.4.3** (auto-update feature) |
 | **Tests** | 291 pass / 19 skip / 0 fail |
-| **Features** | 14 core + persona + cron + notifications |
+| **Features** | 15 core features |
+| **Extensions** | 34 (cleaned up from 43) |
 | **Documentation** | 16,000+ lines |
 | **Build** | ✅ Clean |
-| **Commits** | 80+ since start |
+| **Commits** | 85+ since start |
 
 ---
 
-## 🎉 COMPLETED TODAY
+## 🎉 COMPLETED TODAY (v0.4.3)
 
-### 1. ✅ Cron Notifications (v0.4.1)
-- **Telegram** notifications via Bot API
-- **Discord** rich embed notifications
-- **Slack** webhook support
-- **WhatsApp** (placeholder - needs Baileys)
-- CLI: `--notify telegram:CHAT_ID` or `--notify discord:CHANNEL_ID`
-- Success/error notification controls
-- Custom prefixes
+### 1. ✅ Auto-Update (NEW)
+- Configurable scheduled update checks
+- Cron integration: `autoUpdate.checkInterval`
+- Auto-install option: `autoUpdate.autoInstall`
+- Manual update: `0xkobold update --install`
 
-### 2. ✅ Systemd Service (v0.4.1)
-- Production-ready systemd service file
-- Auto-restart on failure
-- Security hardening (ProtectSystem, NoNewPrivileges)
-- One-liner install script
+### 2. ✅ Extension Cleanup (v0.4.2)
+- Removed 7 redundant extensions
+- Consolidated: session-* → session-manager
+- Merged: memory-* → perennial-memory
+- 43 extensions → 34 extensions (-21%)
 
-### 3. ✅ VPS Deployment Docs (v0.4.1)
-- `docs/VPS-INSTALL.md` - Quick deploy guide
-- `scripts/install.sh` - Automated install
-- `scripts/systemd/0xkobold.service` - Service file
+### 3. ✅ Cron + Notifications (v0.4.0-v0.4.1)
+- Full OpenClaw-compatible cron system
+- Telegram/Discord/Slack notifications
+- Systemd service for production
 
 ---
 
@@ -48,21 +46,22 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
+| ✅ **Auto-Update** | **NEW** | Scheduled updates via cron |
 | ✅ **Cron Jobs** | Complete | Full OpenClaw parity |
 | ✅ **Notifications** | Complete | Telegram/Discord/Slack |
 | ✅ **Systemd** | Complete | Production service |
-| ✅ **LLM Integration** | Complete | Real API calls verified |
+| ✅ **LLM Integration** | Complete | Real API calls |
 | ✅ **Heartbeat** | Complete | HEARTBEAT.md system |
-| ✅ WhatsApp | Complete | Baileys integration |
-| ✅ Docker Sandbox | Complete | Safe command execution |
-| ✅ Device Auth | Complete | Token-based auth |
+| ✅ WhatsApp | Complete | Baileys |
+| ✅ Docker Sandbox | Complete | Safe execution |
+| ✅ Device Auth | Complete | Token-based |
 | ✅ Vision/Audio | Complete | Media processing |
 | ✅ Telegram | Complete | Bot API |
 | ✅ Slack | Complete | Webhook |
 | ✅ PDF | Complete | Document parsing |
 | ✅ Config Manager | Complete | JSON/YAML/SQLite |
-| ✅ Remote Gateway | Complete | WebSocket server |
-| ✅ Tailscale | Complete | VPN integration |
+| ✅ Remote Gateway | Complete | WebSocket |
+| ✅ Tailscale | Complete | VPN |
 | ✅ Duplicate Detection | Complete | Semantic search |
 | ✅ OpenClaw Migration | Complete | Import tools |
 | ✅ Persona System | Complete | 5 files |
@@ -70,40 +69,52 @@
 
 ---
 
-## 🚀 VPS Deploy for Stream Tonight
+## 🚀 Quick Commands for VPS
 
 ```bash
-# SSH to your VPS, then:
+# Install latest
+bun install -g 0xkobold@latest
 
-# 1. Install Bun + 0xKobold
-curl -fsSL https://bun.sh/install | bash && \
-export PATH="$HOME/.bun/bin:$PATH" && \
-bun install -g 0xkobold
-
-# 2. Initialize
+# Initialize
 0xkobold init --quick
 
-# 3. Set Discord token
-export DISCORD_BOT_TOKEN="your_token"
+# Enable auto-update
+0xkobold config set autoUpdate.enabled true
+0xkobold config set autoUpdate.checkInterval "0 2 * * *"
+0xkobold config set autoUpdate.autoInstall true
 
-# 4. Add job that notifies Discord
+# Add Discord notification job
 0xkobold cron add \
-  --name "Live Stream Demo" \
-  --at "1m" \
-  --notify discord:YOUR_CHANNEL_ID \
-  --notify-prefix "🎬 Live on stream!" \
-  --message "Generate a creative greeting for viewers" \
-  --delete
+  --name "Daily Brief" \
+  --cron "0 7 * * *" \
+  --notify discord:CHANNEL_ID \
+  --message "Generate morning briefing"
 
-# 5. Start scheduler
+# Start scheduler
 0xkobold cron start
-
-# 6. (Optional) Enable systemd auto-start
-sudo cp ~/.bun/install/global/node_modules/0xkobold/scripts/systemd/0xkobold.service /etc/systemd/system/
-sudo systemctl enable --now 0xkobold
 ```
 
-**Result:** In 1 minute, your Discord channel gets the AI's response! 🎉
+---
+
+## 🔄 Auto-Update Config
+
+```jsonc
+{
+  "autoUpdate": {
+    "enabled": true,
+    "checkInterval": "0 2 * * *",  // Daily at 2 AM
+    "autoInstall": false,           // Notify only
+    "notifyOnUpdate": true
+  }
+}
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enabled` | `false` | Enable scheduled checks |
+| `checkInterval` | `"0 2 * * *"` | Cron expression |
+| `autoInstall` | `false` | Auto-install updates |
+| `notifyOnUpdate` | `true` | Notify on update found |
 
 ---
 
@@ -112,10 +123,12 @@ sudo systemctl enable --now 0xkobold
 | Version | Date | Notes |
 |---------|------|-------|
 | 0.3.0 | 2025-01-09 | Initial release |
-| 0.3.1-0.3.3 | 2025-01-09 | Init fixes, persona system |
-| 0.4.0 | 2025-01-09 | Full cron system |
-| **0.4.1** | **2025-01-09** | **Notifications + systemd** |
+| 0.3.1-0.3.3 | 2025-01-09 | Init, persona |
+| 0.4.0 | 2025-01-09 | Cron system |
+| 0.4.1 | 2025-01-09 | Notifications + systemd |
+| 0.4.2 | 2025-01-09 | Extension cleanup |
+| **0.4.3** | **2025-01-09** | **Auto-update feature** |
 
 ---
 
-**HEARTBEAT_OK** ✅ - Production-ready for VPS deployment!
+**HEARTBEAT_OK** ✅ - v0.4.3 ready for VPS deployment with auto-updates!
