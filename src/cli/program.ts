@@ -28,6 +28,9 @@ import { createGatewayCommand } from "./commands/gateway.js";
 // v0.3.0: WhatsApp
 import { createWhatsAppCommand } from "./commands/whatsapp.js";
 
+// v0.3.0: Telegram
+import { createTelegramCommand } from "./commands/telegram.js";
+
 // v0.2.0: Embedded mode
 import { createEmbeddedCommand } from "./commands/embedded.js";
 
@@ -52,6 +55,9 @@ export function createCli(): Command {
   
   // v0.3.0: WhatsApp integration
   program.addCommand(createWhatsAppCommand());
+  
+  // v0.3.0: Telegram integration
+  program.addCommand(createTelegramCommand());
   
   program.addCommand(createEmbeddedCommand());
 

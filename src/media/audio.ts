@@ -1,11 +1,12 @@
 /**
  * Audio Transcription - v0.3.0
- * 
+ *
  * Speech-to-text using Whisper API or local inference.
  */
 
 import OpenAI from "openai";
 import * as fs from "node:fs/promises";
+import * as path from "node:path";
 import { Buffer } from "node:buffer";
 import { spawn } from "node:child_process";
 
@@ -63,7 +64,7 @@ export class AudioTranscriber {
     // Save to temp file
     const tempPath = `/tmp/transcribe-${Date.now()}-${filename}`;
     await fs.writeFile(tempPath, audioBuffer);
-    
+
     try {
       return await this.transcribeFile(tempPath);
     } finally {
@@ -79,8 +80,11 @@ export class AudioTranscriber {
       throw new Error("OpenAI client not initialized");
     }
 
-    const file = await fs.openAsBlob(audioPath);
-    
+    // Read file as buffer
+    const buffer = await fs.readFile(audioPath);
+    const blob = new Blob([buffer], { type: "audio/mpeg" });
+    const file = new File([blob], path.basename(audioPath), { type: "audio/mpeg" });
+
     const response = await this.openai.audio.transcriptions.create({
       file: file as any,
       model: this.config.model!,
@@ -120,7 +124,7 @@ export class AudioTranscriber {
    */
   async convertAudio(inputPath: string, outputFormat: "mp3" | "wav" | "ogg" = "mp3"): Promise<string> {
     const outputPath = inputPath.replace(/\.[^.]+$/, `.${outputFormat}`);
-    
+
     return new Promise((resolve, reject) => {
       const ffmpeg = spawn("ffmpeg", [
         "-i", inputPath,
