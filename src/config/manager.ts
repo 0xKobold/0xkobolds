@@ -32,6 +32,15 @@ export interface ConfigSchema {
     port: number;
     host: string;
     cors: string[];
+    // Remote/VPS gateway configuration
+    remote?: {
+      enabled: boolean;
+      url?: string;           // e.g., "wss://vps.example.com:7777"
+      token?: string;         // Auth token for remote
+      password?: string;      // Password auth (optional)
+      autoReconnect?: boolean;
+      reconnectDelay?: number;
+    };
   };
   
   // Channels
@@ -88,6 +97,14 @@ const DEFAULT_CONFIG: ConfigSchema = {
     port: 7777,
     host: "localhost",
     cors: ["http://localhost:3000"],
+    remote: {
+      enabled: false,
+      url: undefined,
+      token: undefined,
+      password: undefined,
+      autoReconnect: true,
+      reconnectDelay: 1000,
+    },
   },
   
   channels: {

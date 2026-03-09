@@ -12,6 +12,8 @@ export const tuiCommand = new Command()
   .description("Start the 0xKobold Terminal UI (interactive mode)")
   .option("-e, --extensions <paths...>", "Additional extension paths to load")
   .option("-l, --local", "Use current directory as workspace (default: global ~/.0xkobold)")
+  .option("-r, --remote <url>", "Connect to remote gateway instead of local (e.g., wss://vps.example.com:7777)")
+  .option("--token <token>", "Authentication token for remote gateway")
   .action(async (options) => {
     // The main TUI entry point is src/index.ts (relative to package root)
     const packageRoot = resolve(__dirname, "../../..");
@@ -21,9 +23,22 @@ export const tuiCommand = new Command()
     const globalWorkspace = resolve(homedir(), ".0xkobold");
     const cwd = options.local ? process.cwd() : globalWorkspace;
 
-    // Write context file ONLY when using --local mode
-    // This prevents regular runs from showing wrong directory
-    if (options.local) {
+    // Remote gateway mode
+    if (options.remote) {
+      console.log(`🌐 Remote Gateway Mode: ${options.remote}`);
+      console.log(`📁 Local Working Directory: ${cwd}`);
+      console.log(`🧠 AI Processing: Remote (VPS)\n`);
+    } else {
+      console.log(`🐉 Starting 0xKobold TUI (${options.local ? "local" : "global"} workspace)...`);
+      if (options.local) {
+        console.log(`📁 Working in: ${cwd}\n`);
+      } else {
+        console.log(`📁 Global workspace: ${cwd}\n`);
+      }
+    }
+
+    // Write context file for local mode tracking
+    if (options.local || options.remote) {
       const contextFile = resolve(globalWorkspace, ".active-context");
       try {
         if (!existsSync(globalWorkspace)) {
@@ -31,23 +46,26 @@ export const tuiCommand = new Command()
         }
         writeFileSync(contextFile, JSON.stringify({
           workingDir: cwd,
-          isLocal: true,
+          isLocal: options.local || !!options.remote,
+          remoteGateway: options.remote || null,
           timestamp: Date.now(),
         }, null, 2));
 
-        // Broadcast to gateway if available
-        try {
-          await fetch("http://127.0.0.1:18789/event", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: "tui.context_changed",
-              workingDir: cwd,
-              isLocal: true,
-            }),
-          });
-        } catch {
-          // Gateway not running, ignore
+        // Broadcast to local gateway if available (only in non-remote mode)
+        if (!options.remote) {
+          try {
+            await fetch("http://127.0.0.1:18789/event", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                type: "tui.context_changed",
+                workingDir: cwd,
+                isLocal: true,
+              }),
+            });
+          } catch {
+            // Gateway not running, ignore
+          }
         }
       } catch {
         // Ignore write errors
@@ -65,8 +83,6 @@ export const tuiCommand = new Command()
     }
 
     try {
-      console.log(`🐉 Starting 0xKobold TUI (${options.local ? "local" : "global"} workspace)...\n`);
-
       const args = [tuiEntryPoint];
 
       // Add any custom extensions if provided
@@ -84,12 +100,12 @@ export const tuiCommand = new Command()
         env: {
           ...process.env,
           // Set working directory for file operations (tools, etc.)
-          // Config stays in default pi location (~/.pi/agent/)
           KOBOLD_WORKING_DIR: cwd,
           // Session identification
           KOBOLD_SESSION_TYPE: "tui",
-          // Resume behavior - each TUI gets new session by default
-          // Can override with KOBOLD_RESUME_SESSION env var
+          // Remote gateway configuration
+          KOBOLD_REMOTE_GATEWAY: options.remote || "",
+          KOBOLD_REMOTE_TOKEN: options.token || "",
         },
       });
 
