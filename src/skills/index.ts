@@ -1,14 +1,10 @@
-/**
- * Skills Module
- *
- * Hot-reload skill system with built-in skills.
- */
+// Skills Framework (Phase 4)
+export { getSkillRegistry, resetSkillRegistry, installSkill, getSkillMarketplace } from "./framework.js";
+export type { Skill, SkillContext, SkillResult, SkillHandler } from "./framework.js";
 
-// Re-export types separately to avoid conflicts
-export type { Skill, SkillEntry, SkillModule, RiskLevel, ToolDefinition } from './types';
-export { skillRegistry, getSkillRegistry, initSkills, reloadSkills } from './loader';
-
-// Built-in skills
-export { subagentSkill } from './builtin/subagent';
-export { shellSkill } from './builtin/shell';
-export { readFileSkill, writeFileSkill, listFilesSkill } from './builtin/file';
+// Built-in Worker Skills (Phase 3.3)
+export { nextjsWorkerSkill } from "./builtin/nextjs-worker.js";
+export { sqlWorkerSkill } from "./builtin/sql-worker.js";
+export { apiWorkerSkill } from "./builtin/api-worker.js";
+export { testWorkerSkill } from "./builtin/test-worker.js";
+export { webResearchSkill } from "./builtin/web-research.js";
