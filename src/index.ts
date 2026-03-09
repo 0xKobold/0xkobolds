@@ -60,6 +60,19 @@ function verifyExtensions(): string[] {
     '--extension', ext('session-bridge-extension'),
     
     // Core Features
+    // Agent Orchestration (Unified - v0.2.0)
+    // Replaces: agent-registry, subagent-extension, agent-lifecycle, agent-workspace
+    '--extension', ext('agent-orchestrator-extension'),
+    
+    // Legacy Extensions (DEPRECATED - will be removed in v0.3.0)
+    // Kept for backwards compatibility, use agent_orchestrate instead
+    // '--extension', ext('agent-registry-extension'),
+    // '--extension', ext('subagent-extension'),
+    // '--extension', ext('agent-lifecycle-extension'),
+    // '--extension', ext('agent-workspace-extension'),
+    '--extension', ext('autonomous-subagent-extension'),
+    
+    // Core Features
     '--extension', ext('persona-loader-extension'),
     '--extension', ext('context-aware-extension'),
     '--extension', ext('onboarding-extension'),
