@@ -1,7 +1,7 @@
 {
   "name": "0xkobold",
-  "version": "0.2.0",
-  "description": "Your digital familiar - a personal AI assistant that learns and evolves (v0.2.0 - Complete with Real Gateway, Worker Skills)",
+  "version": "0.3.0",
+  "description": "Your digital familiar - a personal AI assistant that learns and evolves (v0.3.0 - Multi-Channel, Security, Media Support)",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "type": "module",
