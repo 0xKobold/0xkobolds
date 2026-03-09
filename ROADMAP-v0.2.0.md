@@ -38,10 +38,15 @@
 - [x] `USER.md` - User profile with learned preferences
 - [x] Dynamic personality adaptation (5 traits)
 
-### 1.3 Context Pruning
-- [ ] Automatic context management
-- [ ] Token budget awareness
-- [ ] Smart compaction strategies
+### 1.3 Context Pruning ✅
+**Status:** Complete
+
+- [x] Automatic context management
+- [x] Token budget awareness with thresholds
+- [x] Multiple smart compaction strategies
+- [x] Essential item protection
+- [x] Budget presets (conservative, balanced, aggressive)
+- [x] Token estimation and usage tracking
 
 ---
 
