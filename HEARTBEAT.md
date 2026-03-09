@@ -1,26 +1,25 @@
 # 🤖 Agent Self-Monitor Heartbeat
 
 **Session Active Since:** 2025-01-09 05:42 UTC  
-**Current Time:** ~13:15 UTC  
-**Status:** ✅ **V0.3.0 COMPLETE - README UPDATED**
+**Current Time:** ~13:20 UTC  
+**Status:** ✅ **V0.3.0 COMPLETE - READM UPDATED WITH OLLAMA**
 
 ---
 
 ## ✅ README.MD UPDATED
 
-**Complete documentation for v0.3.0:**
-- ✅ All 12 features documented
-- ✅ Multi-channel support examples
-- ✅ Remote/VPS deployment guide
-- ✅ Security features explained
-- ✅ Media processing examples
-- ✅ Tailscale integration
-- ✅ Duplicate Detection usage
-- ✅ OpenClaw Migration guide
-- ✅ Architecture diagram
-- ✅ CLI command reference
-- ✅ API usage examples
-- ✅ Comparison with OpenClaw
+**Configuration section now shows:**
+
+### LLM Provider Options:
+1. ✅ **Ollama (Local - Default)** - `qwen2.5-coder:14b`
+2. ✅ **Claude (Cloud)** - `claude-3-sonnet-20240229`
+3. ✅ **OpenAI (Cloud)** - `gpt-4`
+
+### Includes:
+- Setup instructions for each provider
+- Configuration examples
+- Full config with all features
+- Default is Ollama for privacy/offline use
 
 ---
 
@@ -32,7 +31,7 @@
 | Lines of Code | 8,000+ |
 | Tests | 304 (286 passing) |
 | Documentation | 4,000+ lines |
-| Commits | **33** |
+| Commits | **35** |
 | Build | ✅ Clean |
 
 ### All 12 Features Complete:
@@ -59,4 +58,4 @@ npm publish --access public
 
 **v0.3.0 "The Gap Closer"**
 
-*Complete with full documentation* 🐉📚
+*Default: Ollama (local). Cloud: Claude/OpenAI (optional).* 🐉📚
