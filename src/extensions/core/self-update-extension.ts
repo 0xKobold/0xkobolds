@@ -12,6 +12,7 @@ import type { ExtensionAPI } from '@mariozechner/pi-coding-agent';
 import { existsSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { getConfigManager } from "../../config/manager.js";
 
 const SELF_UPDATE_FILE = join(homedir(), '.0xkobold', '.self-update-pending');
 
@@ -121,6 +122,9 @@ async function restartApplication(): Promise<void> {
 }
 
 export default function selfUpdateExtension(pi: ExtensionAPI) {
+  const config = getConfigManager().getConfig();
+  const autoUpdate = config.autoUpdate;
+  
   const checkOnStartup = pi.getFlag('self-update-check') as boolean | undefined ?? true;
 
   // Only check for updates in development mode (running from src/, not dist/)
@@ -219,6 +223,99 @@ export default function selfUpdateExtension(pi: ExtensionAPI) {
       }
     },
   });
+
+  // Simple update command (alias)
+  pi.registerCommand('update', {
+    description: 'Check for and install updates (alias for self-update)',
+    handler: async (args, ctx) => {
+      const force = args.includes('--force') || args.includes('-f');
+      const install = args.includes('--install') || args.includes('-i');
+      
+      ctx.ui.notify('🔍 Checking for updates...', 'info');
+      const { hasUpdate, latestVersion } = await checkForSelfUpdate();
+      
+      if (!hasUpdate) {
+        ctx.ui.notify('✅ Already up to date!', 'info');
+        return;
+      }
+      
+      ctx.ui.notify(`📦 Update available: ${latestVersion}`, 'info');
+      
+      if (install || force) {
+        ctx.ui.notify(`🔄 Installing ${latestVersion}...`, 'info');
+        const success = await performSelfUpdate(latestVersion);
+        if (success) {
+          ctx.ui.notify('✅ Update complete! Restarting...', 'info');
+          await restartApplication();
+        } else {
+          ctx.ui.notify('❌ Installation failed', 'error');
+        }
+      } else {
+        ctx.ui.notify(`Run with --install to update, or use /self-update:install`, 'info');
+      }
+    },
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // AUTO-UPDATE VIA CRON
+  // ═══════════════════════════════════════════════════════════════
+  
+  const autoUpdateEnabled = config.autoUpdate?.enabled ?? false;
+  const autoUpdateInterval = config.autoUpdate?.checkInterval ?? "0 2 * * *";
+  const autoUpdateInstall = config.autoUpdate?.autoInstall ?? false;
+  
+  if (autoUpdateEnabled) {
+    // Run auto-update setup asynchronously
+    (async () => {
+      try {
+        const { getCronScheduler } = await import("../../cron/scheduler.js");
+        const scheduler = getCronScheduler();
+      
+      // Remove existing auto-update job if present
+      const existingJobs = scheduler.listJobs().filter(j => j.name === "Auto-update check");
+      for (const job of existingJobs) {
+        scheduler.removeJob(job.id);
+      }
+      
+      // Add scheduled job
+      scheduler.addJob({
+        name: "Auto-update check",
+        cron: autoUpdateInterval,
+        session: "isolated",
+        message: `Check for 0xKobold updates via npm registry`,
+        model: "kimi-k2.5:cloud",
+        thinkingLevel: "fast",
+        deleteAfterRun: false,
+      });
+      
+      // Listen for job completion
+      scheduler.on("job:completed", async (jobId: string) => {
+        const job = scheduler.getJob(jobId);
+        if (!job || job.name !== "Auto-update check") return;
+        
+        console.log("[SelfUpdate] Running scheduled update check...");
+        const { hasUpdate, latestVersion } = await checkForSelfUpdate();
+        
+        if (hasUpdate) {
+          console.log(`[SelfUpdate] Update available: ${latestVersion}`);
+          
+          if (autoUpdateInstall) {
+            console.log("[SelfUpdate] Auto-installing...");
+            await performSelfUpdate(latestVersion);
+          } else {
+            console.log(`[SelfUpdate] Run /self-update:install to update to ${latestVersion}`);
+          }
+        } else {
+          console.log("[SelfUpdate] No updates available");
+        }
+      });
+      
+      console.log(`[SelfUpdate] Auto-update scheduled: ${autoUpdateInterval}`);
+    } catch (error) {
+      console.error("[SelfUpdate] Failed to schedule auto-update:", error);
+    }
+    })();
+  }
 
   console.log('[SelfUpdate] Extension loaded');
 }

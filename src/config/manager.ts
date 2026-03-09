@@ -42,6 +42,14 @@ export interface ConfigSchema {
       reconnectDelay?: number;
     };
   };
+
+  // Auto-update settings
+  autoUpdate?: {
+    enabled: boolean;
+    checkInterval: string;    // Cron expression, e.g., "0 2 * * *" (daily at 2am)
+    autoInstall: boolean;     // Auto-install if update available
+    notifyOnUpdate: boolean;  // Send notification when updated
+  };
   
   // Channels
   channels: {
@@ -131,6 +139,13 @@ const DEFAULT_CONFIG: ConfigSchema = {
     model: "claude-3-sonnet-20240229",
     maxTokens: 4000,
     temperature: 0.7,
+  },
+
+  autoUpdate: {
+    enabled: false,
+    checkInterval: "0 2 * * *",  // Daily at 2 AM
+    autoInstall: false,
+    notifyOnUpdate: true,
   },
 };
 
