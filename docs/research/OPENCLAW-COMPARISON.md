@@ -278,6 +278,7 @@ Architecture: Modular extensions
 - [ ] Session branching
 - [ ] Smart compaction (like OpenClaw)
 - [ ] Docker sandbox
+- [ ] Multi-agent routing
 
 **Mobile:**
 - [ ] iMessage bridge (macOS)
