@@ -1,43 +1,132 @@
-# Documentation Update Task
-
-**Agent:** @docs-expert  
-**Status:** Ready to start  
-**Files:** CHANGELOG.md, README.md, RELEASE_NOTES.md, QUICKSTART.md
+# Documentation Audit Task for 0xKobold
 
 ## Objective
-Update all docs for 0.0.4 release
+Audit and clean up project documentation to remove confusion and establish clear structure for 0.2.0 release.
 
-## Tasks
-1. **CHANGELOG.md**
-   - Add 0.0.4 section
-   - List: VPS deployment, Perennial memory, Git workflow, NPM setup
+## Audit Findings
 
-2. **README.md**
-   - Add perennial memory features
-   - Update installation section
-   - List new commands (/remember, /recall, etc.)
+### Root .md Files (12 files)
 
-3. **RELEASE_NOTES.md** (new file)
-   - What's new in 0.0.4
-   - Breaking changes (none)
-   - Migration guide (none needed)
+| File | Status | Action | Notes |
+|------|--------|--------|-------|
+| README.md | ✅ KEEP | Main documentation | 15K, current |
+| README-NEW-SECTIONS.md | 🔴 DELETE | Temporary | Content merged or outdated |
+| README-UPDATE-PLAN.md | 🔴 DELETE | Temporary | Planning file, used |
+| CHANGELOG.md | ✅ KEEP | Release history | Current |
+| CLAUDE.md | ✅ KEEP | Claude-specific | Keep for context |
+| HEARTBEAT.md | 🔴 MERGE | Duplicates docs/Heartbeat.md | Consolidate |
+| PLAN-0.0.3.md | 🟡 ARCHIVE | Historical | Move to docs/archive/ |
+| plan.md | 🔴 DELETE | Wrong project! | Resume optimizer, delete |
+| ROADMAP.md | ✅ KEEP | Current roadmap | 17K, main roadmap |
+| ROADMAP-OPENCLAW-FEATURES.md | ✅ KEEP | Research | Separate OpenClaw research |
+| USAGE.md | 🟡 REVIEW | May duplicate README | Check content |
+| WORKFLOW.md | 🟡 REVIEW | May be outdated | Check relevance |
 
-4. **QUICKSTART.md**
-   - Add memory commands section
-   - Update command reference
+### docs/ Directory (24 files + research/)
 
-## 0.0.4 Features to Document
-- VPS Deployment with Tailscale
-- Perennial Memory (semantic search, Ollama embeddings)
-- Git workflow (conventional commits, protected master)
-- NPM setup wizard
-- Diagnostics / telemetry
+| File | Status | Notes |
+|------|--------|-------|
+| architecture-extensions.md | ✅ KEEP | Extension architecture |
+| AUTONOMOUS-SUBAGENTS.md | 🟡 ARCHIVE | Deprecated extension, keep for reference |
+| CLI_ARCHITECTURE.md | ✅ KEEP | CLI design |
+| CONTEXT_PRUNING.md | ✅ KEEP | Memory management |
+| Heartbeat.md | 🟡 MERGE | Merge with HEARTBEAT.md |
+| IMPLEMENTATION-PLAN.md | ✅ KEEP | Current implementation plan |
+| MEMORY-DESIGN.md | ✅ KEEP | Memory architecture |
+| mode-manager.md | ✅ KEEP | Mode system |
+| MULTI-AGENT-WORKSPACE.md | ✅ KEEP | Core architecture doc |
+| NATURAL-SUBAGENT-USAGE.md | ✅ KEEP | Subagent patterns |
+| onboarding-plan.md | 🔴 DELETE | Outdated, replaced |
+| openclaw-integration.md | ✅ KEEP | Integration notes |
+| PERENNIAL-MEMORY.md | ✅ KEEP | Memory system |
+| persona-system.md | ✅ KEEP | Persona design |
+| PI-TUI-MIGRATION.md | 🟡 ARCHIVE | Historical migration |
+| precommit-setup.md | ✅ KEEP | Dev setup |
+| QUICKSTART.md | ✅ KEEP | User guide |
+| research/openclaw/* | ✅ KEEP | Research content |
+| SUBAGENT-ARCHITECTURE.md | ✅ KEEP | Architecture |
+| SUBAGENT-IMPLEMENTATION.md | ✅ KEEP | Implementation |
+| UNIFIED-ORCHESTRATION.md | ✅ KEEP | Orchestration design |
+| VPS-*.md | 🟡 ARCHIVE | Deployment docs, move to docs/deployment/ |
 
-## Deliverables
-- [ ] CHANGELOG.md updated
-- [ ] README.md updated  
-- [ ] RELEASE_NOTES.md created
-- [ ] QUICKSTART.md updated
+### Recommendations
 
-Start: Now  
-Due: 20 minutes
+1. **Create docs/archive/** for historical documents
+2. **Merge duplicate heartbeat docs**
+3. **Delete temporary/planning files** that have been used
+4. **Delete plan.md** (wrong project content)
+5. **Consolidate README updates** into main README.md
+6. **Create clear README structure** with sections
+
+## Cleanup Tasks
+
+```bash
+# Archive historical
+docs/archive/
+  PLAN-0.0.3.md
+  PI-TUI-MIGRATION.md
+  VPS-0.0.4-PLAN.md
+  AUTONOMOUS-SUBAGENTS.md
+
+# Delete temporary
+rm README-NEW-SECTIONS.md
+rm README-UPDATE-PLAN.md
+rm plan.md
+rm docs/onboarding-plan.md
+
+# Merge/consolidate
+- HEARTBEAT.md → docs/Heartbeat.md (move to docs/)
+- Update README.md with any needed content from README-NEW-SECTIONS.md
+
+# Organize
+- Move VPS-* to docs/deployment/
+```
+
+## Clean Documentation Structure
+
+```
+README.md                 (main entry)
+CHANGELOG.md             (releases)
+ROADMAP.md               (current roadmap)
+CLAUDE.md                (Claude context)
+USAGE.md                 (usage guide - if not in README)
+docs/
+  architecture/            (system design)
+    architecture-extensions.md
+    CLI_ARCHITECTURE.md
+    MULTI-AGENT-WORKSPACE.md
+    SUBAGENT-ARCHITECTURE.md
+    UNIFIED-ORCHESTRATION.md
+  features/              (feature docs)
+    CONTEXT_PRUNING.md
+    MEMORY-DESIGN.md
+    PERENNIAL-MEMORY.md
+    mode-manager.md
+    NATURAL-SUBAGENT-USAGE.md
+    SUBAGENT-IMPLEMENTATION.md
+    persona-system.md
+  integration/           (external systems)
+    openclaw-integration.md
+  development/           (dev setup)
+    precommit-setup.md
+    QUICKSTART.md
+  research/              (research)
+    openclaw/
+  reference/             (lookup)
+    IMPLEMENTATION-PLAN.md
+    Heartbeat.md
+  deployment/            (ops)
+    VPS-DEPLOYMENT.md
+    VPS-DEPLOYMENT-RESEARCH.md
+  archive/               (historical)
+    PLAN-0.0.3.md
+    PI-TUI-MIGRATION.md
+    VPS-0.0.4-PLAN.md
+    AUTONOMOUS-SUBAGENTS.md
+```
+
+## Expected Result
+- ~40% reduction in root .md files (12 → 5-6)
+- Clear organization in docs/
+- No temporary/planning files in root
+- Single source of truth for each topic
