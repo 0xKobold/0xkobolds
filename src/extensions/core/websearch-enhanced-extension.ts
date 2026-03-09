@@ -72,89 +72,79 @@ async function fastFetch(url: string, maxLength: number): Promise<ScrapingResult
 
 /**
  * Method 2: Playwright scraper for JavaScript-heavy sites
- * Requires Playwright to be installed globally
+ * Uses native Node.js Playwright (requires 'playwright' package)
  */
 async function playwrightFetch(url: string, maxLength: number): Promise<ScrapingResult | null> {
+  let browser = null;
   try {
-    // Check if playwright is available
-    const hasPlaywright = await $`which playwright`.quiet().then(() => true).catch(() => false);
-    if (!hasPlaywright) {
-      console.log("[WebSearch] Playwright not available, skipping");
+    // Dynamic import to avoid startup cost when not needed
+    const { chromium } = await import('playwright');
+    
+    browser = await chromium.launch({ 
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    
+    const context = await browser.newContext({
+      viewport: { width: 1920, height: 1080 },
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    });
+    
+    const page = await context.newPage();
+    
+    // Navigate and wait for content
+    await page.goto(url, { 
+      waitUntil: 'networkidle',
+      timeout: 30000 
+    });
+    
+    // Wait for JavaScript rendering
+    await page.waitForTimeout(2000);
+    
+    // Extract content from semantic elements
+    const extracted = await page.evaluate((maxLen: number) => {
+      const selectors = [
+        'article', 'main', '.content', '#content',
+        '[role="main"]', '.markdown-body', '.documentation',
+        '.prose', '.article-body', '[class*="content"]'
+      ];
+      
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const win = (globalThis as any).window || (globalThis as any);
+      const doc = win.document || (globalThis as any).document;
+      
+      for (const selector of selectors) {
+        const el = doc.querySelector(selector);
+        if (el && el.innerText?.trim().length > 500) {
+          return el.innerText.slice(0, maxLen);
+        }
+      }
+      
+      // Fallback: clean body content
+      const scripts = doc.querySelectorAll('script, style, nav, footer, header, aside, .nav, .footer');
+      scripts.forEach((el: any) => el.remove());
+      return doc.body?.innerText?.slice(0, maxLen) || '';
+    }, maxLength);
+    
+    const title = await page.title();
+    
+    if (!extracted || extracted.length < 100) {
       return null;
     }
-
-    // Create temporary Python script for Playwright
-    const script = `
-import asyncio
-from playwright.async_api import async_playwright
-import sys
-
-async def scrape():
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(
-            viewport={'width': 1920, 'height': 1080},
-            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        )
-        page = await context.new_page()
-        
-        try:
-            await page.goto('${url}', wait_until='networkidle', timeout=30000)
-            await page.wait_for_timeout(2000)  # Wait for JS to render
-            
-            # Extract content from main content areas
-            content = await page.evaluate('''() => {
-                const selectors = [
-                    'article', 'main', '.content', '#content',
-                    '[role="main"]', '.markdown-body', '.documentation',
-                    '.prose', '.article-body'
-                ];
-                for (const sel of selectors) {
-                    const el = document.querySelector(sel);
-                    if (el) return el.innerText;
-                }
-                // Fallback to body with excluded elements
-                const scripts = document.querySelectorAll('script, style, nav, footer, header, aside');
-                scripts.forEach(el => el.remove());
-                return document.body.innerText;
-            }''')
-            
-            title = await page.title()
-            await browser.close()
-            
-            result = {'content': content[:${maxLength}], 'title': title, 'method': 'playwright'}
-            print(json.dumps(result))
-        except Exception as e:
-            await browser.close()
-            print(json.dumps({'error': str(e)}))
-
-asyncio.run(scrape())
-`;
-    
-    const tempFile = `/tmp/playwright_scrape_${Date.now()}.py`;
-    await Bun.write(tempFile, `import json\n` + script);
-    
-    const result = await $`python3 ${tempFile}`.quiet().catch(() => ({ stdout: "" }));
-    
-    // Cleanup
-    try { await $`rm ${tempFile}`.quiet(); } catch {}
-    
-    const output = result.stdout?.toString() || "";
-    const match = output.match(/\{[^}]+\}/);
-    if (!match) return null;
-    
-    const data = JSON.parse(match[0]);
-    if (data.error || !data.content) return null;
     
     return {
-      content: data.content,
-      title: data.title,
+      content: extracted,
+      title: title || 'Untitled',
       method: 'playwright',
       url
     };
   } catch (error) {
     console.log("[WebSearch] Playwright fetch failed:", error);
     return null;
+  } finally {
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
   }
 }
 

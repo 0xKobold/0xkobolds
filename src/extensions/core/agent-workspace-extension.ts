@@ -245,66 +245,79 @@ async function readabilityFetch(url: string, maxLength: number): Promise<FetchRe
 }
 
 async function playwrightFetch(url: string, maxLength: number): Promise<FetchResult | null> {
+  let browser = null;
   try {
-    // Check if playwright available
-    const hasPlaywright = await Bun.$`which playwright`.quiet().then(() => true).catch(() => false);
-    if (!hasPlaywright) return null;
+    // Dynamic import to avoid startup cost when not needed
+    const { chromium } = await import('playwright');
     
-    // Use Python with Playwright
-    const script = `import asyncio
-import json
-from playwright.async_api import async_playwright
-
-async def scrape():
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True, args=['--no-sandbox'])
-        context = await browser.new_context(
-            viewport={'width': 1920, 'height': 1080}
-        )
-        page = await context.new_page()
-        
-        try:
-            await page.goto('${url}', wait_until='networkidle', timeout=30000)
-            await page.wait_for_timeout(2000)
-            
-            result = await page.evaluate('''() => {
-                const selectors = ['article', 'main', '.content', '.prose', '[role="main"]'];
-                for (const s of selectors) {
-                    const el = document.querySelector(s);
-                    if (el) return el.innerText;
-                }
-                document.querySelectorAll('script, style, nav, footer').forEach(e => e.remove());
-                return document.body.innerText;
-            }''')
-            
-            title = await page.title()
-            await browser.close()
-            print(json.dumps({'content': result[:${maxLength}], 'title': title}))
-        except Exception as e:
-            await browser.close()
-            print(json.dumps({'error': str(e)}))
-
-asyncio.run(scrape())`;
+    browser = await chromium.launch({ 
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
     
-    const tempFile = `/tmp/playwright_${Date.now()}.py`;
-    await Bun.write(tempFile, script);
+    const context = await browser.newContext({
+      viewport: { width: 1920, height: 1080 },
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    });
     
-    const result = await Bun.$`python3 ${tempFile}`.quiet().catch(() => ({ stdout: "" }));
-    try { await Bun.$`rm ${tempFile}`.quiet(); } catch {}
+    const page = await context.newPage();
     
-    const output = result.stdout?.toString() || "";
-    const match = output.match(/{[^}]+}/);
-    if (!match) return null;
+    // Navigate and wait for content
+    await page.goto(url, { 
+      waitUntil: 'networkidle',
+      timeout: 30000 
+    });
     
-    const data = JSON.parse(match[0]);
-    if (data.error || !data.content) return null;
+    // Wait for JavaScript rendering
+    await page.waitForTimeout(2000);
     
-    return { content: data.content, title: data.title, url, method: 'playwright' };
-  } catch {
+    // Extract content from semantic elements
+    const extracted = await page.evaluate((maxLen: number) => {
+      const selectors = [
+        'article', 'main', '.content', '#content',
+        '[role="main"]', '.markdown-body', '.documentation',
+        '.prose', '.article-body', '[class*="content"]'
+      ];
+      
+      // Browser context - use globalThis.window
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const win = (globalThis as any).window || (globalThis as any);
+      const doc = win.document || (globalThis as any).document;
+      
+      for (const selector of selectors) {
+        const el = doc.querySelector(selector);
+        if (el && el.innerText?.trim().length > 500) {
+          return el.innerText.slice(0, maxLen);
+        }
+      }
+      
+      // Fallback: clean body content
+      const scripts = doc.querySelectorAll('script, style, nav, footer, header, aside, .nav, .footer');
+      scripts.forEach((el: any) => el.remove());
+      return doc.body?.innerText?.slice(0, maxLen) || '';
+    }, maxLength);
+    
+    const title = await page.title();
+    
+    if (!extracted || extracted.length < 100) {
+      return null;
+    }
+    
+    return {
+      content: extracted,
+      title: title || 'Untitled',
+      url,
+      method: 'playwright'
+    };
+  } catch (error) {
+    console.log("[WebSearch] Playwright fetch failed:", error);
     return null;
+  } finally {
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
   }
 }
-
 export default async function agentWorkspaceExtension(pi: ExtensionAPI) {
   console.log("[AgentWorkspace] Extension loaded");
   
