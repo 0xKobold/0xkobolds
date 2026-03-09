@@ -63,6 +63,7 @@ function verifyExtensions(): string[] {
     // Agent Orchestration (Unified - v0.2.0)
     // Replaces: agent-registry, subagent-extension, agent-lifecycle, agent-workspace
     '--extension', ext('agent-orchestrator-extension'),
+    '--extension', ext('persona-loader-extension'),
     
     // Legacy Extensions (DEPRECATED - will be removed in v0.3.0)
     // Kept for backwards compatibility, use agent_orchestrate instead
