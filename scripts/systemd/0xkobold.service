@@ -1,31 +1,26 @@
 [Unit]
-Description=0xKobold Gateway
-Documentation=https://github.com/kobolds/0xKobolds
-Requires=docker.service
-After=docker.service tailscaled.service network.target
+Description=0xKobold Multi-Agent Automation Platform
+After=network.target
+Wants=network.target
 
 [Service]
-Type=oneshot
-RemainAfterExit=yes
-WorkingDirectory=/opt/0xkobold
-User=root
+Type=simple
+User=%I
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+Environment="HOME=/home/%I"
+Environment="NODE_ENV=production"
 
-# Commands
-ExecStartPre=-/usr/local/bin/docker-compose -f /opt/0x Kobold/docker-compose.yml down
-ExecStartPre=/usr/local/bin/docker-compose -f /opt/0xKobold/docker-compose.yml pull
-ExecStart=/usr/local/bin/docker-compose -f /opt/0xKobold/docker-compose.yml up -d
-ExecStop=/usr/local/bin/docker-compose -f /opt/0xKobold/docker-compose.yml down
-
-# Restart policy
-Restart=on-failure
+# Change this to match your bun installation
+ExecStart=/usr/local/bin/bun run /usr/local/bin/0xkobold daemon
+ExecStop=/usr/local/bin/bun /usr/local/bin/0xkobold stop
+Restart=always
 RestartSec=10
-StartLimitInterval=60s
-StartLimitBurst=3
 
-# Security
+# Security hardening
 NoNewPrivileges=true
 ProtectSystem=strict
-ProtectHome=true
+ProtectHome=read-only
+ReadWritePaths=%h/.0xkobold %h/.config
 
 [Install]
 WantedBy=multi-user.target
