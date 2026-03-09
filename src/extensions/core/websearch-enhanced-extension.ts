@@ -72,57 +72,91 @@ async function fastFetch(url: string, maxLength: number): Promise<ScrapingResult
 
 /**
  * Method 2: Playwright scraper for JavaScript-heavy sites
- * Uses native Node.js Playwright (requires 'playwright' package)
+ * Uses native Node.js Playwright with improved timeout handling
+ * 
+ * Changes made:
+ * - domcontentloaded instead of networkidle (faster, less hanging)
+ * - Configurable timeout (default 15s)
+ * - Shorter wait for JS rendering (1s vs 2s)
  */
-async function playwrightFetch(url: string, maxLength: number): Promise<ScrapingResult | null> {
+async function playwrightFetch(
+  url: string, 
+  maxLength: number, 
+  timeoutMs: number = 15000
+): Promise<ScrapingResult | null> {
   let browser = null;
+  const startTime = Date.now();
+  
   try {
-    // Dynamic import to avoid startup cost when not needed
     const { chromium } = await import('playwright');
     
     browser = await chromium.launch({ 
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: [
+        '--no-sandbox', 
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
     });
     
     const context = await browser.newContext({
-      viewport: { width: 1920, height: 1080 },
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      viewport: { width: 1280, height: 720 }, // Smaller for speed
+      userAgent: 'Mozilla/5.0 (compatible; 0xKobold/0.2)'
     });
     
     const page = await context.newPage();
     
-    // Navigate and wait for content
+    // Set aggressive timeouts
+    page.setDefaultTimeout(timeoutMs);
+    page.setDefaultNavigationTimeout(timeoutMs);
+    
+    // Navigate with domcontentloaded (much faster than networkidle)
     await page.goto(url, { 
-      waitUntil: 'networkidle',
-      timeout: 30000 
+      waitUntil: 'domcontentloaded', 
+      timeout: timeoutMs 
     });
     
-    // Wait for JavaScript rendering
-    await page.waitForTimeout(2000);
+    // Quick content check - if we have <2000 chars, wait for networkidle
+    const quickCheck = await page.evaluate(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const doc = (globalThis as any).document;
+      return doc.body?.innerText?.length || 0;
+    });
     
-    // Extract content from semantic elements
+    if (quickCheck < 1000) {
+      // Page seems light, wait a bit more
+      const remaining = timeoutMs - (Date.now() - startTime);
+      if (remaining > 2000) {
+        await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+      }
+    }
+    
+    // Wait just 1s for JS (vs 2s before)
+    await page.waitForTimeout(1000);
+    
+    // Extract content
     const extracted = await page.evaluate((maxLen: number) => {
       const selectors = [
         'article', 'main', '.content', '#content',
-        '[role="main"]', '.markdown-body', '.documentation',
-        '.prose', '.article-body', '[class*="content"]'
+        '[role="main"]', '.prose', '.markdown-body',
+        '.documentation', '.article-body'
       ];
       
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const win = (globalThis as any).window || (globalThis as any);
-      const doc = win.document || (globalThis as any).document;
+      const win = (globalThis as any);
+      const doc = win.document;
       
-      for (const selector of selectors) {
-        const el = doc.querySelector(selector);
-        if (el && el.innerText?.trim().length > 500) {
+      for (const sel of selectors) {
+        const el = doc.querySelector(sel);
+        if (el && el.innerText?.trim().length > 200) {
           return el.innerText.slice(0, maxLen);
         }
       }
       
-      // Fallback: clean body content
-      const scripts = doc.querySelectorAll('script, style, nav, footer, header, aside, .nav, .footer');
-      scripts.forEach((el: any) => el.remove());
+      // Clean body fallback
+      const bad = doc.querySelectorAll('script, style, nav, footer, header, aside');
+      bad.forEach((e: any) => e.remove());
       return doc.body?.innerText?.slice(0, maxLen) || '';
     }, maxLength);
     
@@ -139,7 +173,7 @@ async function playwrightFetch(url: string, maxLength: number): Promise<Scraping
       url
     };
   } catch (error) {
-    console.log("[WebSearch] Playwright fetch failed:", error);
+    console.log(`[WebSearch] Playwright error: ${error}`);
     return null;
   } finally {
     if (browser) {
@@ -190,35 +224,44 @@ async function readabilityFetch(url: string, maxLength: number): Promise<Scrapin
 /**
  * CASCADE: Try all methods in order of speed → quality
  */
-async function cascadeFetch(url: string, maxLength: number = 5000): Promise<ScrapingResult | null> {
+async function cascadeFetch(
+  url: string, 
+  maxLength: number = 5000,
+  usePlaywright: boolean = false,
+  timeoutMs: number = 15000
+): Promise<ScrapingResult | null> {
   console.log(`[WebSearch] Starting cascade fetch for ${url}`);
   
-  // Level 1: Fast HTML fetch
-  console.log("[WebSearch] Trying fast fetch...");
-  const fast = await fastFetch(url, maxLength);
-  if (fast && fast.content.length > 1000) {
-    console.log("[WebSearch] Fast fetch succeeded");
-    return fast;
+  // Level 1: Fast HTML fetch (skip if forcing Playwright)
+  if (!usePlaywright) {
+    console.log("[WebSearch] Trying fast fetch...");
+    const fast = await fastFetch(url, maxLength);
+    if (fast && fast.content.length > 1000) {
+      console.log("[WebSearch] Fast fetch succeeded");
+      return fast;
+    }
   }
   
   // Level 2: Readability extraction
-  console.log("[WebSearch] Trying readability extraction...");
-  const readability = await readabilityFetch(url, maxLength);
-  if (readability) {
-    console.log("[WebSearch] Readability extraction succeeded");
-    return readability;
+  if (!usePlaywright) {
+    console.log("[WebSearch] Trying readability extraction...");
+    const readability = await readabilityFetch(url, maxLength);
+    if (readability) {
+      console.log("[WebSearch] Readability extraction succeeded");
+      return readability;
+    }
   }
   
   // Level 3: JavaScript rendering with Playwright
-  console.log("[WebSearch] Trying Playwright...");
-  const playwright = await playwrightFetch(url, maxLength);
+  console.log(`[WebSearch] Trying Playwright (timeout: ${timeoutMs}ms)...`);
+  const playwright = await playwrightFetch(url, maxLength, timeoutMs);
   if (playwright) {
     console.log("[WebSearch] Playwright succeeded");
     return playwright;
   }
   
   // Fallback: Return whatever we got from fast fetch
-  return fast;
+  return null;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -424,7 +467,7 @@ export default function enhancedWebSearchExtension(pi: ExtensionAPI) {
     // @ts-ignore Tool
     name: "web_fetch",
     label: "Web Fetch",
-    description: "Fetch and extract content from a web page. Uses cascade: fast HTML → readability → Playwright for JS sites.",
+    description: "Fetch and extract content from a web page. Uses cascade: fast HTML → readability → Playwright for JS sites. Now with configurable timeout.",
     // @ts-ignore TSchema
     parameters: {
       type: "object",
@@ -442,6 +485,11 @@ export default function enhancedWebSearchExtension(pi: ExtensionAPI) {
           type: "boolean",
           default: false,
           description: "Force use of Playwright for JavaScript-rendered content"
+        },
+        timeout_ms: {
+          type: "number",
+          default: 15000,
+          description: "Timeout in milliseconds (default: 15000, max: 60000)"
         }
       },
       required: ["url"],
@@ -450,6 +498,7 @@ export default function enhancedWebSearchExtension(pi: ExtensionAPI) {
       const url = extractArg(args, 'url');
       const max_length = extractArg(args, 'max_length', 5000);
       const use_playwright = extractArg(args, 'use_playwright', false);
+      const timeout_ms = Math.min(extractArg(args, 'timeout_ms', 15000), 60000);
       
       if (!url || typeof url !== 'string') {
         return {
@@ -468,9 +517,9 @@ export default function enhancedWebSearchExtension(pi: ExtensionAPI) {
       let result: ScrapingResult | null;
       
       if (use_playwright) {
-        result = await playwrightFetch(url, max_length);
+        result = await playwrightFetch(url, max_length, timeout_ms);
       } else {
-        result = await cascadeFetch(url, max_length);
+        result = await cascadeFetch(url, max_length, use_playwright, timeout_ms);
       }
       
       if (!result) {
