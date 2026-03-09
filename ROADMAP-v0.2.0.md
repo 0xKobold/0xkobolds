@@ -82,12 +82,17 @@
 - [x] Complexity detection
 - [x] Natural language spawning
 
-### 3.2 Agent Types
-- [ ] **Coordinator** - Plan and delegate
-- [ ] **Specialist** - Deep domain expertise
-- [ ] **Researcher** - Information gathering
-- [ ] **Worker** - Implementation
-- [ ] **Reviewer** - Code review, validation
+### 3.2 Agent Types ✅
+**Status:** Implemented
+
+- [x] **Coordinator (🎯)** - Plans and delegates
+- [x] **Specialist (🧠)** - Deep domain expertise
+- [x] **Researcher (🔍)** - Information gathering
+- [x] **Worker (⚒️)** - Implementation
+- [x] **Reviewer (👁️)** - Code review and validation
+- [x] Auto-routing based on task description
+- [x] Task complexity analysis
+- [x] spawn_agent tool with intelligent routing
 
 ### 3.3 Worker Skills
 - [ ] `nextjs-worker` - React/Next.js specialist
