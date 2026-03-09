@@ -1,47 +1,122 @@
 # 0xKobold Release Assessment & Roadmap
 
-## 🗺️ Roadmap for 0.0.5 (Subagent System) - IN PROGRESS
+## 🏗️ Architectural Vision: Multi-Agent Workspace System
+
+**Target: 0.0.7+** | See `docs/MULTI-AGENT-WORKSPACE.md`
+
+Single gateway serves multiple persistent "main agents", each with isolated workspaces.
+Agents activate via selection, cron, or heartbeat. Each can spawn ephemeral sub-agents.
+
+```
+┌──────────────┐
+│   Gateway    │ ◄── Single WebSocket server (port: 18789)
+└──────┬───────┘
+       │
+   ┌───┴───┐
+   │       │
+┌──▼───┐ ┌▼─────┐ ┌────────┐
+│ Dev  │ │ Ops  │ │ Docs   │ ◄── Main Agents (persistent, isolated workspaces)
+│Agent │ │Agent │ │Agent   │     Activate: manual, cron, heartbeat
+└──┬───┘ └┬─────┘ └───┬────┘
+   │      │           │
+┌──▼──┐ ┌▼────┐   ┌──▼───┐
+│Sub  │ │Sub  │   │Sub   │ ◄── Subagents (ephemeral, using existing system)
+└─────┘ └─────┘   └──────┘
+```
+
+### Key Features
+- **1 Gateway**: Shared WebSocket server for all agents
+- **N Main Agents**: Persistent with isolated workspaces (`~/.0xkobold/agents/*/workspace/`)
+- **Activation**: Manual selection, cron schedules, heartbeat triggers
+- **Subagent Spawning**: Each main agent can use existing `agent_spawn` tool
+- **State Persistence**: Agent state survives restarts
+
+---
+
+## 📊 Current: 0.0.5 (Released) ✅
 
 ### 🤖 Subagent System
-Spawn parallel sub-agents with isolated context:
+Spawn ephemeral sub-agents with isolated context:
 
 - [x] **Core Infrastructure**
-  - `agent_spawn` tool
-  - Agent discovery from `.0xkobold/agents/`
-  - Single mode execution
+  - `agent_spawn` tool with three modes
+  - Agent discovery (built-in + `~/.0xkobold/agents/`)
   - 5-minute timeout protection
 
 - [x] **Parallel Execution**
-  - `tasks[]` support
-  - Concurrency limiting (4 concurrent, 8 max)
-  - Progress notifications
-  - Result aggregation
+  - 4 concurrent agents, 8 max total
+  - Progress notifications, result aggregation
 
 - [x] **Chained Workflows**
-  - `chain[]` support
-  - `{previous}` placeholder
-  - Step-by-step execution
-  - Error handling
+  - Sequential execution with `{previous}` placeholder
 
-- [x] **Default Agents**
-  - `scout` - Fast reconnaissance (read-only)
-  - `planner` - Implementation planning
-  - `worker` - Full implementation
-  - `reviewer` - Code review
+- [x] **Default Agents**: scout, planner, worker, reviewer
 
-- [x] **Workflow Commands**
-  - `/implement` - Scout → planner → worker
-  - `/scout-and-plan` - Scout → planner
-  - `/parallel` - Run multiple scouts
-  - `/agents` - List available agents
+- [x] **Commands**: `/implement`, `/scout-and-plan`, `/parallel`, `/agents`
 
-- [ ] **Advanced Features**
-  - Subagent stream handling (TUI)
-  - Custom agent definitions
-  - Agent result merging
-  - Project-specific agents (`.0xkobold/agents/`)
+- [ ] **Future Enhancements**
+  - [ ] Subagent stream handling in TUI
+  - [ ] Custom user agents (`~/.0xkobold/agents/`)
+  - [ ] Project-specific agents (`.0xkobold/agents/`)
 
-## 📊 0.0.3 Release Assessment
+---
+
+## 🗺️ Roadmap for 0.0.6 (Polish & Refinement) - NEXT
+
+### Stability & Performance
+- [ ] Subagent stream handling in TUI mode
+- [ ] Better error handling for failed agents
+- [ ] Result merging and aggregation strategies
+- [ ] Custom agent definition loading from `~/.0xkobold/agents/`
+- [ ] Project-specific agents (`.0xkobold/agents/`)
+
+### Developer Experience
+- [ ] Better agent debugging output
+- [ ] Agent result persistence
+- [ ] Workspace-specific memory
+
+---
+
+## 🗺️ Roadmap for 0.0.7+ (Multi-Agent Workspace System) - ARCHITECTURAL
+
+**See: `docs/MULTI-AGENT-WORKSPACE.md`**
+
+### Phase 1: Foundation (0.0.7)
+- [ ] `agent-workspace-extension.ts`
+- [ ] Workspace directory structure (`~/.0xkobold/agents/*/workspace/`)
+- [ ] Agent configuration system
+- [ ] Manual agent selection TUI
+- [ ] Basic agent lifecycle (start/stop)
+
+### Phase 2: Gateway Integration (0.0.8)
+- [ ] Gateway runs standalone/always-on
+- [ ] Agents connect as WebSocket clients
+- [ ] Message routing between agents
+- [ ] Broadcasting system
+
+### Phase 3: Scheduling (0.0.9)
+- [ ] Cron scheduling (node-cron)
+- [ ] Heartbeat triggers
+- [ ] Event-driven activation (file changes, git)
+- [ ] Task queue management
+
+### Phase 4: Advanced (0.1.0)
+- [ ] Agent-to-agent communication
+- [ ] Shared memory between agents
+- [ ] Workspace templates
+- [ ] Agent snapshots
+
+### Commands to Add
+```bash
+0xkobold agents list                    # List main agents
+0xkobold agents create <name>         # Create new agent
+0xkobold agents start <name>          # Start main agent
+0xkobold agents stop <name>           # Stop main agent
+0xkobold agents logs <name>           # View agent logs
+0xkobold agents task <name> <task>    # Send task to agent
+```
+
+---
 
 ### ✅ PASSED (Ready for Release)
 
