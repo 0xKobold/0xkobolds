@@ -2,7 +2,40 @@
 
 All notable changes to 0xKobold will be documented in this file.
 
-## [Unreleased] - 0.0.5
+## [Unreleased] - 0.0.6
+
+### Subagent System v0.0.6 - Polish & Refinement 🎨
+- **New**: Real-time streaming support in TUI mode
+  - Stream agent output as it generates
+  - Live progress updates for long-running tasks
+  - Configurable with `stream: true` parameter
+- **New**: Better error classification and handling
+  - Categorized errors: timeout, not_found, execution
+  - Detailed error messages with suggestions
+  - Structured error details in results
+- **New**: Result merging strategies for parallel execution
+  - `concatenate` - Simple concatenation with headers
+  - `summary` - Summarized with success/failure counts
+  - `structured` - JSON-structured output
+- **New**: Custom agent loading
+  - User agents: `~/.0xkobold/agents/*.md` (auto-loaded)
+  - Project agents: `.0xkobold/agents/*.md` (prefix: `project:`)
+  - Scope indicators: 🔧 built-in, 👤 user, 📁 project
+- **New**: `/agent-create <name>` command
+  - Interactive template generation
+  - Creates YAML frontmatter agent definition
+- **Enhanced**:
+  - `/agents` - Now shows agent scope (built-in/user/project)
+  - `/parallel` - Supports `--merge=strategy` flag
+  - `/implement` - Now streams output in real-time
+  - `/scout-and-plan` - Now streams output in real-time
+- **Tool Enhancements**:
+  - `agent_spawn` - Added `stream` and `mergeStrategy` parameters
+  - Better unknown agent error messages
+  - Lists available agents when agent not found
+- **Documentation**: Updated `docs/SUBAGENT-IMPLEMENTATION.md`
+
+## [0.0.5] - 2026-03-08
 
 ### Subagent System 🤖
 - **New**: Spawn parallel sub-agents with isolated context windows

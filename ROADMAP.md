@@ -55,24 +55,25 @@ Spawn ephemeral sub-agents with isolated context:
 - [x] **Commands**: `/implement`, `/scout-and-plan`, `/parallel`, `/agents`
 
 - [ ] **Future Enhancements**
-  - [ ] Subagent stream handling in TUI
-  - [ ] Custom user agents (`~/.0xkobold/agents/`)
-  - [ ] Project-specific agents (`.0xkobold/agents/`)
+  - [x] Subagent stream handling in TUI (completed in 0.0.6)
+  - [x] Custom user agents (`~/.0xkobold/agents/`) (completed in 0.0.6)
+  - [x] Project-specific agents (`.0xkobold/agents/`) (completed in 0.0.6)
 
 ---
 
-## 🗺️ Roadmap for 0.0.6 (Polish & Refinement) - NEXT
+## 🗺️ Roadmap for 0.0.6 (Polish & Refinement) - IN PROGRESS 🔄
 
-### Stability & Performance
-- [ ] Subagent stream handling in TUI mode
-- [ ] Better error handling for failed agents
-- [ ] Result merging and aggregation strategies
-- [ ] Custom agent definition loading from `~/.0xkobold/agents/`
-- [ ] Project-specific agents (`.0xkobold/agents/`)
+### ✅ Completed in 0.0.6
 
-### Developer Experience
-- [ ] Better agent debugging output
+- [x] **Real-time Streaming** - TUI output streaming with live updates
+- [x] **Error Classification** - Structured errors with suggestions  
+- [x] **Result Merging** - concatenate, summary, structured strategies
+- [x] **Custom Agent Loading** - User and project agent support
+- [x] **Agent Creation** - `/agent-create` command with templates
+
+### Still To Do
 - [ ] Agent result persistence
+- [ ] Better agent debugging output  
 - [ ] Workspace-specific memory
 
 ---
