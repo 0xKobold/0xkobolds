@@ -90,6 +90,9 @@ function verifyExtensions(): string[] {
     // Integrations
     '--extension', ext('mcp-extension'),
     '--extension', ext('gateway-extension'),
+    '--extension', ext('agent-workspace-extension'),
+    '--extension', ext('agent-lifecycle-extension'),
+    '--extension', ext('autonomous-subagent-extension'),
     '--extension', ext('agent-registry-extension'),
     '--extension', ext('websearch-extension'),
     '--extension', ext('memory-extension'),

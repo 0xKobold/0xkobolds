@@ -1,0 +1,14 @@
+THE PROBLEM:
+TypeScript is inferring union types for tool execute() returns that are
+too complex and incompatible.
+
+THE SOLUTION:
+Add TypeScript comment directives to disable strict type checking for
+complex tool return types.
+
+Add at top of files:
+// @ts-nocheck for the specific lines
+// or use 'as any' for details field
+
+Or use explicit return type annotation:
+async execute(...): Promise<AgentToolResult<any>> {
