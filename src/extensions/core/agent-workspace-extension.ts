@@ -401,18 +401,8 @@ export default async function agentWorkspaceExtension(pi: ExtensionAPI) {
     },
   });
   
-  // COMMAND: /agents (replaces /subagents)
-  pi.registerCommand("agents", {
-    description: "List main agent workspaces",
-    handler: async (_args: string, ctx: ExtensionContext) => {
-      // This command will be enhanced by agent-lifecycle-extension
-      const list = Array.from(agents.entries()).map(([name, info]) => 
-        `- ${name}: ${info.status} (${info.config.capabilities.length} capabilities)`
-      ).join('\n');
-      
-      ctx.ui.notify(`🤖 Main Agents (${agents.size}):\n${list}`, 'info');
-    },
-  });
+  // Note: /agents command removed - use agent-orchestrator-extension instead
+  // This extension provides the advanced_web_fetch tool
   
   // COMMAND: /agent-init
   pi.registerCommand("agent-init", {
