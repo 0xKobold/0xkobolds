@@ -23,6 +23,9 @@ import { registerDiscordCli } from "./extensions/discord.js";
 import { registerHeartbeatCli } from "./extensions/heartbeat.js";
 import { registerEnvCli } from "./extensions/env.js";
 
+// v0.2.0: Embedded mode
+import { createEmbeddedCommand } from "./commands/embedded.js";
+
 export function createCli(): Command {
   const program = new Command("0xkobold")
     .version(version || "1.0.0")
@@ -48,6 +51,7 @@ export function createCli(): Command {
 
   // Extension CLIs
   registerDiscordCli(program);
+  program.addCommand(createEmbeddedCommand());
   registerHeartbeatCli(program);
   registerEnvCli(program);
 
