@@ -62,17 +62,23 @@
 - [ ] Natural language triggers for subagents
 - [ ] Agent persona guides natural detection
 
-### 2.2 Heartbeat System
-- [ ] Scheduled check-ins (`HEARTBEAT.md`)
-- [ ] Proactive notifications
-- [ ] Cron-based activation
-- [ ] Idle detection and "nurture" prompts
+### 2.2 Heartbeat System ✅
+**Status:** Complete
 
-### 2.3 Mode System Enhancement
+- [x] Scheduled check-ins (`HEARTBEAT.md`) - morning/evening
+- [x] Proactive notifications with smart timing
+- [x] Cron-based activation
+- [x] Idle detection and "nurture" prompts
+- [x] Quiet hours support
+
+### 2.3 Mode System Enhancement ✅
+**Status:** Complete
+
 - [x] Plan mode (read-only) ✅ Done
 - [x] Build mode (full tools) ✅ Done
-- [ ] Natural mode switching based on context
-- [ ] Auto-detect when to switch modes
+- [x] Natural mode switching based on context
+- [x] Auto-detect when to switch modes
+- [x] Confidence scoring (auto >80%, suggest 50-80%)
 
 ---
 
