@@ -16,3 +16,10 @@ export type { TaskRequest, TaskRouterResult } from "./task-router.js";
 // Agent Tools (v0.2.0)
 export { spawnAgent, spawnAgents, getSpawnAgentToolConfig, executeSpawnAgent } from "./tools/index.js";
 export type { SpawnAgentParams, SpawnAgentResult } from "./tools/index.js";
+
+// User Profile (Phase 1.2)
+export { loadUserProfile, saveUserProfile, learnPreference, ensureUserProfile, getUserPreferencesForPrompt } from "./user-profile.js";
+export type { UserProfile, UserPreferences, LearnedPreferences, Workflow } from "./user-profile.js";
+
+// Dynamic Personality (Phase 1.2)
+export { loadPersonalityState, savePersonalityState, recordInteraction, adaptPersonality, getDynamicPersona, getPersonalityInsights, resetPersonality } from "./dynamic-personality.js";
