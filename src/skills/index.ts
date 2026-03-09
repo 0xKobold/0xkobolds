@@ -19,6 +19,9 @@ export {
   webResearchSkill,
 } from "./builtin/real-workers.js";
 
+// Duplicate Detection Skill (v0.3.0)
+export { DuplicateDetector, getDuplicateDetector } from "./builtin/duplicate-detector.js";
+
 // Backwards compatibility - mock skills now redirect to real workers
 export { nextjsWorkerSkill as nextjsWorkerMock } from "./builtin/nextjs-worker.js";
 export { sqlWorkerSkill as sqlWorkerMock } from "./builtin/sql-worker.js";
