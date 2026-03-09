@@ -27,9 +27,9 @@
 - [x] MEMORY.md generation from memories
 - [x] Per-project memory isolation
 
-### 1.2 Persona System
-- [ ] `SOUL.md` - Personality, tone, boundaries
-- [ ] `IDENTITY.md` - Name, vibe, emoji
+### 1.2 Persona System ✅
+- [x] `SOUL.md` - Personality, tone, boundaries
+- [x] `IDENTITY.md` - Name, vibe, emoji
 - [ ] `USER.md` - User profile (learned and explicit)
 - [ ] Dynamic personality that adapts over time
 
