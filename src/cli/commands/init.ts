@@ -1,12 +1,13 @@
 /**
  * 0xKobold Init Command
  * 
- * Sets up the workspace with Kobold identity and Ollama Cloud defaults.
+ * Sets up the workspace with existing persona system (v0.2.0).
+ * Integrates with IDENTITY.md, USER.md, SOUL.md, AGENT.md.
  * No immediate API key required - works out of the box.
  */
 
 import { Command } from "commander";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -35,76 +36,10 @@ async function ask(question: string, defaultValue: string = ""): Promise<string>
 const GLOBAL_KOBOLD_DIR = join(homedir(), ".0xkobold");
 const GLOBAL_DB_PATH = join(GLOBAL_KOBOLD_DIR, "kobold.db");
 const GLOBAL_CONFIG_PATH = join(GLOBAL_KOBOLD_DIR, "config.json");
-const GLOBAL_MEMORY_PATH = join(GLOBAL_KOBOLD_DIR, "MEMORY.md");
+
+// Local workspace
 const LOCAL_KOBOLD_DIR = ".0xkobold";
 const LOCAL_DB_PATH = join(LOCAL_KOBOLD_DIR, "workspace.db");
-const LOCAL_MEMORY_PATH = join(LOCAL_KOBOLD_DIR, "MEMORY.md");
-
-// 0xKobold Persona Template - Customizable
-const KOBOLD_PERSONA_TEMPLATE = `# {{agentName}} Identity
-
-## Name
-{{agentName}}
-
-## Role
-{{agentRole}}
-
-## Mission
-{{agentMission}}
-
-## Personality
-- Helpful and direct
-- {{personalityTrait}}
-- Values clean code and efficiency
-- Prefers working solutions over perfect ones
-
-## Capabilities
-- File operations with safety checks
-- Shell command execution (with blocks)
-- Multi-channel communication (Telegram, Slack, WhatsApp)
-- Docker sandboxing for safe execution
-- Semantic memory with SQLite
-- Agent spawning for parallel tasks
-- Gateway server for remote access
-
-## Default Behavior
-- LLM: Ollama Cloud ({{model}})
-- Mode: build (unless investigating)
-- Auto-compact on context overflow
-- Proactive duplicate detection
-
-## Style
-- Concise responses for simple tasks
-- Detailed breakdowns for complex ones
-- Code blocks with language tags
-- Error handling with actionable fixes
-`;
-
-// User memory template with customization
-const MEMORY_TEMPLATE = `# {{agentName}} Memory
-
-## User Profile
-- Name: {{userName}}
-- Background: {{userBackground}}
-- Goals: {{userGoals}}
-- Preferences: {{userPreferences}}
-
-## Agent Context
-- Created: {{timestamp}}
-- Purpose: {{agentMission}}
-
-## Conversations
-
-### Session: {{timestamp}}
-- Context: Initial setup
-- Topics: 
-
-## Learned Patterns
-
-## Active Tasks
-
-## Notes
-`;
 
 // Default config - Ollama Cloud ready
 const DEFAULT_CONFIG = {
@@ -244,34 +179,137 @@ export const initCommand = new Command("init")
         db.close();
         console.log("✓ Database initialized");
 
-        // Create personalized Kobold persona
-        const personaContent = KOBOLD_PERSONA_TEMPLATE
-          .replace(/\{\{agentName\}\}/g, agentName)
-          .replace(/\{\{agentRole\}\}/g, agentRole)
-          .replace(/\{\{agentMission\}\}/g, agentMission)
-          .replace(/\{\{personalityTrait\}\}/g, personalityTrait)
-          .replace(/\{\{model\}\}/g, model);
-        
-        await writeFile(
-          join(GLOBAL_KOBOLD_DIR, "persona.md"),
-          personaContent,
-          "utf-8"
-        );
-        console.log(`✓ ${agentName} persona created`);
-
-        // Create personalized memory template
+          // Create persona files (v0.2.0 system)
         const timestamp = new Date().toISOString();
-        const memoryContent = MEMORY_TEMPLATE
-          .replace(/\{\{agentName\}\}/g, agentName)
-          .replace(/\{\{userName\}\}/g, userName)
-          .replace(/\{\{userBackground\}\}/g, userBackground || "Not specified")
-          .replace(/\{\{userGoals\}\}/g, userGoals || "Not specified")
-          .replace(/\{\{userPreferences\}\}/g, userPreferences || "Not specified")
-          .replace(/\{\{timestamp\}\}/g, timestamp)
-          .replace(/\{\{agentMission\}\}/g, agentMission);
         
-        await writeFile(GLOBAL_MEMORY_PATH, memoryContent, "utf-8");
-        console.log("✓ Memory saved");
+        // IDENTITY.md - Agent identity
+        const identityContent = `# IDENTITY
+
+**Name:** ${agentName}
+**Emoji:** 🐉
+**Tagline:** ${agentMission}
+**Role:** ${agentRole}
+
+## Tone
+- ${personalityTrait}
+- Uses emojis occasionally 🎉
+- Celebrates wins with enthusiasm
+- Gentle with mistakes
+`;
+        await writeFile(join(GLOBAL_KOBOLD_DIR, "IDENTITY.md"), identityContent, "utf-8");
+        console.log(`✓ IDENTITY.md created`);
+        
+        // SOUL.md - Agent soul/personality
+        const soulContent = `# SOUL - Agent Personality
+
+## Identity
+**Name:** ${agentName}
+**Role:** ${agentRole}
+**Vibe:** ${personalityTrait}
+
+## Tone
+- Style: Clear and conversational
+- Formality: Casual but respectful
+- Humor: Light and appropriate
+
+## Core Values
+- Helpfulness: ${agentMission}
+- Honesty: Be truthful about capabilities
+- Learning: Improve from every interaction
+
+## Guidelines
+- Ask clarifying questions when needed
+- Provide examples when helpful
+- Admit when unsure or need more info
+`;
+        await writeFile(join(GLOBAL_KOBOLD_DIR, "SOUL.md"), soulContent, "utf-8");
+        console.log(`✓ SOUL.md created`);
+        
+        // USER.md - User profile
+        const userContent = `# User Profile
+
+## Identity
+- **Name**: ${userName || "Developer"}
+- **Role**: ${userBackground || "Not specified"}
+- **Goals**: ${userGoals || "Not specified"}
+- **Preferences**: ${userPreferences || "Not specified"}
+
+## Working Style
+- Collaborative and iterative
+- Values clean, maintainable code
+
+## Context
+- Using 0xKobold with ${model}
+- Setup: ${timestamp}
+
+## Notes
+Add any personal notes here...
+`;
+        await writeFile(join(GLOBAL_KOBOLD_DIR, "USER.md"), userContent, "utf-8");
+        console.log(`✓ USER.md created`);
+        
+        // AGENT.md - Agent behavior config
+        const agentContent = `# Agent Configuration
+
+## Default Behavior
+- Model: ${model}
+- Understand the problem before proposing solutions
+- Ask clarifying questions when needed
+- Provide options with trade-offs
+- Write maintainable, readable code
+
+## Code Standards
+- Preferred: TypeScript/Bun
+- Style: Clean, documented
+- Testing: Include where appropriate
+
+## Communication Style
+- ${personalityTrait}
+- Clear explanations with examples
+- Honest about limitations
+
+## Tool Usage
+- Safe file operations
+- Sandbox for risky commands
+- Gateway for remote access
+`;
+        await writeFile(join(GLOBAL_KOBOLD_DIR, "AGENT.md"), agentContent, "utf-8");
+        console.log(`✓ AGENT.md created`);
+        
+        // MEMORY.md - Long-term memory template
+        const memoryContent = `# Long-term Memory
+
+## User Profile
+- Name: ${userName || "Developer"}
+- Background: ${userBackground || "Not specified"}
+- Goals: ${userGoals || "Not specified"}
+- Preferences: ${userPreferences || "Not specified"}
+
+## Agent Context
+- Name: ${agentName}
+- Purpose: ${agentMission}
+- Model: ${model}
+- Created: ${timestamp}
+
+## Conversations
+
+### Session: ${timestamp}
+- Context: Initial setup
+- Topics: 
+
+## Learned Patterns
+
+## Known Preferences
+- Preferred model: ${model}
+- Agent personality: ${personalityTrait}
+
+## Recent Context
+[Updated with current project state]
+
+## Notes
+`;
+        await writeFile(join(GLOBAL_KOBOLD_DIR, "MEMORY.md"), memoryContent, "utf-8");
+        console.log(`✓ MEMORY.md created`);
 
         // Write config with personalized model
         const config = {
@@ -328,22 +366,33 @@ export const initCommand = new Command("init")
         localDb.close();
         console.log("✓ Workspace DB initialized");
 
-        await writeFile(LOCAL_MEMORY_PATH, MEMORY_TEMPLATE, "utf-8");
+        // Simple local memory template
+        const localMemoryContent = `# Project Memory
+
+## Context
+Project-specific context goes here.
+
+## Notes
+`;
+        await writeFile(join(LOCAL_KOBOLD_DIR, "MEMORY.md"), localMemoryContent, "utf-8");
       }
 
       console.log("\n🎉 " + agentName + " is ready!");
       console.log("\n📁 Locations:");
       console.log(`   Config:  ${GLOBAL_CONFIG_PATH}`);
       console.log(`   Data:    ${GLOBAL_DB_PATH}`);
-      console.log(`   Persona: ${GLOBAL_KOBOLD_DIR}/persona.md`);
+      console.log(`   Persona: ${GLOBAL_KOBOLD_DIR}/IDENTITY.md, SOUL.md, USER.md, AGENT.md`);
       console.log(`\n\n🚀 Quick Start:`);
       console.log(`   0xkobold chat                 # Chat with ${agentName}`);
       console.log("   0xkobold gateway start        # Start web gateway");
       console.log("   0xkobold daemon               # Start background daemon");
+      console.log("\n🎭 Manage persona:");
+      console.log("   0xkobold persona list         # List persona files");
+      console.log("   0xkobold persona show         # View all personas");
+      console.log("   0xkobold persona edit IDENTITY.md  # Customize identity");
       console.log("\n🔧 To add API keys for paid models:");
       console.log("   export CLOUD_API_KEY=your_key");
       console.log("   # Or edit ~/.0xkobold/config.json");
-      console.log("\n💡 Tip: Add your projects with: 0xkobold projects add /path/to/project");
 
     } catch (error) {
       console.error("❌ Init failed:", error);
