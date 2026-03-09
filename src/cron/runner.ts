@@ -6,6 +6,40 @@
  */
 
 import { CronJob, JobResult } from "./types.js";
+import { OllamaProvider, AnthropicProvider } from "../llm/index.js";
+import type { LLMProvider, Message } from "../llm/types.js";
+
+// Provider cache
+const providers: Map<string, LLMProvider> = new Map();
+
+/**
+ * Get or create provider for a model
+ */
+function getProvider(model: string): LLMProvider {
+  // Extract provider prefix (e.g., "ollama/", "claude/", "openai/")
+  const [providerName] = model.split('/');
+  
+  if (providers.has(providerName)) {
+    return providers.get(providerName)!;
+  }
+  
+  let provider: LLMProvider;
+  
+  switch (providerName) {
+    case 'ollama':
+      provider = new OllamaProvider();
+      break;
+    case 'claude':
+      provider = new AnthropicProvider();
+      break;
+    default:
+      // Default to Ollama for unknown providers
+      provider = new OllamaProvider();
+  }
+  
+  providers.set(providerName, provider);
+  return provider;
+}
 
 /**
  * Run a job based on its session type
@@ -42,47 +76,58 @@ export async function runJobRunner(job: CronJob): Promise<JobResult> {
  */
 async function runIsolatedSession(job: CronJob): Promise<JobResult> {
   const sessionId = `cron:${job.id}`;
+  const model = job.model || "kimi-k2.5:cloud";
   
-  console.log(`[CronRunner] Isolated session: ${sessionId}`);
-  
-  // TODO: Integrate with actual LLM provider
-  // For now, placeholder implementation
+  console.log(`[CronRunner] Isolated session: ${sessionId}, model: ${model}`);
   
   const startTime = Date.now();
   
   try {
-    // This is where you'd call the LLM with:
-    // - Fresh context
-    // - Job.model override (if specified)
-    // - Job.message as the prompt
-    // - Job.thinkingLevel if specified
+    const provider = getProvider(model);
     
-    const model = job.model || "kimi-k2.5:cloud";
+    // Build system prompt with persona context if available
+    const systemPrompt = buildSystemPrompt(job);
     
-    // Placeholder: In real implementation, this would call your LLM provider
-    const result = await executeLLMCall({
-      sessionId,
+    // Build messages
+    const messages: Message[] = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: job.message },
+    ];
+    
+    // Determine temperature and max tokens based on thinking level
+    const temperature = getTemperature(job.thinkingLevel);
+    const maxTokens = getMaxTokens(job.thinkingLevel);
+    
+    // Call LLM
+    const response = await provider.chat({
       model,
-      message: job.message,
-      thinkingLevel: job.thinkingLevel,
-      workingDir: job.workingDir,
-      tokenLimit: job.tokenLimit,
+      messages,
+      temperature,
+      maxTokens,
+      stream: false,
     });
+    
+    const duration = Date.now() - startTime;
     
     return {
       success: true,
-      output: result.output,
-      tokensUsed: result.tokensUsed,
-      duration: Date.now() - startTime,
+      output: response.content,
+      tokensUsed: response.usage?.inputTokens || 0 + (response.usage?.outputTokens || 0),
+      duration,
     };
     
   } catch (error) {
+    const duration = Date.now() - startTime;
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    
+    console.error(`[CronRunner] Isolated session error: ${errorMsg}`);
+    
     return {
       success: false,
       output: "",
       tokensUsed: 0,
-      duration: Date.now() - startTime,
-      error: error instanceof Error ? error.message : String(error),
+      duration,
+      error: errorMsg,
     };
   }
 }
@@ -99,67 +144,84 @@ async function runMainSession(job: CronJob): Promise<JobResult> {
   const startTime = Date.now();
   
   try {
-    // TODO: Integrate with main session
-    // This would:
-    // 1. Emit an event that the main session picks up
-    // 2. Main session processes the job
-    // 3. Result is returned
+    // For now, treat main session as isolated but flag it
+    // TODO: Integrate with actual main session context
+    const result = await runIsolatedSession(job);
     
-    // For now, treat as isolated but with different logging
-    return await runIsolatedSession(job);
+    // Mark as main session in output
+    return {
+      ...result,
+      output: `[Scheduled Task]\n${result.output}`,
+    };
     
   } catch (error) {
+    const duration = Date.now() - startTime;
+    
     return {
       success: false,
       output: "",
       tokensUsed: 0,
-      duration: Date.now() - startTime,
+      duration,
       error: error instanceof Error ? error.message : String(error),
     };
   }
 }
 
 /**
- * Execute LLM call (placeholder)
- * 
- * TODO: Integrate with your actual LLM provider (Ollama, Claude, etc.)
- * This should:
- * 1. Load the appropriate provider based on model
- * 2. Set up isolated context
- * 3. Execute the prompt
- * 4. Return tokens used and cost
+ * Build system prompt for isolated sessions
  */
-interface LLMCallOptions {
-  sessionId: string;
-  model: string;
-  message: string;
-  thinkingLevel?: 'fast' | 'normal' | 'deep';
-  workingDir?: string;
-  tokenLimit?: number;
+function buildSystemPrompt(job: CronJob): string {
+  const parts: string[] = [
+    `You are 0xKobold, an AI coding assistant running as a scheduled task.`,
+    ``,
+    `Task: ${job.name}`,
+    `Session Type: ${job.session}`,
+    `Model: ${job.model || "default"}`,
+  ];
+  
+  if (job.thinkingLevel) {
+    parts.push(`Thinking Level: ${job.thinkingLevel}`);
+  }
+  
+  parts.push(`
+Guidelines:
+- Be concise but complete
+- Focus on the specific task requested
+- If you need tools, use them appropriately
+- Report any errors clearly
+`);
+  
+  return parts.join('\n');
 }
 
-interface LLMCallResult {
-  output: string;
-  tokensUsed: number;
-  cost?: number;
+/**
+ * Get temperature based on thinking level
+ */
+function getTemperature(level?: string): number {
+  switch (level) {
+    case 'fast':
+      return 0.3; // More deterministic
+    case 'deep':
+      return 0.8; // More creative
+    case 'normal':
+    default:
+      return 0.7;
+  }
 }
 
-async function executeLLMCall(options: LLMCallOptions): Promise<LLMCallResult> {
-  // TODO: Replace with actual LLM integration
-  // This is a placeholder that simulates execution
-  
-  console.log(`[CronRunner] Executing LLM call:`);
-  console.log(`  Model: ${options.model}`);
-  console.log(`  Message: ${options.message.substring(0, 100)}...`);
-  
-  // Simulate processing
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  
-  return {
-    output: `[Cron Job Result]\\nExecuted at ${new Date().toISOString()}\\n\\n${options.message.substring(0, 200)}...`,
-    tokensUsed: Math.floor(Math.random() * 500) + 100,
-    cost: 0.001,
-  };
+/**
+ * Get max tokens based on thinking level
+ */
+function getMaxTokens(level?: string): number {
+  switch (level) {
+    case 'fast':
+      return 1024;
+    case 'deep':
+      return 4096;
+    case 'normal':
+    default:
+      return 2048;
+  }
 }
 
 /**
