@@ -2,7 +2,40 @@
 
 All notable changes to 0xKobold will be documented in this file.
 
-## [Unreleased] - 0.0.6
+## [0.1.0] - 2026-03-08 - Milestone Release 🎯
+
+### Versioning Reset
+We're moving to proper semantic versioning:
+- **X.Y.Z** where X=0 (pre-1.0)
+- **Y** = features (may have breaking changes)
+- **Z** = bug fixes
+
+This is 0.1.0 because the subagent system is stable and the foundation is solid.
+
+### Subagent System (from 0.0.5-0.0.6)
+Spawn parallel sub-agents with isolated context:
+- Real-time streaming support in TUI mode
+- Error classification with suggestions
+- Result merging strategies (concatenate, summary, structured)
+- Custom agent loading (user + project agents)
+- `/subagent-create` command for custom agents
+- Scope indicators: 🔧 built-in, 👤 user, 📁 project
+
+### Bug Fixes
+- **Fixed perennial memory crash** on fresh installs (missing _metadata table)
+
+### Commands
+- `/subagents` - List agents with scope info
+- `/subagent-create <name>` - Create custom agent
+- `/implement` - Scout → planner → worker workflow
+- `/scout-and-plan` - Scout → planner workflow
+- `/parallel` - Run agents in parallel
+
+### Previous Versions
+- 0.0.1-0.0.4: Foundation (VPS, memory, setup)
+- 0.0.5-0.0.6: Subagent system development
+
+## [0.0.6] - 2026-03-08
 
 ### Subagent System v0.0.6 - Polish & Refinement 🎨
 - **New**: Real-time streaming support in TUI mode
