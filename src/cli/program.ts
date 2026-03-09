@@ -34,6 +34,9 @@ import { createTelegramCommand } from "./commands/telegram.js";
 // v0.3.0: Duplicate check
 import { checkCommand } from "./commands/check.js";
 
+// v0.3.0: Tailscale
+import { createTailscaleCommand } from "./commands/tailscale.js";
+
 // v0.2.0: Embedded mode
 import { createEmbeddedCommand } from "./commands/embedded.js";
 
@@ -61,6 +64,9 @@ export function createCli(): Command {
   
   // v0.3.0: Telegram integration
   program.addCommand(createTelegramCommand());
+  
+  // v0.3.0: Tailscale VPN
+  program.addCommand(createTailscaleCommand());
   
   // v0.3.0: Duplicate detection
   program.addCommand(checkCommand);
