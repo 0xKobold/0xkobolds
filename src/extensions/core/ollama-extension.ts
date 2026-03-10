@@ -462,19 +462,16 @@ export default async function ollamaExtension(pi: ExtensionAPI): Promise<void> {
       models = [createModel("llama3.2", "ollama", { label: "Install: ollama pull llama3.2" })];
     }
 
-    // Debug: log all models being registered
-    console.log("[Ollama] Registering models:");
-    models.forEach(m => {
-      console.log(`  - id: ${m.id}, name: ${m.name}, provider: ollama`);
-    });
-
-    // Determine baseUrl: use cloud if API key provided, else local
-    const effectiveBaseUrl = CONFIG.API_KEY ? CONFIG.CLOUD_URL : CONFIG.LOCAL_URL;
-    console.log(`[Ollama] Using ${CONFIG.API_KEY ? 'cloud' : 'local'} endpoint: ${effectiveBaseUrl}`);
+    // Determine endpoint: cloud if API key exists, else local
+    const hasApiKey = !!CONFIG.API_KEY;
+    const effectiveBaseUrl = hasApiKey ? CONFIG.CLOUD_URL : CONFIG.LOCAL_URL;
+    const effectiveApiKey = hasApiKey ? CONFIG.API_KEY : "ollama-local";
+    
+    console.log(`[Ollama] Using ${hasApiKey ? 'cloud' : 'local'} endpoint: ${effectiveBaseUrl}`);
 
     pi.registerProvider("ollama", {
       baseUrl: effectiveBaseUrl,
-      apiKey: CONFIG.API_KEY || "ollama",
+      apiKey: effectiveApiKey,
       api: "anthropic-messages",
       models,
     });
