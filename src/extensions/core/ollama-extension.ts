@@ -274,14 +274,20 @@ class ModelService {
       ...this.cloudModels.map(m => m.id),
     ]);
 
-    if (CONFIG.DEFAULT_MODEL && !existingIds.has(CONFIG.DEFAULT_MODEL)) {
-      models.push(createModel(CONFIG.DEFAULT_MODEL, "ollama", { label: "Configured Default" }));
+    // Strip 'ollama/' prefix from DEFAULT_MODEL if present
+    const defaultModelName = CONFIG.DEFAULT_MODEL?.replace(/^ollama\//, "");
+    if (defaultModelName && !existingIds.has(defaultModelName)) {
+      const isCloudModel = defaultModelName.includes(":cloud");
+      models.push(createModel(defaultModelName, "ollama", { label: "Configured Default", isCloud: isCloudModel }));
     }
 
     for (const custom of CONFIG.CUSTOM_MODELS) {
-      const name = typeof custom === "string" ? custom : custom.name;
+      let name = typeof custom === "string" ? custom : custom.name;
+      // Strip 'ollama/' prefix if present
+      name = name.replace(/^ollama\//, "");
       if (!existingIds.has(name)) {
-        models.push(createModel(name, "ollama", { label: "Custom" }));
+        const isCloudModel = name.includes(":cloud");
+        models.push(createModel(name, "ollama", { label: "Custom", isCloud: isCloudModel }));
       }
     }
 
