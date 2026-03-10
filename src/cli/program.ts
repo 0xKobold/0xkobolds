@@ -35,8 +35,11 @@ import { createTelegramCommand } from "./commands/telegram.js";
 // v0.4.0: Cron
 import { cronCommand } from "./commands/cron.js";
 
-// v0.3.0: Migration
 import { migrateCommand } from "./commands/migrate.js";
+import { migrateFromOpenClawCommand } from "./commands/migrate-from-openclaw.js";
+
+// Add subcommand
+migrateCommand.addCommand(migrateFromOpenClawCommand);
 
 // v0.3.0: Duplicate check
 import { checkCommand } from "./commands/check.js";
