@@ -52,9 +52,8 @@ function createModel(name: string, prefix: string, options: { label?: string; is
     lowerName.includes(kw)
   );
 
-  // Model ID is just the name - no prefixes, no :cloud suffix
-  // Cloud vs local is determined by baseUrl in provider config
-  const modelId = name;
+  // Cloud models use :cloud suffix (Ollama convention)
+  const modelId = isCloud ? `${name}:cloud` : name;
   
   // Vision models support both text and image input
   const inputTypes: ("text" | "image")[] = isVision ? ["text", "image"] : ["text"];
