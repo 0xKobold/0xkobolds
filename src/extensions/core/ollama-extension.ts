@@ -40,18 +40,31 @@ function createModel(name: string, prefix: string, options: { label?: string; is
   const { label = "", isCloud = false } = options;
   const displayName = label ? `${name} (${label})` : name;
   
-  const isReasoning = ["coder", "r1", "deepseek", "kimi", "think"].some(kw => 
-    name.toLowerCase().includes(kw)
+  const lowerName = name.toLowerCase();
+  
+  // Detect reasoning capability
+  const isReasoning = ["coder", "r1", "deepseek", "kimi", "think", "reason"].some(kw => 
+    lowerName.includes(kw)
+  );
+  
+  // Detect vision capability (models that can process images)
+  const isVision = ["vision", "vl", "multimodal", "gpt-4", "claude-3", "llava", "bakllava", "moondream", "llava-phi3"].some(kw =>
+    lowerName.includes(kw)
   );
 
   // Cloud models have :cloud suffix in their ID
   const modelId = isCloud ? `${prefix}/${name}:cloud` : `${prefix}/${name}`;
+  
+  // Vision models support both text and image input
+  const inputTypes: ("text" | "image")[] = isVision ? ["text", "image"] : ["text"];
+  
+  const visionLabel = isVision ? "👁️ " : "";
 
   return {
     id: modelId,
-    name: isCloud ? `${displayName} ☁️` : displayName,
+    name: isCloud ? `${visionLabel}${displayName} ☁️` : `${visionLabel}${displayName}`,
     reasoning: isReasoning,
-    input: ["text"] as ("text" | "image")[],
+    input: inputTypes,
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: 128000,
     maxTokens: 8192,
@@ -296,12 +309,16 @@ function registerCommands(pi: ExtensionAPI, service: ModelService): void {
   pi.registerCommand("ollama-status", {
     description: "Show Ollama status and models",
     handler: async () => {
+      const allModels = service.getAllModels();
+      const visionModels = allModels.filter(m => m.input.includes("image"));
+      
       const lines = [
         "🤖 Ollama Status",
         `Local: ${service.hasLocal ? "✅ Connected" : "❌ Not detected"}`,
         `Cloud: ${service.hasCloud ? "✅ Authenticated" : CONFIG.API_KEY ? "⚠️ Invalid Key" : "Not Configured"}`,
         "",
-        `Models: ${service.getAllModels().length} available`,
+        `Models: ${allModels.length} available`,
+        ...(visionModels.length > 0 ? [`👁️ Vision models: ${visionModels.length}`] : []),
         ...(service.getLocalModels().length > 0 ? ["", "Local:"] : []),
         ...service.getLocalModels().slice(0, 10).map(m => `  • ${m.name}`),
         ...(service.getCloudModels().length > 0 ? ["", "Cloud:"] : []),
