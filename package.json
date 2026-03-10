@@ -73,6 +73,7 @@
   "private": false,
   "files": [
     "dist",
+    "scripts/migrate-from-openclaw.sh",
     "scripts/postinstall.js",
     "README.md",
     "LICENSE",
