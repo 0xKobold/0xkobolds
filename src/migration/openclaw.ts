@@ -204,16 +204,16 @@ class OpenClawMigration {
 
       // Save main config
       if (!this.config.dryRun) {
-        const configPath = path.join(this.config.targetPath, "config.json");
+        const configPath = path.join(this.config.targetPath, "0xkobold.json");
         await fs.writeFile(configPath, JSON.stringify(targetConfig, null, 2), "utf-8");
         await fs.chmod(configPath, 0o600);
 
-        // Create backup (OpenClaw style)
-        const configBakPath = path.join(this.config.targetPath, "config.json.bak");
+        // Create backup
+        const configBakPath = path.join(this.config.targetPath, "0xkobold.json.bak");
         await fs.writeFile(configBakPath, JSON.stringify(targetConfig, null, 2), "utf-8");
       }
 
-      this.result.migrated.push("config");
+      this.result.migrated.push("0xkobold.json");
       this.log("✅", "Configuration migrated with backup");
     } catch (error) {
       this.result.errors.push(`Config migration failed: ${error}`);
@@ -595,7 +595,7 @@ class OpenClawMigration {
       },
 
       _migrationNotes: [
-        "Review LLM API keys in config.json",
+        "Review LLM API keys in 0xkobold.json",
         "Verify Discord token if enabled",
         "Check remote gateway URL if configured",
         "Database converted on first run",

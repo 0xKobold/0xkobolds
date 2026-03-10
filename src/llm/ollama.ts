@@ -1,116 +1,72 @@
 /**
- * Ollama Provider
- *
- * Local LLM via Ollama HTTP API.
+ * Ollama LLM Provider
+ * 
+ * Unified local + cloud support via ollama-extension.ts
+ * Routing logic is now handled in the extension, this provider
+ * just makes the actual API calls.
  */
 
 import type { LLMProvider, ChatOptions, ChatResponse, Message } from './types';
-import { shouldUseCloud } from '../extensions/core/ollama-router-extension';
+import { 
+  getOllamaBaseUrl, 
+  getOllamaApiKey, 
+  checkLocalOllama,
+  modelRequiresApiKey 
+} from '../extensions/core/ollama-extension';
 
-const LOCAL_BASE_URL = process.env.OLLAMA_URL ?? 'http://localhost:11434';
-const CLOUD_BASE_URL = 'https://ollama.com';
-
-/**
- * Get Ollama base URL based on mode
- */
-function getOllamaBaseUrl(): string {
-  return shouldUseCloud() ? CLOUD_BASE_URL : LOCAL_BASE_URL;
-}
+// Cloud URL for fallback
+const CLOUD_URL = 'https://ollama.com';
 
 /**
- * Get Ollama API key for cloud mode
- */
-async function getOllamaApiKey(): Promise<string | undefined> {
-  // Will be populated by framework from auth.json
-  return process.env.OLLAMA_API_KEY;
-}
-
-/**
- * Check if Ollama is running (local mode)
- */
-export async function isOllamaRunning(): Promise<boolean> {
-  try {
-    const res = await fetch(`${LOCAL_BASE_URL}/api/tags`, {
-      method: 'GET',
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Check if Ollama Cloud is available
- */
-export async function isOllamaCloudAvailable(): Promise<boolean> {
-  try {
-    const apiKey = await getOllamaApiKey();
-    if (!apiKey) return false;
-    
-    const res = await fetch(`${CLOUD_BASE_URL}/api/tags`, {
-      headers: { 'Authorization': `Bearer ${apiKey}` },
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * List available Ollama models
- */
-export async function listOllamaModels(): Promise<string[]> {
-  try {
-    const baseUrl = getOllamaBaseUrl();
-    const res = await fetch(`${baseUrl}/api/tags`);
-    if (!res.ok) return [];
-
-    const data: any = await res.json();
-    return (data.models ?? []).map((m: any) => m.name);
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Ollama LLM Provider
- * Supports both local (localhost:11434) and cloud (ollama.com) modes
+ * Ollama Provider
+ * Supports both local and cloud modes
  */
 export class OllamaProvider implements LLMProvider {
   name = 'ollama';
-  private baseUrl: string;
+  private baseUrl: string = 'http://localhost:11434';
+  private cloudOnly: boolean = false;
 
-  constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl ?? getOllamaBaseUrl();
+  constructor() {
+    // Check if we have local Ollama
+    this.detectMode();
+  }
+
+  private async detectMode(): Promise<void> {
+    const hasLocal = await checkLocalOllama();
+    this.cloudOnly = !hasLocal;
+    this.baseUrl = hasLocal ? 'http://localhost:11434' : CLOUD_URL;
   }
 
   /**
-   * Update base URL based on current mode
+   * Update base URL based on current mode and model
    */
-  updateBaseUrl(): void {
-    this.baseUrl = getOllamaBaseUrl();
+  private updateBaseUrl(modelId: string): void {
+    // Use the extension's routing logic
+    this.baseUrl = getOllamaBaseUrl(modelId);
+  }
+
+  /**
+   * Check if running in cloud-only mode
+   */
+  isCloudOnly(): boolean {
+    return this.cloudOnly;
   }
 
   async chat(options: ChatOptions): Promise<ChatResponse> {
-    // Ensure we're using correct mode
-    this.updateBaseUrl();
-    
-    const model = options.model.replace('ollama/', '');
-    const isCloud = this.baseUrl === CLOUD_BASE_URL;
+    // Set base URL based on model
+    this.updateBaseUrl(options.model);
+    const isCloud = this.baseUrl === CLOUD_URL || options.model.includes('cloud/');
 
-    // Convert messages to Ollama format
+    // Get model name (strip prefix)
+    const model = options.model.replace(/^ollama\//, '').replace(/^cloud\//, '');
+
+    // Build messages
     const messages = options.messages.map((m: Message) => ({
       role: m.role,
       content: m.content,
-      tool_calls: m.toolCalls?.map(tc => ({
-        function: {
-          name: tc.function.name,
-          arguments: tc.function.arguments,
-        },
-      })),
     }));
 
-    // Build request
+    // Build request body
     const body: any = {
       model,
       messages,
@@ -134,9 +90,9 @@ export class OllamaProvider implements LLMProvider {
       'Content-Type': 'application/json',
     };
     
-    // Add auth header for cloud mode
-    if (isCloud) {
-      const apiKey = await getOllamaApiKey();
+    // Add auth for cloud mode
+    if (isCloud || modelRequiresApiKey(options.model)) {
+      const apiKey = getOllamaApiKey();
       if (apiKey) {
         headers['Authorization'] = `Bearer ${apiKey}`;
       }
@@ -146,10 +102,11 @@ export class OllamaProvider implements LLMProvider {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
+      signal: options.signal,
     });
 
     if (!res.ok) {
-      const err = await res.text();
+      const err = await res.text().catch(() => res.statusText);
       throw new Error(`Ollama ${isCloud ? 'Cloud' : 'Local'} error: ${err}`);
     }
 
@@ -157,36 +114,124 @@ export class OllamaProvider implements LLMProvider {
 
     // Parse tool calls from response
     const toolCalls = data.message?.tool_calls?.map((tc: any) => ({
-      id: `call-${Date.now()}`,
+      id: `call-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       function: {
         name: tc.function?.name ?? tc.function,
-        arguments: tc.function?.arguments ?? {},
+        arguments: typeof tc.function?.arguments === 'string' 
+          ? JSON.parse(tc.function.arguments) 
+          : tc.function?.arguments ?? {},
       },
     }));
+
+    // Calculate usage (Ollama provides eval counts)
+    const usage = {
+      inputTokens: data.prompt_eval_count ?? 0,
+      outputTokens: data.eval_count ?? 0,
+    };
 
     return {
       content: data.message?.content ?? '',
       toolCalls,
       model: options.model,
-      usage: {
-        inputTokens: data.prompt_eval_count ?? 0,
-        outputTokens: data.eval_count ?? 0,
-      },
+      usage,
     };
   }
 
+  async *chatStream(options: ChatOptions): AsyncGenerator<string, void, unknown> {
+    // Set base URL based on model
+    this.updateBaseUrl(options.model);
+    const isCloud = this.baseUrl === CLOUD_URL || options.model.includes('cloud/');
+
+    // Get model name (strip prefix)
+    const model = options.model.replace(/^ollama\//, '').replace(/^cloud\//, '');
+
+    // Build messages
+    const messages = options.messages.map((m: Message) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    const body = {
+      model,
+      messages,
+      stream: true,
+      options: {
+        temperature: options.temperature ?? 0.7,
+        num_predict: options.maxTokens ?? 4096,
+      },
+    };
+
+    // Build headers
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Add auth for cloud mode
+    if (isCloud || modelRequiresApiKey(options.model)) {
+      const apiKey = getOllamaApiKey();
+      if (apiKey) {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      }
+    }
+
+    const res = await fetch(`${this.baseUrl}/api/chat`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: options.signal,
+    });
+
+    if (!res.ok) {
+      const err = await res.text().catch(() => res.statusText);
+      throw new Error(`Ollama ${isCloud ? 'Cloud' : 'Local'} error: ${err}`);
+    }
+
+    if (!res.body) {
+      throw new Error('No response body');
+    }
+
+    // Process stream
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(line => line.trim());
+
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line);
+            if (data.message?.content) {
+              yield data.message.content;
+            }
+          } catch {
+            // Ignore parse errors
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
   async listModels(): Promise<string[]> {
-    this.updateBaseUrl();
-    const isCloud = this.baseUrl === CLOUD_BASE_URL;
+    // Try local first
+    const hasLocal = await checkLocalOllama();
     
     try {
       const headers: Record<string, string> = {};
-      if (isCloud) {
-        const apiKey = await getOllamaApiKey();
+      const url = hasLocal ? 'http://localhost:11434' : CLOUD_URL;
+      
+      if (!hasLocal) {
+        const apiKey = getOllamaApiKey();
         if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
       }
       
-      const res = await fetch(`${this.baseUrl}/api/tags`, { headers });
+      const res = await fetch(`${url}/api/tags`, { headers });
       if (!res.ok) return [];
 
       const data: any = await res.json();
@@ -198,8 +243,27 @@ export class OllamaProvider implements LLMProvider {
 }
 
 /**
+ * Check if Ollama is running (local mode)
+ * Re-exported from extension for compatibility
+ */
+export async function isOllamaRunning(): Promise<boolean> {
+  return checkLocalOllama();
+}
+
+/**
+ * List available Ollama models
+ * Re-exported from extension for compatibility
+ */
+export async function listOllamaModels(): Promise<string[]> {
+  const provider = new OllamaProvider();
+  return provider.listModels();
+}
+
+/**
  * Create default Ollama provider
  */
 export function createOllamaProvider(): OllamaProvider {
   return new OllamaProvider();
 }
+
+export default createOllamaProvider;

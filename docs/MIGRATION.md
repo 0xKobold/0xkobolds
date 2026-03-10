@@ -62,7 +62,7 @@ Check the output for:
 ### 1. Configuration Migration
 
 **Source:** `~/.openclaw/openclaw.json`
-**Target:** `~/.0xkobold/config.json`
+**Target:** `~/.0xkobold/0xkobold.json`
 
 **Migrated Fields:**
 - Gateway port
@@ -79,7 +79,7 @@ Check the output for:
 **After Migration:**
 ```bash
 # Edit and verify
-nano ~/.0xkobold/config.json
+nano ~/.0xkobold/0xkobold.json
 ```
 
 ### 2. Database Migration

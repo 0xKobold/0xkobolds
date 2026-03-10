@@ -42,6 +42,7 @@ export interface ChatOptions {
   temperature?: number;
   maxTokens?: number;
   stream?: boolean;
+  signal?: AbortSignal;
 }
 
 export interface ChatResponse {

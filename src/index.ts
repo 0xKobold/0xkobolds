@@ -54,10 +54,7 @@ function ext(name: string): string {
 function verifyExtensions(): string[] {
   const extensions: string[] = [
     // Infrastructure
-    '--extension', ext('ollama-provider-extension'),
-    '--extension', ext('ollama-cloud-extension'),
-    '--extension', ext('ollama-router-extension'),
-    '--extension', ext('session-bridge-extension'),
+    '--extension', ext('ollama-extension'),
     
     // Core Features
     // Agent Orchestration (Unified - v0.2.0)
