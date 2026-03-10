@@ -52,18 +52,19 @@ function createModel(name: string, prefix: string, options: { label?: string; is
     lowerName.includes(kw)
   );
 
-  // Cloud models have :cloud suffix in their ID, but NO ollama/ prefix
-  // The provider name 'ollama' is already registered separately
-  const modelId = isCloud ? `${name}:cloud` : name;
+  // Model ID is just the name - no prefixes, no :cloud suffix
+  // Cloud vs local is determined by baseUrl in provider config
+  const modelId = name;
   
   // Vision models support both text and image input
   const inputTypes: ("text" | "image")[] = isVision ? ["text", "image"] : ["text"];
   
   const visionLabel = isVision ? "👁️ " : "";
+  const cloudLabel = isCloud ? "☁️ " : "";
 
   return {
     id: modelId,
-    name: isCloud ? `${visionLabel}${displayName} ☁️` : `${visionLabel}${displayName}`,
+    name: `${cloudLabel}${visionLabel}${displayName}`,
     reasoning: isReasoning,
     input: inputTypes,
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
@@ -468,8 +469,12 @@ export default async function ollamaExtension(pi: ExtensionAPI): Promise<void> {
       console.log(`  - id: ${m.id}, name: ${m.name}, provider: ollama`);
     });
 
+    // Determine baseUrl: use cloud if API key provided, else local
+    const effectiveBaseUrl = CONFIG.API_KEY ? CONFIG.CLOUD_URL : CONFIG.LOCAL_URL;
+    console.log(`[Ollama] Using ${CONFIG.API_KEY ? 'cloud' : 'local'} endpoint: ${effectiveBaseUrl}`);
+
     pi.registerProvider("ollama", {
-      baseUrl: service.hasLocal ? CONFIG.LOCAL_URL : CONFIG.CLOUD_URL,
+      baseUrl: effectiveBaseUrl,
       apiKey: CONFIG.API_KEY || "ollama",
       api: "anthropic-messages",
       models,
