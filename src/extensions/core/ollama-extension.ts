@@ -470,15 +470,17 @@ export default async function ollamaExtension(pi: ExtensionAPI): Promise<void> {
 
     // Determine endpoint: cloud if API key exists, else local
     const hasApiKey = !!CONFIG.API_KEY;
-    const effectiveBaseUrl = hasApiKey ? CONFIG.CLOUD_URL : CONFIG.LOCAL_URL;
+    const baseUrl = hasApiKey ? CONFIG.CLOUD_URL : CONFIG.LOCAL_URL;
     const effectiveApiKey = hasApiKey ? CONFIG.API_KEY : "ollama-local";
+    // Use /v1 endpoint for OpenAI compatibility
+    const effectiveBaseUrl = `${baseUrl}/v1`;
     
     console.log(`[Ollama] Using ${hasApiKey ? 'cloud' : 'local'} endpoint: ${effectiveBaseUrl}`);
 
     pi.registerProvider("ollama", {
       baseUrl: effectiveBaseUrl,
       apiKey: effectiveApiKey,
-      api: "anthropic-messages",
+      api: "openai-completions",
       models,
     });
 
