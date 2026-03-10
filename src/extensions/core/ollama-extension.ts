@@ -445,9 +445,9 @@ export default async function ollamaExtension(pi: ExtensionAPI): Promise<void> {
     }
 
     pi.registerProvider("ollama", {
-      baseUrl: service.hasLocal ? CONFIG.LOCAL_URL : CONFIG.CLOUD_URL,
+      baseUrl: service.hasLocal ? `${CONFIG.LOCAL_URL}/v1` : `${CONFIG.CLOUD_URL}/v1`,
       apiKey: CONFIG.API_KEY || "ollama",
-      api: "openai-compatible",
+      api: "openai",
       models,
     });
 
@@ -484,22 +484,31 @@ export function modelRequiresApiKey(modelId: string): boolean {
   return isCloudModel && !!CONFIG.API_KEY;
 }
 
-/** Get base URL for a specific model (handles cloud vs local routing) */
-export function getOllamaBaseUrl(modelId: string): string {
+/** Get base URL for a specific model (handles cloud vs local routing)
+ * @param modelId - the model ID
+ * @param useOpenAiEndpoint - if true, returns /v1 endpoint for OpenAI compatibility
+ */
+export function getOllamaBaseUrl(modelId: string, useOpenAiEndpoint = false): string {
   // Check if it's a cloud model (has :cloud suffix)
   const isCloudModel = modelId.endsWith(":cloud") || modelId.includes("/cloud/");
+  
+  let baseUrl: string;
   
   if (isCloudModel) {
     // Cloud models: use API key/direct URL ONLY if configured
     if (CONFIG.API_KEY) {
-      return CONFIG.CLOUD_URL;
+      baseUrl = CONFIG.CLOUD_URL;
+    } else {
+      // Fall back to local proxy (may work if user logged in via CLI)
+      baseUrl = CONFIG.LOCAL_URL;
     }
-    // Fall back to local proxy (may work if user logged in via CLI)
-    return CONFIG.LOCAL_URL;
+  } else {
+    // Regular local model
+    baseUrl = CONFIG.LOCAL_URL;
   }
   
-  // Regular local model
-  return CONFIG.LOCAL_URL;
+  // Return /v1 endpoint for OpenAI compatibility if requested
+  return useOpenAiEndpoint ? `${baseUrl}/v1` : baseUrl;
 }
 
 /** Get appropriate headers for a model request */
