@@ -52,8 +52,9 @@ function createModel(name: string, prefix: string, options: { label?: string; is
     lowerName.includes(kw)
   );
 
-  // Cloud models have :cloud suffix in their ID
-  const modelId = isCloud ? `${prefix}/${name}:cloud` : `${prefix}/${name}`;
+  // Cloud models have :cloud suffix in their ID, but NO ollama/ prefix
+  // The provider name 'ollama' is already registered separately
+  const modelId = isCloud ? `${name}:cloud` : name;
   
   // Vision models support both text and image input
   const inputTypes: ("text" | "image")[] = isVision ? ["text", "image"] : ["text"];
@@ -194,7 +195,7 @@ async function getCloudModels(): Promise<ProviderModelConfig[]> {
     return data.models.map(m => {
       const paramSize = m.details?.parameter_size || "";
       const label = paramSize ? `(${paramSize})` : "";
-      return createModel(m.name, "ollama/cloud", { label, isCloud: true });
+      return createModel(m.name, "cloud", { label, isCloud: true });
     });
   } catch (err) {
     SecurityLogger.log("cloud_fetch_error", false);
@@ -273,13 +274,13 @@ class ModelService {
       ...this.cloudModels.map(m => m.id),
     ]);
 
-    if (CONFIG.DEFAULT_MODEL && !existingIds.has(`ollama/${CONFIG.DEFAULT_MODEL}`)) {
+    if (CONFIG.DEFAULT_MODEL && !existingIds.has(CONFIG.DEFAULT_MODEL)) {
       models.push(createModel(CONFIG.DEFAULT_MODEL, "ollama", { label: "Configured Default" }));
     }
 
     for (const custom of CONFIG.CUSTOM_MODELS) {
       const name = typeof custom === "string" ? custom : custom.name;
-      if (!existingIds.has(`ollama/${name}`)) {
+      if (!existingIds.has(name)) {
         models.push(createModel(name, "ollama", { label: "Custom" }));
       }
     }
