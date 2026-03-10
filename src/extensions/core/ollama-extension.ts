@@ -64,6 +64,7 @@ function createModel(name: string, prefix: string, options: { label?: string; is
   return {
     id: modelId,
     name: `${cloudLabel}${visionLabel}${displayName}`,
+    api: "openai-completions",  // Force OpenAI API for each model
     reasoning: isReasoning,
     input: inputTypes,
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
