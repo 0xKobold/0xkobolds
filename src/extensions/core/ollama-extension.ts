@@ -462,6 +462,12 @@ export default async function ollamaExtension(pi: ExtensionAPI): Promise<void> {
       models = [createModel("llama3.2", "ollama", { label: "Install: ollama pull llama3.2" })];
     }
 
+    // Debug: log all models being registered
+    console.log("[Ollama] Registering models:");
+    models.forEach(m => {
+      console.log(`  - id: ${m.id}, name: ${m.name}, provider: ollama`);
+    });
+
     pi.registerProvider("ollama", {
       baseUrl: service.hasLocal ? CONFIG.LOCAL_URL : CONFIG.CLOUD_URL,
       apiKey: CONFIG.API_KEY || "ollama",
