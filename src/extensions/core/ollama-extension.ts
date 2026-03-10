@@ -447,7 +447,7 @@ export default async function ollamaExtension(pi: ExtensionAPI): Promise<void> {
     pi.registerProvider("ollama", {
       baseUrl: service.hasLocal ? `${CONFIG.LOCAL_URL}/v1` : `${CONFIG.CLOUD_URL}/v1`,
       apiKey: CONFIG.API_KEY || "ollama",
-      api: "openai",
+      api: "openai-completions",
       models,
     });
 
