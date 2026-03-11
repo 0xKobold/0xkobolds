@@ -41,6 +41,7 @@
   "author": "0xKobold Team",
   "license": "MIT",
   "dependencies": {
+    "@aliou/pi-processes": "^0.6.2",
     "@mariozechner/pi-agent-core": "0.57.1",
     "@mariozechner/pi-coding-agent": "0.57.1",
     "@mariozechner/pi-tui": "0.57.1",
@@ -66,11 +67,11 @@
   },
   "devDependencies": {
     "@types/blessed": "^0.1.27",
+    "@types/bun": "latest",
     "@types/json5": "^2.2.0",
     "@types/node": "^20.19.35",
     "bun-types": "latest",
-    "typescript": "^5.9.3",
-    "@types/bun": "latest"
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=18.0.0",

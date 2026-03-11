@@ -404,13 +404,31 @@ export default async function unifiedOrchestratorExtension(pi: ExtensionAPI) {
   // ============================================================================
   // UNIFIED TOOL: agent_orchestrate
   // ============================================================================
+  
+  /**
+   * ⚠️  OPERATION NAMES REMINDER for AI agents:
+   *
+   * Valid operations (case-sensitive):
+   *   - "spawn_main"      → Start a new main agent
+   *   - "spawn_subagent"  → Spawn a subagent (scout/planner/worker/reviewer)
+   *   - "list"            → List all agents
+   *   - "status"          → Check agent status
+   *   - "stop"            → Stop an agent
+   *   - "analyze"         → Analyze task complexity
+   *   - "delegate"        → Auto-delegate task (NOT "autoDelegate"!)
+   *
+   * ❌ WRONG: operation="autoDelegate"
+   * ✅ CORRECT: operation="delegate"
+   *
+   * For task breakdown (kanban), use task_breakdown tool instead.
+   */
   pi.registerTool({
     name: "agent_orchestrate",
     label: "Unified Agent Orchestration",
-    description: "Single API for all agent operations: spawn main agents, spawn subagents, check status, auto-delegate tasks",
+    description: "Single API for all agent operations: spawn_main, spawn_subagent, list, status, stop, analyze, delegate. NOTE: use 'delegate' NOT 'autoDelegate'",
     parameters: Type.Object({
       operation: Type.String({
-        description: "Operation type: spawn_main, spawn_subagent, list, status, stop, analyze, delegate",
+        description: "Operation: spawn_main | spawn_subagent | list | status | stop | analyze | delegate (NOT autoDelegate!)",
       }),
       // Main agent config
       mainAgent: Type.Optional(Type.String({ description: "Main agent name" })),

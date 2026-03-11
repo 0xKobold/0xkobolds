@@ -659,9 +659,24 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
   // TOOLS
   // ═════════════════════════════════════════════════════════════════
 
+  /**
+   * ⚠️  SCHEMA REMINDER for AI agents:
+   * 
+   * task_breakdown creates KANBAN TASKS (database records), NOT agent assignments.
+   * 
+   * REQUIRED subtask properties:
+   *   - title: string           ← NOT "task", NOT "assignee"
+   *   - description?: string     ← optional details
+   *   - priority?: "low"|"medium"|"high"|"critical"
+   * 
+   * ❌ WRONG: {"assignee": "researcher", "task": "do something"}
+   * ✅ CORRECT: {"title": "Research topic", "description": "...", "priority": "high"}
+   * 
+   * For spawning actual agents, use: agent_orchestrate with operation="spawn_subagent"
+   */
   pi.registerTool({
     name: "task_breakdown",
-    description: "Break down a request into subtasks and create them",
+    description: "Break down a request into kanban subtasks (creates task records, NOT agents). Subtasks need: title (required), description, priority. NOT assignee/task properties.",
     // @ts-ignore TSchema mismatch
     parameters: {
       type: "object",
@@ -669,14 +684,16 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
         request: { type: "string", description: "The original request" },
         subtasks: {
           type: "array",
+          description: "Array of subtask objects. Each MUST have 'title' (not 'task'!), optional 'description', optional 'priority'",
           items: {
             type: "object",
             properties: {
-              title: { type: "string" },
-              description: { type: "string" },
+              title: { type: "string", description: "REQUIRED: The subtask title/summary" },
+              description: { type: "string", description: "Optional: Detailed description of what to do" },
               priority: {
                 type: "string",
                 enum: ["low", "medium", "high", "critical"],
+                description: "Optional: Task priority",
               },
             },
             required: ["title"],

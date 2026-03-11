@@ -1,0 +1,30 @@
+[
+  {
+    "id": "SOL-001",
+    "name": "Reentrancy",
+    "severity": "critical",
+    "description": "External call before state update - reentrancy vulnerability",
+    "remediation": "Update state before external calls, or use ReentrancyGuard"
+  },
+  {
+    "id": "SOL-003",
+    "name": "Integer Overflow",
+    "severity": "high",
+    "description": "Potential integer overflow/underflow in arithmetic operations",
+    "remediation": "Use Solidity 0.8+ or SafeMath library"
+  },
+  {
+    "id": "SOL-004",
+    "name": "tx.origin Authentication",
+    "severity": "critical",
+    "description": "Using tx.origin for authentication allows phishing attacks",
+    "remediation": "Use msg.sender instead of tx.origin"
+  },
+  {
+    "id": "SOL-006",
+    "name": "Delegatecall Injection",
+    "severity": "critical",
+    "description": "Delegatecall to user-controlled address - proxy pattern risk",
+    "remediation": "Validate implementation addresses before delegatecall"
+  }
+]

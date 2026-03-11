@@ -1,0 +1,30 @@
+[
+  {
+    "id": "GEN-001",
+    "name": "TODO/FIXME Markers",
+    "severity": "low",
+    "description": "Technical debt markers in code",
+    "remediation": "Resolve or track in issue tracker"
+  },
+  {
+    "id": "GEN-002",
+    "name": "Magic Numbers",
+    "severity": "low",
+    "description": "Numeric literals without context",
+    "remediation": "Extract to named constants"
+  },
+  {
+    "id": "GEN-003",
+    "name": "Deep Nesting",
+    "severity": "medium",
+    "description": "Code blocks nested 4+ levels deep",
+    "remediation": "Extract to functions, early returns"
+  },
+  {
+    "id": "GEN-008",
+    "name": "World-Writable Permissions",
+    "severity": "high",
+    "description": "chmod 777 or equivalent - security risk",
+    "remediation": "Use least-privilege permissions (755 or less)"
+  }
+]

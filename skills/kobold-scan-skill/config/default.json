@@ -1,0 +1,14 @@
+{
+  "severity": "low",
+  "include": ["**/*"],
+  "exclude": ["node_modules/**", ".git/**", "build/**", "dist/**", "**/*.min.js"],
+  "rules": {
+    "solidity": { "enabled": true },
+    "javascript": { "enabled": true },
+    "general": { "enabled": true }
+  },
+  "output": {
+    "showCodeSnippets": true,
+    "maxIssuesPerRule": 50
+  }
+}

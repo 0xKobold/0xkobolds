@@ -1,0 +1,44 @@
+[
+  {
+    "id": "JS-001",
+    "name": "eval() Usage",
+    "severity": "critical",
+    "description": "Dangerous eval() allows arbitrary code execution",
+    "remediation": "Use JSON.parse for data, avoid dynamic code execution"
+  },
+  {
+    "id": "JS-002",
+    "name": "Hardcoded Secrets",
+    "severity": "critical",
+    "description": "API keys, passwords, or tokens hardcoded in source",
+    "remediation": "Use environment variables or secure vaults"
+  },
+  {
+    "id": "JS-004",
+    "name": "SQL Injection",
+    "severity": "high",
+    "description": "String concatenation in SQL queries allows injection",
+    "remediation": "Use parameterized queries/prepared statements"
+  },
+  {
+    "id": "JS-005",
+    "name": "Path Traversal",
+    "severity": "high",
+    "description": "User input used directly in file paths",
+    "remediation": "Sanitize/validate paths, use path.normalize()"
+  },
+  {
+    "id": "JS-006",
+    "name": "Prototype Pollution",
+    "severity": "high",
+    "description": "Modifying Object.prototype allows property injection",
+    "remediation": "Use Object.freeze(), validate input keys"
+  },
+  {
+    "id": "JS-007",
+    "name": "console.log in Production",
+    "severity": "low",
+    "description": "Debug logging statements left in production code",
+    "remediation": "Remove or use proper logging library with levels"
+  }
+]
