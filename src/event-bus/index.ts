@@ -47,7 +47,13 @@ export type DomainEventType =
   | 'cron.job.failed'
   // Skill events
   | 'skill.registered'
-  | 'skill.unregistered';
+  | 'skill.unregistered'
+  // File events
+  | 'file.written'
+  | 'file.read'
+  // Security events
+  | 'security.issues_found'
+  | 'security.scan_completed';
 
 // Domain Event Interface
 export interface DomainEvent {
