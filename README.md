@@ -463,4 +463,4 @@ MIT © 2026
 
 **Built while you sleep by your Digital Familiar** 🐉
 
-*Join the evolution at [github.com/kobolds/0xKobolds](https://github.com/moikapy/0xkobold)*
+*Join the evolution on [Github](https://github.com/MoikasLabs/0xkobold)*

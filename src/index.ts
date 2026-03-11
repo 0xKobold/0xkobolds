@@ -120,6 +120,7 @@ function verifyExtensions(): string[] {
     '--extension', ext('perennial-memory-extension'),
     '--extension', ext('diagnostics-extension'),
     '--extension', ext('memory-synthesis-extension'),
+    '--extension', ext('workspace-footer-extension'),
     // Deprecated: Use agent-orchestrator-extension instead
     // '--extension', ext('subagent-extension'),
     // Note: pi-coding-agent updates disabled - user manages dependencies manually
