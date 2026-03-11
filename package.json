@@ -1,6 +1,6 @@
 {
   "name": "0xkobold",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Your digital familiar - multi-agent AI with memory, reflection, and semantic search (v0.5.1 - Draconic Intelligence Hotfix)",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
