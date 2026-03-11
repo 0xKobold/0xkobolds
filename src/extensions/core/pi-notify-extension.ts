@@ -54,6 +54,13 @@ function sendNotification(title: string, body: string): void {
 }
 
 export default function piNotifyExtension(pi: ExtensionAPI) {
+    // Skip if in TUI mode (notifications corrupt terminal)
+    const isTUI = process.env.PI_UI === 'tui' || process.argv.includes('--tui');
+    if (isTUI) {
+        console.log("[PiNotify] Disabled in TUI mode");
+        return;
+    }
+
     // Notify when agent finishes and is waiting for user
     pi.on("agent_end", async (_event) => {
         sendNotification("0xKobold", "✅ Ready for input");

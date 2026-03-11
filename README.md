@@ -1,4 +1,4 @@
-# 0xKobold v0.3.0 "The Gap Closer"
+# 0xKobold v0.5.0 "Draconic Intelligence"
 
 ```
                          ..
@@ -15,14 +15,14 @@
      ..,!``I,!]JZXJ{]I,,~~;,  I[_<-t}1doCdfdQCOB%oJ{+?{ddMO@@@#@o>` .:-< .
       .``l;;{QW%###WQZ+;>>I ...<YfZ{]}Xb!IQ@@8%W@@QJ{[-JJZ@@@@@@%dZbMX[,..
      . II ,I]bo%8%%MQd?>;  .    ;li   . ,Z@@@@#@MI]~ZUOX}YB@@@@@8oQY};
-      . ^>^.^~fbXXdZf_,, Il .         I~d@@#MOIY>l[ZoW@@@@@@@@@UIMO{.   .
+      . ^>^.^~fbXXdZf_,, Il .         I~d@@#MOIY>l[ZoW@@@@@@@@@UIMO{.   
         `I!<` ,lllll :,i;,^`    ...~+<d#oJQQbIIJdUB@@@@@@@#%OU8WW@@81+,`
        .,i[l:i!, `:I<-l<-, ^^`  ..:]ZodXIdbC1i1Z#@@@@@@%%BWWoO%@@@@%bQf[^.
        .J-I ~I!.iCU->-1_<`ii>~:....:_1}It}!.::+tX%#@%MbMBQ%@@@@@@%%WbY]+-~`.
         XWOUMO{,Z@B-;1B]:I_->i^      ...   `;;JOB#QB#M8@@@@@@8OOOQdZ{~i!i!:.
        ..iJB@@M[1@%Y<X@o][]]>:III,^,    ....,Z@@@@@@@@@@@@@@8#WOMoZI~~~~+I..
            `~M@8X#@8Zf#@BUWb1{1?]1}]<!^ ...:b@@@@@@@@@@@@@8BW#dXZf[?-+l:`. ..
-         ..  :JB@@@@%%@@@B#@%W%OQ8BMQbU> ..>M%@@@@@@@@@@@#%W8##OoXZXQCi^ ...
+         ..  :JB@@@@%%@@@B#@%W%OQ8BMQbU> ..>M%@@@@@@@@@@@BWW8##OoXZXQCi^ ...
            ..  ^?1YbMWO#@@@@@@@@@@@@@@OZ-` d@#@@@@@@@@#%W8##OoXZXQCi^ ...
              ..     .`.:!~-CXd%@@@@@@@8oQ}}%@@@@@@@@@@@BWWBWMMdbf[->>^..
                .....          :{@@@@@@@OYUCQ8@@@@@@@@8BB8WMQModU?++:!I..
@@ -34,251 +34,205 @@
                                  ........ ......... .........
 ```
 
-> *"Your digital familiar - a personal AI assistant that learns, evolves, and helps you Build 24/7"*
+> *"Your digital familiar - a personal AI assistant that learns, remembers, and evolves"*
 
-**v0.3.0 "The Gap Closer"** — Multi-channel, secure, distributed, and packed with features.
+**v0.5.0 "Draconic Intelligence"** — Multi-agent orchestration, semantic memory, and generative agent capabilities.
+
+> **New in v0.5.0:** Generative Agents (memory, reflection, planning), Semantic Memory (Ollama embeddings), Natural Language Commands  
+> **From v0.3.0:** Multi-channel (WhatsApp, Telegram, Slack), Tailscale VPN, Media (Vision, Audio, PDF), Docker Sandbox
 
 ---
 
-## What's New in v0.3.0
+## ✨ Features
 
-### 🚀 Major Features (12 Total)
+### v0.5.0 - Draconic Intelligence
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Multi-Agent Orchestration** | ✅ | Spawn specialized agents with unified `/agent-orchestrate` API |
+| **Generative Agents** | ✅ | Memory stream, reflection, planning (Stanford HCI research) |
+| **Semantic Memory** | ✅ | Ollama-powered embeddings with hybrid search |
+| **Natural Language Commands** | ✅ | Parse "spawn a worker" → structured commands |
 
+### v0.3.0 - The Gap Closer
 | Feature | Status | Description |
 |---------|--------|-------------|
 | **WhatsApp** | ✅ | Baileys integration with QR pairing |
 | **Telegram** | ✅ | Complete bot with webhooks |
 | **Slack** | ✅ | Webhook & slash commands |
 | **Docker Sandbox** | ✅ | Secure container execution |
-| **Device Auth** | ✅ | Multi-device token management |
+| **Tailscale** | ✅ | Zero-config VPN for remote access |
 | **Vision (AI)** | ✅ | Claude Vision image analysis |
 | **Audio** | ✅ | Whisper transcription |
 | **PDF** | ✅ | Text extraction & metadata |
-| **Remote Gateway** | ✅ | Connect TUI to VPS |
-| **Tailscale** | ✅ | Zero-config VPN for remote access |
-| **Duplicate Detection** | ✅ | Self-check before adding code |
-| **OpenClaw Migration** | ✅ | Full migration tool |
+| **Hot-Reload Skills** | ✅ | Add capabilities without restart |
+| **Discord Integration** | ✅ | Bot interface |
+| **WebSocket Gateway** | ✅ | Real-time communication (port 18789) |
 
 ---
 
-## Installation
+## Quick Start
 
-### Via NPM (Recommended)
+### Prerequisites
 
 ```bash
-# Install Bun if needed
+# Install Bun (required)
 curl -fsSL https://bun.sh/install | bash
 
-# Install 0xKobold
-npm install -g 0xkobold
-
-# Setup
-0xkobold setup
-
-# Start
-0xkobold
+# Install Ollama (for local LLM)
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull qwen2.5-coder:14b
+ollama pull nomic-embed-text  # For semantic memory
 ```
 
-### Quick Start
+### Install & Run
 
 ```bash
-npx 0xkobold setup
-npx 0xkobold
+# Clone repository
+git clone https://github.com/kobolds/0xKobolds.git
+cd 0xKobolds
+
+# Install dependencies
+bun install
+
+# Initialize workspace
+bun run init
+
+# Start 0xKobold
+bun run start
 ```
 
 ---
 
-## Multi-Channel Support 📱
+## Multi-Agent System 🎯
 
-Use your AI across multiple messaging platforms:
+Spawn specialized agents for different tasks:
 
 ```bash
-# WhatsApp
-0xkobold whatsapp start              # Scan QR code
-0xkobold whatsapp send 123456 "Hello"
+# Spawn via commands
+/agent-spawn coordinator "plan a feature"
+/agent-spawn specialist "implement auth"
+/agent-spawn researcher "analyze codebase"
+/agent-spawn reviewer "check for security issues"
 
-# Telegram
-TELEGRAM_BOT_TOKEN=xxx 0xkobold telegram start
-
-# Slack
-0xkobold slack send "Hello team!"
-
-# Discord
-0xkobold gateway start --discord
+# Or natural language
+spawn a worker to fix the database connection
+analyze this complex architecture problem
+delegate the user authentication project
 ```
+
+### Agent Types
+
+| Type | Emoji | Best For |
+|------|-------|----------|
+| coordinator | 🎯 | Task decomposition, delegation |
+| specialist | 🧠 | Deep domain expertise |
+| researcher | 🔍 | Information gathering |
+| worker | ⚒️ | Implementation |
+| reviewer | 👁️ | Code review, validation |
 
 ---
 
-## Remote/VPS Deployment 🌐
+## Generative Agents 🧠
 
-Run AI on VPS, use lightweight TUI locally:
+Based on Stanford HCI research. Agents that remember, reflect, and plan:
 
-### VPS Side
 ```bash
-# On your VPS
-0xkobold gateway start --host 0.0.0.0
+# Automatic memory capture
+- User interactions
+- Tool executions
+- Agent decisions
 
-# Or with Tailscale (no port forwarding!)
-0xkobold tailscale start
+# Reflection (auto-triggered every 20 observations)
+/agent-reflections              # Show insights
+
+# Planning
+/agent-plans                    # View plans
+/agent-status                   # Agent stats
+
+# Manual memory operations
+remember "User prefers TypeScript"
+recall "what was the database decision"
 ```
 
-### Laptop Side
-```bash
-# Direct connection
-0xkobold tui --remote wss://vps.example.com:7777
-
-# Via Tailscale (secure, private)
-0xkobold tui --remote $(0xkobold tailscale url)
-```
+**Memory Categories:** observation, thought, action, reflection  
+**Retrieval:** Combines recency × importance × relevance
 
 ---
 
-## Security Features 🛡️
+## Skills System 🔧
 
-### Docker Sandboxing
+Create custom capabilities without restarting:
+
 ```typescript
-import { getDockerRunner } from "0xkobold/sandbox";
+// skills/my-skill.ts
+import { Skill } from '../src/skills/types';
 
-const runner = getDockerRunner({
-  image: "node:20-slim",
-  memoryLimit: "512m",
-  network: "none",  // Isolated
-});
-
-await runner.run({
-  command: "node",
-  args: ["-e", "console.log('Safe execution')"],
-});
+export const mySkill: Skill = {
+  name: 'mySkill',
+  description: 'What it does',
+  risk: 'medium',  // safe | medium | high
+  toolDefinition: {
+    type: 'function',
+    function: {
+      name: 'mySkill',
+      description: 'For the LLM',
+      parameters: {
+        type: 'object',
+        properties: {
+          param: { type: 'string' }
+        },
+        required: ['param']
+      }
+    }
+  },
+  async execute(args) {
+    return { success: true, data: result };
+  }
+};
 ```
 
-### Device Authentication
+**Auto-reload enabled** - changes appear immediately!
+
+---
+
+## Commands
+
+### Core
 ```bash
-0xkobold device init "My Laptop"
-0xkobold device token generate
-0xkobold device list
+bun run start          # Start main server
+bun run dev            # TypeScript watch mode
+bun run build          # Compile to dist/
+bun run tui            # Start Terminal UI
+bun run cli            # Run CLI commands
+bun run init           # Initialize workspace
 ```
 
----
-
-## Media Support 🖼️
-
-### Vision (Image Analysis)
-```typescript
-import { VisionAnalyzer } from "0xkobold/media";
-
-const vision = new VisionAnalyzer({
-  provider: "claude",
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
-const result = await vision.analyzeImage("./image.png");
-console.log(result.description);
-console.log(result.objects);
-```
-
-### Audio Transcription
-```typescript
-import { AudioTranscriber } from "0xkobold/media";
-
-const audio = new AudioTranscriber({
-  provider: "openai",
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-const result = await audio.transcribeFile("./voice.mp3");
-console.log(result.text);
-console.log(result.segments);  // Timestamps
-```
-
-### PDF Processing
-```typescript
-import { extractPDF } from "0xkobold/documents";
-
-const result = await extractPDF("./document.pdf");
-console.log(result.text);
-console.log(result.metadata.title);
-console.log(result.pages);
-```
-
----
-
-## Duplicate Detection 🔍
-
-Check before adding to avoid duplication:
-
+### Agent Orchestration
 ```bash
-# Check before implementing
-0xkobold check "WhatsApp integration"
-
-# Check specific function
-0xkobold check -f calculateSum
-
-# Check class
-0xkobold check -c UserManager
+/agent-orchestrate list                    # List all agents
+/agent-orchestrate spawn_main coordinator  # Spawn main agent
+/agent-orchestrate spawn_subagent worker "task"
+/agent-orchestrate analyze "complex task"  # Analyze complexity
+/agent-orchestrate delegate "big project"  # Auto-delegate
 ```
 
-**Output:**
-```
-⚡ SIMILAR IMPLEMENTATIONS FOUND
-   Best match: 90% at src/channels/whatsapp/integration.ts
-
-Suggestion: Review existing code before creating new implementation.
-```
-
----
-
-## Migration from OpenClaw 🔄
-
-Migrating from OpenClaw (koclaw)? We got you:
-
+### Generative Agents
 ```bash
-# Preview migration
-0xkobold migrate --dry-run
-
-# Execute migration (with automatic backup)
-0xkobold migrate --live
+/agent-memories         # Show memory stream
+/agent-reflections      # Show insights
+/agent-plans           # Show plans
+/agent-status          # Agent stats
+/generative_observe "what happened"
+/generative_reflect    # Generate insights
+/generative_plan daily # Create daily plan
 ```
 
-**Migrated:**
-- ✅ Configuration (with `.bak` backups)
-- ✅ Agents
-- ✅ Identity (both formats)
-- ✅ Browser data
-- ✅ Canvas/visual data
-- ✅ Credentials (secure)
-- ✅ Media files
-- ✅ Cron jobs
-- ✅ Workspace & databases
-- ✅ Channel sessions
-
----
-
-## Project Structure
-
-```
-0xkobold/
-├── src/
-│   ├── agent/           # Agent runtime
-│   ├── approval/        # Safety approvals
-│   ├── auth/            # Device authentication
-│   ├── channels/        # WhatsApp, Telegram, Slack
-│   ├── cli/             # CLI commands
-│   ├── config/          # Configuration management
-│   ├── discord/          # Discord bot
-│   ├── documents/        # PDF processing
-│   ├── gateway/          # WebSocket gateway
-│   │   ├── client.ts     # Remote client
-│   │   └── server.ts     # Server
-│   ├── infra/            # Infrastructure (Tailscale)
-│   ├── media/            # Vision, Audio
-│   ├── migration/        # OpenClaw migration
-│   ├── sandbox/          # Docker isolation
-│   ├── skills/           # Skills framework
-│   │   └── builtin/
-│   │       └── duplicate-detector.ts
-│   └── workspace/        # Workspace management
-├── skills/              # Your custom skills
-└── package.json
+### Memory
+```bash
+/remember "Content" --category fact --importance 0.9
+/recall "vague description"
+/memories              # List recent
+/memory-export         # Export to file
 ```
 
 ---
@@ -287,207 +241,30 @@ Migrating from OpenClaw (koclaw)? We got you:
 
 Global config: `~/.0xkobold/config.json`
 
-### Option 1: Ollama (Local - Default)
-
 ```json
 {
-  "version": "0.3.0",
+  "version": "0.5.0",
   "llm": {
     "provider": "ollama",
     "model": "qwen2.5-coder:14b",
-    "baseUrl": "http://localhost:11434",
-    "maxTokens": 4000,
-    "temperature": 0.7
+    "baseUrl": "http://localhost:11434"
   },
-  "gateway": {
-    "port": 7777,
-    "host": "localhost"
-  }
-}
-```
-
-**Setup:**
-```bash
-# Install Ollama
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Pull a model
-ollama pull qwen2.5-coder:14b
-
-# Start Ollama
-ollama serve
-```
-
-### Option 2: Claude (Cloud)
-
-```json
-{
-  "version": "0.3.0",
-  "llm": {
-    "provider": "claude",
-    "model": "claude-3-sonnet-20240229",
-    "apiKey": "sk-ant-xxx",
-    "maxTokens": 4000,
-    "temperature": 0.7
-  }
-}
-```
-
-**Setup:**
-```bash
-# Get API key from https://console.anthropic.com
-export ANTHROPIC_API_KEY=sk-ant-xxx
-```
-
-### Option 3: OpenAI (Cloud)
-
-```json
-{
-  "version": "0.3.0",
-  "llm": {
-    "provider": "openai",
-    "model": "gpt-4",
-    "apiKey": "sk-xxx",
-    "maxTokens": 4000,
-    "temperature": 0.7
-  }
-}
-```
-
-### Full Example with All Features
-
-```json
-{
-  "version": "0.3.0",
-  "persona": {
-    "name": "0xKobold",
-    "emoji": "🐉"
+  "agents": {
+    "default": "assistant",
+    "maxConcurrent": 5
   },
-  "llm": {
-    "provider": "ollama",
-    "model": "qwen2.5-coder:14b",
-    "baseUrl": "http://localhost:11434",
-    "maxTokens": 4000,
-    "temperature": 0.7
+  "memory": {
+    "enabled": true,
+    "semanticSearch": true
   },
   "gateway": {
     "enabled": true,
-    "port": 7777,
-    "host": "localhost",
-    "remote": {
-      "enabled": false
-    }
+    "port": 18789,
+    "host": "0.0.0.0"
   },
   "channels": {
-    "discord": { "enabled": false },
-    "whatsapp": { "enabled": true },
-    "telegram": { "enabled": false },
-    "slack": { "enabled": false }
+    "discord": { "enabled": false }
   }
-}
-```
-
----
-
-## CLI Commands
-
-### Core
-```bash
-0xkobold setup                    # Interactive setup
-0xkobold tui                      # Start TUI (default)
-0xkobold tui --local              # Local project mode
-0xkobold tui --remote <url>       # Connect to remote gateway
-```
-
-### Channels
-```bash
-0xkobold whatsapp start|stop|status|send
-0xkobold telegram start|stop|status
-0xkobold slack webhook <message>
-```
-
-### Gateway & Networking
-```bash
-0xkobold gateway start|stop|status
-0xkobold tailscale status         # Check Tailscale IP
-0xkobold tailscale url            # Get gateway URL
-```
-
-### Security
-```bash
-0xkobold device init <name>
-0xkobold device token generate
-0xkobold device list
-```
-
-### Development
-```bash
-0xkobold check <description|function|class>
-0xkobold migrate --dry-run|live
-0xkobold status
-0xkobold logs
-```
-
----
-
-## Compared to OpenClaw
-
-| Metric | OpenClaw | 0xKobold v0.3.0 | Advantage |
-|--------|----------|-----------------|-----------|
-| **Lines of Code** | ~60,000 | ~8,000 | 7.5x simpler |
-| **Dependencies** | 100+ | ~20 | 5x lighter |
-| **Setup Time** | 30 min | 5 min | 6x faster |
-| **Channels** | 5 | 4 | Feature parity |
-| **Security** | ✅ | ✅ | Feature parity |
-| **Media** | ✅ | ✅ | Feature parity |
-| **Remote/VPS** | ✅ | ✅ | Feature parity |
-| **Tailscale** | ✅ | ✅ | Feature parity |
-
-**Our Philosophy:** OpenClaw power, 10x simpler.
-
----
-
-## API Usage
-
-### Gateway Client (Remote)
-```typescript
-import { GatewayClient } from "0xkobold/gateway";
-
-const client = new GatewayClient({
-  url: "wss://your-vps.com:7777",
-  token: "xxx",
-  autoReconnect: true,
-});
-
-await client.connect();
-client.chat("Hello from my laptop");
-```
-
-### Sandbox
-```typescript
-import { getDockerRunner } from "0xkobold/sandbox";
-
-const runner = getDockerRunner({
-  memoryLimit: "256m",
-  cpuLimit: "0.5",
-  network: "none",
-});
-
-const result = await runner.run({
-  command: "node",
-  args: ["script.js"],
-});
-```
-
-### Duplicate Detection
-```typescript
-import { getDuplicateDetector } from "0xkobold/skills";
-
-const detector = getDuplicateDetector();
-const result = await detector.check("New feature");
-
-if (result.exists) {
-  console.log("Already exists!", result.matches[0].file);
 }
 ```
 
@@ -495,52 +272,118 @@ if (result.exists) {
 
 ## Architecture
 
+### Extension-Based
+
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    YOUR LAPTOP (Local)                       │
-│  ┌─────────────────┐        ┌──────────────────────────┐    │
-│  │   TUI (Bun)     │◄──────►│   GatewayClient (WS)     │    │
-│  │   - Terminal    │        │   - Remote Connection    │    │
-│  │   - File Ops    │        │   - Auth Tokens          │    │
-│  └─────────────────┘        └────────────┬─────────────┘    │
-│         │                                │                   │
-│         │  Local Files                   │  WebSocket        │
-│         │                                │                   │
-│  ┌──────▼──────────────────┐   ┌─────────▼──────────┐       │
-│  │  .0xkobold/ (project)   │   │  ~/.0xkobold/        │       │
-│  │  - workspace.db         │   │  - config.json       │       │
-│  │  - MEMORY.md            │   │  - identity          │       │
-│  └────────────────────────┘   └──────────────────────┘       │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              │  wss:// or Tailscale
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    VPS (Remote) OR Local                     │
-│  ┌────────────────────────────────────────────────────┐    │
-│  │   Gateway Server (Bun)                             │    │
-│  │   - WebSocket Server                               │    │
-│  │   - Multi-client Support                           │    │
-│  └────────────────┬───────────────────────────────────┘    │
-│                   │                                         │
-│         ┌─────────┼─────────┐                               │
-│         ▼         ▼         ▼                               │
-│  ┌──────────┐ ┌────────┐ ┌──────────┐                      │
-│  │  Claude  │ │ Docker │ │ Channels │                      │
-│  │  API     │ │ Sandbox│ │ (Discord│                      │
-│  │          │ │        │ │ WhatsApp│                      │
-│  └──────────┘ └────────┘ └──────────┘                      │
-└─────────────────────────────────────────────────────────────┘
+src/extensions/
+├── core/
+│   ├── agent-orchestrator-extension.ts    # Multi-agent orchestration
+│   ├── generative-agents-extension.ts     # Memory, reflection, planning
+│   ├── perennial-memory-extension.ts      # Semantic memory (Ollama)
+│   ├── gateway-extension.ts               # WebSocket server
+│   ├── discord-extension.ts               # Discord bot
+│   └── ...
+└── community/
+    ├── draconic-subagents-wrapper.ts      # PI ecosystem bridge
+    └── ...
 ```
+
+### Event-Driven
+
+```typescript
+eventBus.emit('agent.spawned', payload);
+eventBus.on('agent.spawned', handler);
+```
+
+### Key Components
+
+| Component | Purpose |
+|-----------|---------|
+| `src/agent/` | Agent runtime with subagent support |
+| `src/gateway/` | WebSocket gateway (port 18789) |
+| `src/memory/` | Conversation persistence |
+| `src/skills/` | Hot-reload skill system |
+| `src/tui/` | Terminal UI (React-based) |
+| `src/event-bus/` | Decoupled event system |
+
+---
+
+## Testing
+
+```bash
+# Run all tests
+bun test
+
+# Specific test suites
+bun test test/unit/extensions/generative-agents.test.ts
+bun test test/integration/
+bun test test/e2e/
+
+# Test coverage
+bun test --coverage
+```
+
+**Test Suites:**
+- Unit: Core logic (scoring, relevance, parsing)
+- Integration: Database operations, persistence
+- E2E: Full agent lifecycle (observe → reflect → plan)
+
+---
+
+## Project Structure
+
+```
+0xKobold/
+├── src/
+│   ├── agent/              # Agent runtime & orchestration
+│   ├── approval/           # Risk-based approval
+│   ├── channels/           # Discord integration
+│   ├── cli/                # CLI commands
+│   ├── config/             # Configuration
+│   ├── discord/            # Discord bot
+│   ├── event-bus/          # Event system
+│   ├── extensions/         # Extensions
+│   │   ├── core/           # Built-in extensions
+│   │   └── community/      # Community wrappers
+│   ├── gateway/            # WebSocket gateway
+│   ├── llm/                # LLM providers (Ollama)
+│   ├── memory/             # Persistence layer
+│   ├── skills/             # Skill system
+│   │   ├── builtin/        # Built-in skills
+│   │   └── loader.ts       # Hot-reload logic
+│   ├── tui/                # Terminal UI
+│   └── utils/              # Utilities (nl-patterns.ts)
+├── skills/                 # Your custom skills (hot-reloaded)
+├── test/                   # Test suites
+│   ├── unit/
+│   ├── integration/
+│   └── e2e/
+├── docs/                   # Documentation
+│   ├── archive/            # Historical docs
+│   ├── research/             # Research notes
+│   └── usage.md, workflow.md # Living docs
+└── scripts/                # Deployment scripts
+```
+
+---
+
+## Key Files
+
+- `src/pi-config.ts` - PI framework configuration
+- `src/extensions/core/generative-agents-extension.ts` - Generative agents
+- `src/utils/nl-patterns.ts` - Natural language parsing
+- `~/.0xkobold/config.json` - User configuration
+- `~/.0xkobold/memory/perennial/knowledge.db` - Semantic memory
+- `CLAUDE.md` - AI assistant context
 
 ---
 
 ## License
 
-MIT © 2025
+MIT © 2026
 
 ---
 
 **Built while you sleep by your Digital Familiar** 🐉
 
-*Join the future of personal AI at [0xkobold](https://github.com/moikapy/0xkobold)*
+*Join the evolution at [github.com/kobolds/0xKobolds](https://github.com/moikapy/0xkobold)*

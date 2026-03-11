@@ -2,16 +2,18 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 
 /**
  * Persona Loader Extension - v0.2.0
  * 
- * Creates default bootstrap files (SOUL.md, IDENTITY.md) if they don't exist.
- * Users should read these files manually or the agent can read them naturally.
+ * Loads SOUL.md and IDENTITY.md from ~/.0xkobold/ (global).
+ * Only creates in CWD if they don't exist globally AND don't exist locally.
  * 
- * Note: Automatic injection into system prompt requires pi-coding-agent 
- * provider-level hooks which are not available in ExtensionAPI.
+ * Priority: ~/.0xkobold/ > CWD (fallback)
  */
+
+const GLOBAL_DIR = path.join(homedir(), ".0xkobold");
 
 const DEFAULT_SOUL = `# SOUL - Agent Personality
 
@@ -51,29 +53,58 @@ const DEFAULT_IDENTITY = `# IDENTITY
 `;
 
 export default async function personaLoaderExtension(pi: ExtensionAPI) {
-  const workspaceDir = process.cwd();
+  const globalSoulPath = path.join(GLOBAL_DIR, "SOUL.md");
+  const globalIdentityPath = path.join(GLOBAL_DIR, "IDENTITY.md");
+  const localSoulPath = path.join(process.cwd(), "SOUL.md");
+  const localIdentityPath = path.join(process.cwd(), "IDENTITY.md");
   
-  const soulPath = path.join(workspaceDir, "SOUL.md");
-  const identityPath = path.join(workspaceDir, "IDENTITY.md");
+  // Check global files existence
+  const globalSoulExists = existsSync(globalSoulPath);
+  const globalIdentityExists = existsSync(globalIdentityPath);
+  
+  if (globalSoulExists && globalIdentityExists) {
+    console.log("[PersonaLoader] Using global identity files from ~/.0xkobold/");
+    return;
+  }
+  
+  // Ensure global directory exists
+  if (!existsSync(GLOBAL_DIR)) {
+    await fs.mkdir(GLOBAL_DIR, { recursive: true });
+    console.log("[PersonaLoader] Created global directory: ~/.0xkobold/");
+  }
   
   let created = 0;
   
-  if (!existsSync(soulPath)) {
-    await fs.writeFile(soulPath, DEFAULT_SOUL);
+  // Create SOUL.md globally if missing
+  if (!globalSoulExists) {
+    await fs.writeFile(globalSoulPath, DEFAULT_SOUL);
     created++;
-    console.log("[PersonaLoader] Created SOUL.md");
+    console.log("[PersonaLoader] Created ~/.0xkobold/SOUL.md");
   }
   
-  if (!existsSync(identityPath)) {
-    await fs.writeFile(identityPath, DEFAULT_IDENTITY);
+  // Create IDENTITY.md globally if missing
+  if (!globalIdentityExists) {
+    await fs.writeFile(globalIdentityPath, DEFAULT_IDENTITY);
     created++;
-    console.log("[PersonaLoader] Created IDENTITY.md");
+    console.log("[PersonaLoader] Created ~/.0xkobold/IDENTITY.md");
+  }
+  
+  // Also create local copies if neither global nor local exist
+  // (for backward compatibility)
+  if (!existsSync(localSoulPath) && !globalSoulExists) {
+    await fs.writeFile(localSoulPath, DEFAULT_SOUL);
+    console.log("[PersonaLoader] Created local SOUL.md");
+  }
+  
+  if (!existsSync(localIdentityPath) && !globalIdentityExists) {
+    await fs.writeFile(localIdentityPath, DEFAULT_IDENTITY);
+    console.log("[PersonaLoader] Created local IDENTITY.md");
   }
   
   if (created > 0) {
-    console.log(`[PersonaLoader] Created ${created} bootstrap files`);
+    console.log(`[PersonaLoader] Created ${created} global bootstrap files`);
     console.log("[PersonaLoader] Tip: 'Read my SOUL.md and IDENTITY.md' to load personality");
   } else {
-    console.log("[PersonaLoader] Bootstrap files exist");
+    console.log("[PersonaLoader] Global bootstrap files exist");
   }
 }

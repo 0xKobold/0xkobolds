@@ -27,38 +27,51 @@ export const config: Config = {
     './src/sessions/UnifiedSessionBridge.ts',              // UNIFIED: Session management
     
     // Core Features
+    './src/extensions/core/memory-bootstrap-extension.ts', // 🧠 Auto-load memories on startup (CLAWS-style)
     './src/extensions/core/persona-loader-extension.ts', // Load identity files
     './src/extensions/core/onboarding-extension.ts',     // First-run setup
-    './src/extensions/core/questionnaire-extension.ts', // Question/questionnaire tools
-    './src/extensions/core/pi-notify-extension.ts',    // Native desktop notifications
     './src/extensions/core/task-manager-extension.ts',   // Task board and workflow
     './src/extensions/core/heartbeat-extension.ts',      // Koclaw-style heartbeat monitoring
-    './src/extensions/core/auto-compact-on-error-extension.ts', // Auto-retry with compacted context
+    './src/extensions/core/compaction-safeguard-v2.ts', // FIXED: Uses session_before_compact event
     
     // Multi-Channel
     './src/extensions/core/multi-channel-extension.ts', // Unified channel management
     './src/extensions/core/discord-extension.ts',       // Discord bot integration
     
-    // Safety Extensions
-    './src/extensions/core/protected-paths.ts',      // Block writes to sensitive paths
-    './src/extensions/core/confirm-destructive.ts',  // Confirm clear/switch/fork
-    './src/extensions/core/dirty-repo-guard.ts',     // Prevent losing uncommitted work
-    './src/extensions/core/git-checkpoint.ts',       // Git stash checkpoints for fork
+    // 🐉 DRACONIC SYSTEMS (Superior agent management)
+    './src/extensions/core/agent-orchestrator-extension.ts',  // Agent orchestration
+    './src/extensions/core/gateway-extension.ts',            // WebSocket gateway
+    './src/extensions/core/fileops-extension.ts',            // File operations
+    './src/extensions/core/git-commit-extension.ts',       // Git commit helper
+    './src/extensions/core/draconic-lair-extension.ts',      // Project workspaces
+    './src/extensions/core/draconic-hoard-extension.ts',     // Code snippets
 
-    // Integrations
+    // Safety Extensions (CONSOLIDATED into draconic-safety)
+    './src/extensions/core/draconic-safety-extension.ts',  // 🛡️ Replaces: protected-paths, confirm-destructive, dirty-repo-guard, git-checkpoint
+
+    // Developer Tools
+    './src/extensions/core/extension-scaffold-extension.ts', // Scaffold new extensions
+    './src/extensions/core/diagnostics-extension.ts',        // Telemetry and health monitoring
+
+    // Tool Integrations
     './src/extensions/core/mcp-extension.ts',            // Model Context Protocol support
-    './src/extensions/core/gateway-extension.ts',          // WebSocket gateway (NOW WITH PERSISTENCE)
-    './src/extensions/core/agent-registry-extension.ts',   // OpenClaw-style multi-agent
-    './src/extensions/core/persistent-agents-extension.ts', // Agent persistence
-    './src/extensions/core/websearch-extension.ts',        // Ollama web search
+    // NOTE: Using gateway-extension.ts above
+    // agent-registry-extension.ts REMOVED - file does not exist
+    // persistent-agents-extension.ts REMOVED - file does not exist
+    './src/extensions/core/websearch-enhanced-extension.ts',        // Ollama web search
     './src/extensions/core/update-extension.ts',           // Framework update functionality
     './src/extensions/core/self-update-extension.ts',      // 0xKobold self-update
     './src/extensions/core/perennial-memory-extension.ts', // Long-term memory
+    './src/extensions/core/generative-agents-extension.ts', // 🧠 Memory stream, reflection, planning
     
     // Mode-Manager REMOVED - Plan/Build modes replaced by natural workflow
     // Context-aware REMOVED - Superseded by unified sessions
     // Session-bridge REMOVED - Superseded by unified sessions
     // Session-manager REMOVED - Superseded by unified sessions
+    
+    // 🐉 Community Extensions (PI Ecosystem Wrappers)
+    './src/extensions/community/draconic-subagents-wrapper.ts',  // pi-subagents bridge
+    './src/extensions/community/draconic-messenger-wrapper.ts',  // pi-messenger bridge
   ],
 
   // Custom keybindings

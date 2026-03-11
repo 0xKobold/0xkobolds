@@ -61,7 +61,8 @@ export async function runEmbeddedAgent(
 
   console.log(`[Embedded] System prompt: ${systemPrompt.length} chars`);
 
-  // 4. TODO: Integrate with pi-coding-agent
+  // 4. TODO(v0.5.2+): Integrate with pi-coding-agent SDK
+  // This requires SDK linkage and is a larger architectural change
   // const { session } = await createAgentSession({
   //   cwd: config.cwd,
   //   // ... other config
@@ -98,7 +99,7 @@ export async function runEmbeddedAgent(
  * Check if embedded mode is available
  */
 export function isEmbeddedModeAvailable(): boolean {
-  // TODO: Check if pi-coding-agent SDK is properly linked
+  // TODO(v0.6.0): Check if pi-coding-agent SDK is properly linked
   return true;
 }
 

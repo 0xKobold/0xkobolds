@@ -256,7 +256,7 @@ export async function installSkill(
     // Create skills directory if needed
     await fs.mkdir(skillsDir, { recursive: true });
 
-    // TODO: Clone from git, extract from tarball, etc.
+    // TODO(v0.5.1): Clone from git, extract from tarball, etc.
     // For now, assume source is a local path
     const skillName = path.basename(source);
     const targetPath = path.join(skillsDir, skillName);

@@ -9,6 +9,7 @@ import { CronJob, JobResult } from "./types.js";
 import { OllamaProvider, AnthropicProvider } from "../llm/index.js";
 import type { LLMProvider, Message } from "../llm/types.js";
 import { sendNotification } from "./notifications.js";
+import { eventBus } from "../event-bus/index.js";
 
 // Provider cache
 const providers: Map<string, LLMProvider> = new Map();
@@ -158,7 +159,8 @@ async function runMainSession(job: CronJob): Promise<JobResult> {
   
   try {
     // For now, treat main session as isolated but flag it
-    // TODO: Integrate with actual main session context
+    // TODO(v0.5.1): Integrate with actual main session context via memory store
+    // Requires: access to memory/perennial system and conversation context
     const result = await runIsolatedSession(job);
     
     // Mark as main session in output
@@ -251,8 +253,12 @@ export async function runSystemEvent(
   const startTime = Date.now();
   
   try {
-    // TODO: Emit event to main session
-    // This should trigger a system event in the agent
+    // Emit event to event bus for listeners
+    eventBus.emit('system.notification', {
+      source: 'cron',
+      jobId: job.id,
+      message: job.message
+    }).catch(err => console.error('[CronRunner] Failed to emit event:', err));
     
     return {
       success: true,

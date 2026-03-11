@@ -144,11 +144,15 @@ function embeddingToBlob(embedding: number[]): Buffer {
   return buffer;
 }
 
-// Deserialize
-function blobToEmbedding(blob: Buffer): number[] {
+// Deserialize - handles both Bun Blob/ArrayBuffer and Node Buffer
+function blobToEmbedding(blob: Buffer | ArrayBuffer | Uint8Array): number[] {
   const embedding: number[] = [];
+  const dataView = blob instanceof ArrayBuffer 
+    ? new DataView(blob) 
+    : new DataView(blob.buffer, blob.byteOffset, blob.byteLength);
+    
   for (let i = 0; i < EMBEDDING_DIM; i++) {
-    embedding.push(blob.readFloatLE(i * 4));
+    embedding.push(dataView.getFloat32(i * 4, true)); // little-endian
   }
   return embedding;
 }

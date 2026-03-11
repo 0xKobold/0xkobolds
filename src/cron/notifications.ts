@@ -180,7 +180,7 @@ async function sendSlack(webhookUrl: string, message: string): Promise<void> {
  * Send WhatsApp notification (placeholder - requires Baileys or WhatsApp Business API)
  */
 async function sendWhatsApp(phoneNumber: string, message: string): Promise<void> {
-  // TODO: Implement using existing WhatsApp integration
+  // TODO(v0.5.1): Implement using existing WhatsApp channel integration
   // For now, log a warning
   console.warn(`[Notification] WhatsApp notifications require Baileys integration (not yet implemented)`);
   console.warn(`[Notification] Would send to ${phoneNumber}: ${message.substring(0, 100)}...`);

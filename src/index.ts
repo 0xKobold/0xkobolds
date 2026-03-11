@@ -98,6 +98,12 @@ function verifyExtensions(): string[] {
     '--extension', ext('dirty-repo-guard'),
     '--extension', ext('git-checkpoint'),
 
+    // Draconic Extensions (v0.2.0+)
+    '--extension', ext('draconic-hoard-extension'),
+    '--extension', ext('draconic-lair-extension'),
+    '--extension', ext('draconic-safety-extension'),
+    // '--extension', ext('tui-integration-extension'),  // DISABLED: Using pi-subagents native tree
+
     // Integrations
     '--extension', ext('mcp-extension'),
     '--extension', ext('gateway-extension'),
@@ -121,7 +127,7 @@ function verifyExtensions(): string[] {
   ];
 
   // Check that extensions exist
-  const testExt = ext('ollama-provider-extension');
+  const testExt = ext('ollama-extension');
   if (!existsSync(testExt)) {
     console.error(`⚠️  Warning: Extensions not found at ${extensionDir}`);
     console.error(`   Expected: ${testExt}`);

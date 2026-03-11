@@ -38,9 +38,15 @@ bun test               # Run all tests with Bun test runner
 bun test <pattern>     # Run specific test file (e.g., bun test tui)
 
 # Demo scripts
-bun run demo           # Run demo.ts
-./demo-multi-agent.sh  # Multi-agent demo
-./demo-openclaw.sh     # OpenClaw compatibility demo
+./demo-multi-agent.sh  # Multi-agent demo (launches gateway + TUI)
+./launch.sh            # Production launcher
+
+# Agent Commands (Runtime)
+/agent-orchestrate spawn_main testing-coordinator     # Spawn main agent
+/agent-orchestrate spawn_subagent worker "task"       # Spawn subagent
+/agent-orchestrate list                               # List all agents
+/agent-orchestrate analyze "complex task"             # Analyze task complexity
+/agent-orchestrate delegate "big project"             # Auto-delegate workflow
 ```
 
 ## Multi-Agent System
@@ -126,10 +132,19 @@ User: "Build a user authentication system"
 ### Core Architecture Patterns
 
 **1. Extension-Based Architecture**
-The project extends `pi-coding-agent` via extensions in `src/extensions/core/`:
+The project extends `pi-coding-agent` via extensions in `src/extensions/core/` and integrates community extensions:
+
+**Core Extensions:**
 - `gateway-extension.ts` - WebSocket server for multi-agent spawning
 - `discord-extension.ts` - Discord bot integration
 - `fileops-extension.ts` - File operation tools
+- `agent-orchestrator-extension.ts` - Unified agent orchestration (spawn_main, spawn_subagent)
+- `generative-agents-extension.ts` - Memory stream, reflection, planning (Stanford HCI research)
+- `perennial-memory-extension.ts` - Semantic memory with Ollama embeddings
+
+**Community Extensions (PI Ecosystem):**
+- `draconic-subagents-wrapper.ts` - Bridges pi-subagents to eventBus
+- `pi-subagents`, `pi-messenger`, `pi-web-access`, `pi-memory-md`, `pi-librarian`
 
 Extensions are registered in `src/pi-config.ts` and loaded via `src/extensions/loader.ts`.
 
@@ -251,6 +266,35 @@ Global config stored in `~/.0xkobold/config.json`:
 
 Project-local workspace in `.0xkobold/` (created by `bun run init`).
 
+## 🧠 Generative Agents Extension
+
+Implements Stanford HCI research: "Generative Agents: Interactive Simulacra of Human Behavior"
+
+**Features:**
+- **Memory Stream** - Complete record of agent experiences (observations, thoughts, actions)
+- **Reflection** - Periodic synthesis of memories into higher-level insights
+- **Planning** - Daily plans with hierarchical action steps
+- **Retrieval** - Context-aware memory retrieval (recency × importance × relevance)
+
+**Tools:**
+- `generative_observe` - Add observation to memory stream
+- `generative_think` - Add internal thought
+- `generative_recall` - Retrieve relevant memories
+- `generative_reflect` - Generate insights from memories
+- `generative_plan` - Create daily/action plans
+- `generative_decide` - Use memories to decide action
+
+**CLI Commands:**
+- `/agent-memories` - Show recent memory stream
+- `/agent-reflections` - Show generated insights
+- `/agent-plans` - Show current plans
+- `/agent-status` - Show agent stats
+
+**Database Schema:**
+- `generative/agents.db` with tables: `agents`, `memory_stream`, `reflections`, `plans`
+
+**Auto-observation:** Records user input, tool executions, and agent completions automatically.
+
 ### Key Files
 
 - **`src/pi-config.ts`** - PI framework configuration with extensions and keybindings
@@ -259,6 +303,7 @@ Project-local workspace in `.0xkobold/` (created by `bun run init`).
 - **`src/event-bus/index.ts`** - Domain event system with typed events
 - **`cli/commands/init.ts`** - Workspace initialization logic
 - **`~/.0xkobold/agents.db`** - Agent registry database (agent definitions, running agents, messages)
+- **`src/utils/nl-patterns.ts`** - Natural language command pattern matching
 - **`AGENTS.md`** - Detailed multi-agent system documentation
 
 ### Testing
@@ -270,6 +315,14 @@ test("name", () => { expect(true).toBe(true); });
 ```
 
 Test utilities in `test/setup.ts` include `createMockLogger()`, `delay()`, `retry()`.
+
+### Test Suites
+
+| Suite | File | Coverage |
+|-------|------|----------|
+| Unit | `test/unit/extensions/generative-agents.test.ts` | Importance scoring, relevance, recency, reflection parsing |
+| Integration | `test/integration/generative-agents.integration.test.ts` | Database persistence, memory CRUD, reflection triggers |
+| E2E | `test/e2e/generative-agents.e2e.test.ts` | Full lifecycle: observe → think → act → reflect → plan |
 
 ### TypeScript Configuration
 
@@ -306,6 +359,19 @@ agent_delegate({
 2. Implement extension interface (see existing extensions for patterns)
 3. Register in `src/pi-config.ts`
 4. Restart to load (extensions not hot-reloaded)
+
+### Add Natural Language Pattern
+```typescript
+// src/utils/nl-patterns.ts
+{
+  regex: /^(?:spawn|create)\s+a\s+(\w+)\s+agent/i,
+  description: "Spawn specific agent type",
+  action: (match) => ({
+    tool: "agent_orchestrate",
+    params: { operation: "spawn_subagent", subagent: match[1], task: "..." }
+  })
+}
+```
 
 ### Debug Agent Issues
 ```bash

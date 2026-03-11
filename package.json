@@ -1,7 +1,7 @@
 {
   "name": "0xkobold",
-  "version": "0.4.4",
-  "description": "Your digital familiar - a personal AI assistant that learns and evolves (v0.3.0 - Multi-Channel, Security, Media Support)",
+  "version": "0.5.0",
+  "description": "Your digital familiar - multi-agent AI with memory, reflection, and semantic search (v0.5.0 - Draconic Intelligence)",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "type": "module",
@@ -29,7 +29,7 @@
     "update:framework": "bun run src/cli/index.ts update framework",
     "setup-hooks": "bash scripts/install-hooks.sh",
     "prepublishOnly": "bun run build",
-    "postinstall": "node scripts/postinstall.js || echo 'Welcome to 0xKobold! Run: 0xkobold setup'"
+    "postinstall": "node scripts/postinstall.js && node scripts/link-pi-extensions.js || echo 'Welcome to 0xKobold! Run: 0xkobold setup'"
   },
   "keywords": [
     "ai",
@@ -51,7 +51,14 @@
     "discord.js": "^14.25.1",
     "glob": "^10.5.0",
     "json5": "^2.2.3",
+    "node-machine-id": "^1.1.12",
     "node-telegram-bot-api": "^0.67.0",
+    "pi-extmgr": "^0.1.23",
+    "pi-librarian": "^1.3.0",
+    "pi-memory-md": "^0.1.1",
+    "pi-messenger": "^0.13.0",
+    "pi-subagents": "^0.11.1",
+    "pi-web-access": "^0.10.2",
     "playwright": "^1.58.2",
     "react": "^19.2.4",
     "sharp": "^0.33.5",
@@ -78,7 +85,8 @@
     "README.md",
     "LICENSE",
     "package.json",
-    "USAGE.md",
+    "SOUL.md",
+    "IDENTITY.md",
     "HEARTBEAT.md",
     "skills/",
     ".agents/skills/"

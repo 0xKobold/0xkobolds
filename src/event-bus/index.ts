@@ -18,11 +18,14 @@ export type DomainEventType =
   | 'agent.stopped'
   | 'agent.tool.started'
   | 'agent.tool.completed'
+  | 'agent.parent.notification'
+  | 'agent.expired'
   // Discord events
   | 'discord.message.received'
   | 'discord.message.sent'
   | 'discord.channel.joined'
   | 'discord.channel.left'
+  | 'discord.notify'
   // Gateway events
   | 'gateway.client.connected'
   | 'gateway.client.disconnected'
@@ -37,6 +40,11 @@ export type DomainEventType =
   // System events
   | 'system.error'
   | 'system.shutdown'
+  | 'system.notification'
+  // Cron events
+  | 'cron.job.started'
+  | 'cron.job.completed'
+  | 'cron.job.failed'
   // Skill events
   | 'skill.registered'
   | 'skill.unregistered';
