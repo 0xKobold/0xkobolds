@@ -293,7 +293,8 @@ Guidelines:
       "read",
       "bash",
       "perennial_search",
-      "web_search"
+      "web_search",
+      "security_scan"
     ],
     maxIterations: 10,
     thinkLevel: "deep",

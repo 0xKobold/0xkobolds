@@ -48,6 +48,7 @@ export const config: Config = {
 
     // Safety Extensions (CONSOLIDATED into draconic-safety)
     './src/extensions/core/draconic-safety-extension.ts',  // 🛡️ Replaces: protected-paths, confirm-destructive, dirty-repo-guard, git-checkpoint
+    './src/extensions/core/auto-security-scan-extension.ts', // 🔍 Auto-scan files on write for vulnerabilities
 
     // Developer Tools
     './src/extensions/core/extension-scaffold-extension.ts', // Scaffold new extensions
