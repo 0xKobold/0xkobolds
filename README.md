@@ -1,4 +1,4 @@
-# 0xKobold v0.5.0 "Draconic Intelligence"
+# 0xKobold v0.6.0 "Koclaw Gateway"
 
 ```
                          ..
@@ -26,7 +26,7 @@
            ..  ^?1YbMWO#@@@@@@@@@@@@@@OZ-` d@#@@@@@@@@#%W8##OoXZXQCi^ ...
              ..     .`.:!~-CXd%@@@@@@@8oQ}}%@@@@@@@@@@@BWWBWMMdbf[->>^..
                .....          :{@@@@@@@OYUCQ8@@@@@@@@8BB8WMQModU?++:!I..
-                    ..........  _@@B8%@#QMdYJO@@@@%BB%obO%obbXZ{?-~l,;..
+                    ..........  _@@B8%@@#QMdYJO@@@@%BB%obO%obbXZ{?-~l,;..
                               .. {ooQB%o@%OO-{Z@%oOooWOXZYYII}?_~iiI.`
                               . ^+IoQWQbOQXdJbfU#BdUZYJI[{[--l>:`
                                 `><+-]1??_~>++~!]J{}~>i>>;!;`     ..
@@ -34,16 +34,27 @@
                                  ........ ......... .........
 ```
 
-> *"Your digital familiar - a personal AI assistant that learns, remembers, and evolves"*
+> *"Your digital familiar - a personal AI assistant that connects, persists, and evolves"*
 
-**v0.5.0 "Draconic Intelligence"** — Multi-agent orchestration, semantic memory, and generative agent capabilities.
+**v0.6.0 "Koclaw Gateway"** — JSON-RPC gateway architecture, session persistence, and seamless multi-channel integration.
 
-> **New in v0.5.0:** Generative Agents (memory, reflection, planning), Semantic Memory (Ollama embeddings), Natural Language Commands  
-> **From v0.3.0:** Multi-channel (WhatsApp, Telegram, Slack), Tailscale VPN, Media (Vision, Audio, PDF), Docker Sandbox
+> **New in v0.6.0:** Koclaw Gateway (JSON-RPC), Session Management, Auth Profiles, Session Resume  
+> **From v0.5.0:** Generative Agents, Semantic Memory, Multi-agent Orchestration  
+> **From v0.3.0:** Multi-channel (WhatsApp, Telegram, Slack), Docker Sandbox
 
 ---
 
 ## ✨ Features
+
+### v0.6.0 - Koclaw Gateway
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Koclaw Gateway** | ✅ | JSON-RPC WebSocket/HTTP gateway with method handlers |
+| **Session Management** | ✅ | SQLite-based session persistence with metadata |
+| **Session Resume** | ✅ | Auto-save on shutdown, restore previous sessions |
+| **Auth Profiles** | ✅ | Multiple API keys per provider with automatic rotation |
+| **Gateway Auto-Start** | ✅ | Gateway starts automatically with TUI |
+| **Gateway Protocol** | ✅ | Hello/Connect/Request/Response/Event frame protocol |
 
 ### v0.5.0 - Draconic Intelligence
 | Feature | Status | Description |
@@ -129,6 +140,47 @@ delegate the user authentication project
 | researcher | 🔍 | Information gathering |
 | worker | ⚒️ | Implementation |
 | reviewer | 👁️ | Code review, validation |
+
+---
+
+## Koclaw Gateway 🌐
+
+JSON-RPC style gateway for multi-channel integration with session persistence.
+
+```bash
+# Gateway API endpoints
+GET  /health          # Health check
+GET  /protocol        # List available methods
+WS   /ws              # WebSocket endpoint
+
+# Protocol frames
+{ type: "hello", protocol: "1", version: "2" }
+{ type: "connect", sessionKey: "...", agent: "..." }
+{ type: "request", id: "...", method: "agent.run", params: {...} }
+{ type: "response", id: "...", result: {...} }
+{ type: "event", event: "agent.spawned", data: {...} }
+```
+
+### Session Management
+
+Sessions automatically persist across restarts:
+
+```bash
+# Sessions auto-save on shutdown
+Ctrl+C → Session saved → Restart → Resume from previous
+
+# List active sessions via CLI
+0xkobold gateway connections list
+```
+
+### Auth Profiles
+
+Multiple API keys per provider with automatic rotation:
+
+```bash
+# Use auth profiles automatically
+Config → Detect provider → Load profile → Rotate on failure
+```
 
 ---
 
@@ -235,6 +287,18 @@ bun run init           # Initialize workspace
 /memory-export         # Export to file
 ```
 
+### Gateway Commands
+```bash
+# Start/stop gateway
+0xkobold gateway start           # Start gateway server
+0xkobold gateway stop            # Stop gateway
+0xkobold gateway status          # Show gateway status
+
+# List connections
+0xkobold gateway connections list
+0xkobold gateway health
+```
+
 ---
 
 ## Configuration
@@ -243,7 +307,7 @@ Global config: `~/.0xkobold/config.json`
 
 ```json
 {
-  "version": "0.5.0",
+  "version": "0.6.0",
   "llm": {
     "provider": "ollama",
     "model": "qwen2.5-coder:14b",
@@ -259,7 +323,7 @@ Global config: `~/.0xkobold/config.json`
   },
   "gateway": {
     "enabled": true,
-    "port": 18789,
+    "port": 7777,
     "host": "0.0.0.0"
   },
   "channels": {
@@ -280,7 +344,8 @@ src/extensions/
 │   ├── agent-orchestrator-extension.ts    # Multi-agent orchestration
 │   ├── generative-agents-extension.ts     # Memory, reflection, planning
 │   ├── perennial-memory-extension.ts      # Semantic memory (Ollama)
-│   ├── gateway-extension.ts               # WebSocket server
+│   ├── gateway-extension.ts               # WebSocket server (v0.6.0)
+│   ├── gateway-status-extension.ts        # Gateway TUI integration
 │   ├── discord-extension.ts               # Discord bot
 │   └── ...
 └── community/
@@ -300,8 +365,13 @@ eventBus.on('agent.spawned', handler);
 | Component | Purpose |
 |-----------|---------|
 | `src/agent/` | Agent runtime with subagent support |
-| `src/gateway/` | WebSocket gateway (port 18789) |
-| `src/memory/` | Conversation persistence |
+| `src/gateway/` | Koclaw JSON-RPC gateway (port 7777) |
+| `src/gateway/protocol/` | Frame types (Hello, Connect, Request, Response, Event) |
+| `src/gateway/methods/` | Method handlers (agent.run, agent.status, etc.) |
+| `src/memory/` | Conversation persistence & session management |
+| `src/memory/session-store.ts` | SQLite session persistence |
+| `src/memory/session-resume.ts` | Auto-save/restore sessions |
+| `src/memory/memory-integration.ts` | Gateway + generative agents bridge |
 | `src/skills/` | Hot-reload skill system |
 | `src/tui/` | Terminal UI (React-based) |
 | `src/event-bus/` | Decoupled event system |
@@ -370,6 +440,13 @@ bun test --coverage
 ## Key Files
 
 - `src/pi-config.ts` - PI framework configuration
+- `src/gateway/gateway-server.ts` - Koclaw gateway server
+- `src/gateway/protocol/` - JSON-RPC protocol frames
+- `src/gateway/methods/agent.ts` - Gateway agent handlers
+- `src/memory/session-store.ts` - Session persistence
+- `src/memory/session-resume.ts` - Auto-save/restore
+- `src/memory/memory-integration.ts` - Gateway + memory bridge
+- `src/agent/auth-profiles.ts` - Auth profile management
 - `src/extensions/core/generative-agents-extension.ts` - Generative agents
 - `src/utils/nl-patterns.ts` - Natural language parsing
 - `~/.0xkobold/config.json` - User configuration
