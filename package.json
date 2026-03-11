@@ -1,7 +1,7 @@
 {
   "name": "0xkobold",
-  "version": "0.5.2",
-  "description": "Your digital familiar - multi-agent AI with memory, reflection, and semantic search (v0.5.1 - Draconic Intelligence Hotfix)",
+  "version": "0.6.0",
+  "description": "Your digital familiar - Koclaw-style gateway, session management, and multi-agent orchestration",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "type": "module",
