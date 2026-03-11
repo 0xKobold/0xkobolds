@@ -8,6 +8,13 @@ import { detectMode, createDraconicTUI } from "../src/tui/draconic-tui";
 import { DraconicStatusBar } from "../src/tui/components/status-bar";
 import { getDraconicRunRegistry, DraconicAgentRun } from "../src/agent/DraconicRunRegistry";
 import { eventBus } from "../src/event-bus";
+import { beforeEach } from "bun:test";
+
+// Clean up registry before each test to prevent state leakage
+beforeEach(() => {
+  const registry = getDraconicRunRegistry();
+  registry.clear();
+});
 
 describe("TUI Mode Detection", () => {
   test("detects local mode by default", () => {

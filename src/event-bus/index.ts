@@ -79,9 +79,11 @@ class KoboldEventBus extends EventEmitter {
   private middleware: MiddlewareFn[] = [];
 
   // Subscribe to an event
+  // Returns unsubsribe function instead of `this` for better ergonomics
   // @ts-ignore EventEmitter override
-  on<T>(event: DomainEventType, listener: EventHandler<T>): this {
-    return super.on(event, listener);
+  on<T>(event: DomainEventType, listener: EventHandler<T>): () => void {
+    super.on(event, listener);
+    return () => this.off(event, listener);
   }
 
   // Unsubscribe from an event

@@ -74,7 +74,6 @@ function verifyExtensions(): string[] {
     '--extension', ext('persona-loader-extension'),
     '--extension', ext('context-aware-extension'),
     '--extension', ext('onboarding-extension'),
-    '--extension', ext('mode-manager-extension'),
     '--extension', ext('questionnaire-extension'),
     '--extension', ext('session-name-extension'),
     '--extension', ext('handoff-extension'),

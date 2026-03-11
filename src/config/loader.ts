@@ -71,11 +71,8 @@ const DEFAULT_CONFIG: KoboldConfig = {
   },
   extensions: {
     enabled: [
-      "ollama-provider",
-      "session-bridge",
       "persona-loader",
       "context-aware",
-      "mode-manager",
       "heartbeat",
       "task-manager",
       "mcp",

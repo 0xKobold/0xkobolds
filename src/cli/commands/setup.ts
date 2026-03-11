@@ -42,11 +42,8 @@ const DEFAULT_CONFIG = {
   },
   extensions: [
     "core/mcp-extension",
-    "core/mode-manager-extension",
     "core/websearch-extension",
     "core/heartbeat-extension",
-    "core/ollama-router-extension",
-    "core/ollama-cloud-extension",
     "core/discord-bridge-extension"
   ]
 };
