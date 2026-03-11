@@ -149,8 +149,8 @@ async function runIsolatedSession(job: CronJob): Promise<JobResult> {
 /**
  * Run job in main session (shared context)
  * 
- * Injects job into main session as a system event.
- * Has full conversation context but may be delayed.
+ * Injects job into main session via event bus.
+ * Uses event system for decoupled integration.
  */
 async function runMainSession(job: CronJob): Promise<JobResult> {
   console.log(`[CronRunner] Main session: injecting event`);
@@ -158,15 +158,25 @@ async function runMainSession(job: CronJob): Promise<JobResult> {
   const startTime = Date.now();
   
   try {
-    // For now, treat main session as isolated but flag it
-    // TODO(v0.5.1): Integrate with actual main session context via memory store
-    // Requires: access to memory/perennial system and conversation context
+    // Emit event for the main session system to pick up
+    // This enables the main session (if running) to handle the job
+    eventBus.emit('cron.job.injected', {
+      source: 'cron',
+      jobId: job.id,
+      jobName: job.name,
+      message: job.message,
+      timestamp: Date.now(),
+      session: 'main'
+    });
+    
+    // For now, run isolated but indicate it's main session context
+    // The main session can pick up the event and handle it if active
     const result = await runIsolatedSession(job);
     
     // Mark as main session in output
     return {
       ...result,
-      output: `[Scheduled Task]\n${result.output}`,
+      output: `[Scheduled Task - Main Session]\n${result.output}`,
     };
     
   } catch (error) {

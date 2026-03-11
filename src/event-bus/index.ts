@@ -45,6 +45,7 @@ export type DomainEventType =
   | 'cron.job.started'
   | 'cron.job.completed'
   | 'cron.job.failed'
+  | 'cron.job.injected'
   // Skill events
   | 'skill.registered'
   | 'skill.unregistered'

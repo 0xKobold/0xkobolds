@@ -61,21 +61,41 @@ export async function runEmbeddedAgent(
 
   console.log(`[Embedded] System prompt: ${systemPrompt.length} chars`);
 
-  // 4. TODO(v0.5.2+): Integrate with pi-coding-agent SDK
-  // This requires SDK linkage and is a larger architectural change
-  // const { session } = await createAgentSession({
-  //   cwd: config.cwd,
-  //   // ... other config
-  // });
-  // 
-  // // Apply custom system prompt
-  // const override = createSystemPromptOverride(systemPrompt);
-  // applySystemPromptOverride(session, override);
-  //
-  // // Run
-  // const result = await session.prompt(config.prompt);
+  // 4. Try to integrate with pi-coding-agent SDK
+  try {
+    // Dynamic import to avoid hard dependency
+    const { createAgentSession } = await import('@mariozechner/pi-coding-agent').catch(() => ({ createAgentSession: null }));
+    
+    if (createAgentSession) {
+      console.log('[Embedded] Using pi-coding-agent SDK');
+      
+      // Create agent session with custom system prompt
+      const { session } = await createAgentSession({
+        cwd: config.cwd,
+        systemPrompt: systemPrompt,
+      });
+      
+      // Run the prompt with appropriate options
+      const maxIterations = config.mode === 'build' ? 30 : 15;
+      const result = await session.prompt(config.prompt, maxIterations);
+      
+      const duration = Date.now() - startTime;
+      
+      return {
+        text: result || 'No response',
+        toolCalls: [], // Tool calls would need to be extracted from result
+        metadata: {
+          duration,
+          tokens: systemPrompt.length / 4, // Rough estimate until SDK provides usage
+        },
+      };
+    }
+  } catch (sdkError) {
+    console.log('[Embedded] SDK integration failed, falling back to simulation:', (sdkError as Error).message);
+  }
 
-  // For now, simulate the structure
+  // Fallback: Simulate the structure
+  console.log('[Embedded] Running in simulation mode (SDK not available)');
   const simulatedResult: EmbeddedRunResult = {
     text: `[Embedded mode simulation]\n\n` +
           `Bootstrap files loaded:\n` +
@@ -97,10 +117,29 @@ export async function runEmbeddedAgent(
 
 /**
  * Check if embedded mode is available
+ * 
+ * Verifies pi-coding-agent SDK is properly linked and functional.
+ * Attempts dynamic import to check for SDK presence.
  */
-export function isEmbeddedModeAvailable(): boolean {
-  // TODO(v0.6.0): Check if pi-coding-agent SDK is properly linked
-  return true;
+export async function isEmbeddedModeAvailable(): Promise<boolean> {
+  try {
+    // Try to import pi-coding-agent SDK
+    const { createAgentSession } = await import('@mariozechner/pi-coding-agent');
+    
+    // Check for required API
+    const hasSessionAPI = typeof createAgentSession === 'function';
+    
+    if (!hasSessionAPI) {
+      console.log('[Embedded] pi-coding-agent SDK found but createAgentSession API unavailable');
+      return false;
+    }
+    
+    console.log('[Embedded] pi-coding-agent SDK fully available');
+    return true;
+  } catch (error) {
+    console.log('[Embedded] pi-coding-agent SDK not found:', (error as Error).message);
+    return false;
+  }
 }
 
 /**
