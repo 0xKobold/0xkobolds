@@ -1,22 +1,91 @@
 /**
- * Gateway Module - v0.2.0
- * 
+ * Gateway Module
+ *
  * WebSocket + HTTP gateway for multi-channel support.
- * Now with REAL Bun-native WebSocket server.
+ * Koclaw-style architecture with JSON-RPC protocol.
  */
 
-// Old mock (deprecated)
-export { getGatewayServer, resetGatewayServer, registerDiscordChannel, registerTelegramChannel } from "./websocket-server.js";
-export type { GatewayConnection } from "./websocket-server.js";
+// Protocol
+export {
+  PROTOCOL_VERSION,
+  ErrorCodes,
+  errorShape,
+  isValidRequestFrame,
+  isValidEventFrame,
+} from "./protocol/index";
 
-// NEW Real Gateway
-export { getRealGateway, resetRealGateway, default as RealGatewayServer } from "./server.js";
-export type { 
-  GatewayConfig, 
-  GatewayMessage, 
-  RealGatewayServerType,
-  WSConnection 
-} from "./server.js";
+export type {
+  RequestFrame,
+  ResponseFrame,
+  EventFrame,
+  ErrorShape,
+  HelloOk,
+  ConnectParams,
+} from "./protocol/index";
 
-// Re-export as primary (old becomes legacy)
-export { getRealGateway as getGateway, resetRealGateway as resetGateway } from "./server.js";
+// Method handlers
+export type {
+  GatewayContext,
+  GatewayDeps,
+  GatewayDedupeStore,
+  GatewayRespond,
+  GatewayMethodHandler,
+  GatewayClientInfo,
+  ConnectInfo,
+  GatewayRequestHandlers,
+} from "./methods/index";
+
+export {
+  agentHandler,
+  agentStatusHandler,
+  agentWaitHandler,
+  gatewayHandlers,
+  getHandler,
+  listMethods,
+} from "./methods/index";
+
+// Gateway Server
+export {
+  createGateway,
+  startGateway,
+  stopGateway,
+  getGateway,
+  RealGatewayServer,
+} from "./gateway-server";
+
+export type { GatewayConfig } from "./gateway-server";
+
+// Legacy exports (deprecated, will be removed)
+export {
+  getGatewayServer,
+  resetGatewayServer,
+  registerDiscordChannel,
+  registerTelegramChannel,
+} from "./websocket-server.js";
+
+// Backward compatibility - new gateway uses these names
+export {
+  getGateway as getRealGateway,
+  stopGateway as resetRealGateway,
+} from "./gateway-server";
+
+// Session Store (Phase 2 + Phase 5)
+export {
+  createSessionStore,
+  getSessionStore,
+  resetSessionStore,
+  generateSessionId,
+} from "../memory/session-store";
+
+export type { SessionEntry, SessionStore } from "../memory/session-store";
+
+// Session Memory Bridge (Phase 5)
+export {
+  getSessionMemoryBridge,
+} from "../memory/session-memory-bridge";
+
+export type {
+  SessionMemoryContext,
+  MemoryEnrichedSession,
+  SessionMemoryBridge,
+} from "../memory/session-memory-bridge";

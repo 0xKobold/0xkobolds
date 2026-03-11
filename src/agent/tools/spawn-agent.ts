@@ -16,6 +16,10 @@ export interface SpawnAgentParams {
   priority?: "low" | "normal" | "high";
   maxIterations?: number; // Override default
   model?: string; // Override model preference
+  // Gateway compatibility
+  parentRunId?: string;
+  extraSystemPrompt?: string;
+  sessionKey?: string;
 }
 
 export interface SpawnAgentResult {
@@ -27,6 +31,8 @@ export interface SpawnAgentResult {
   maxIterations: number;
   routingInfo?: TaskRouterResult;
   error?: string;
+  // Gateway compatibility
+  runId?: string;
 }
 
 /**

@@ -16,7 +16,7 @@ import {
   type DraconicTUI,
 } from "./draconic-tui";
 
-import { createStatusBarProvider } from "./components/status-bar";
+import { createStatusBarProvider, type GatewayStatus } from "./components/status-bar";
 import { createAgentTreeComponent } from "./components/agent-tree-overlay";
 import { createOrchestrationCommandHandlers, OrchestrationCommands } from "./commands/orchestration-commands";
 
@@ -33,6 +33,7 @@ export function createKoboldTUI(options: KoboldTUIOptions = {}): {
   commands: ReturnType<typeof createOrchestrationCommandHandlers>;
   getTreeOverlay: () => Promise<any>;
   mode: string;
+  getGatewayStatus?: () => GatewayStatus;
 } {
   // Detect or use provided mode
   const mode = options.mode || detectMode();
@@ -85,6 +86,7 @@ export function createKoboldTUI(options: KoboldTUIOptions = {}): {
     commands,
     getTreeOverlay,
     mode,
+    getGatewayStatus: () => statusBar.getGatewayStatus(), // NEW
   };
 }
 

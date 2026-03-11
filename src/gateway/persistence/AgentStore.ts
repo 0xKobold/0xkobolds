@@ -344,6 +344,13 @@ export class AgentStore {
   }
 
   /**
+   * Alias for getActiveAgents (compatibility with gateway-server)
+   */
+  async listActive(): Promise<PersistedAgent[]> {
+    return this.getActiveAgents();
+  }
+
+  /**
    * Get recently completed agents (last N hours)
    */
   async getRecentCompleted(hours: number = 24): Promise<PersistedAgent[]> {

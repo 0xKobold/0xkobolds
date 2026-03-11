@@ -680,13 +680,6 @@ export const getDraconicRunRegistry = DraconicRunRegistry.getInstance;
 
 // 🔄 AUTO-CLEAR ON RELOAD: Clear any completed agents on module load (hot reload)
 const registry = getDraconicRunRegistry();
-const initialRuns = registry.query({}).runs;
-const completedRuns = initialRuns.filter(r => r.status !== "running");
-if (completedRuns.length > 0) {
-  for (const run of completedRuns) {
-    registry.delete(run.id);
-  }
-  console.log(`[🧹 Auto-clear] Removed ${completedRuns.length} stale agents on reload`);
-}
 
-// Types already exported at top of file
+// Alias for backward compatibility
+export type AgentRun = DraconicAgentRun;

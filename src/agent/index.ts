@@ -40,3 +40,37 @@ export {
   BUDGET_PRESETS 
 } from "./context-pruning.js";
 export type { ContextBudget, ContextItem, PruningStrategy, PruningResult } from "./context-pruning.js";
+
+// Model Fallback (Phase 3)
+export { 
+  runWithModelFallback, 
+  runWithSimpleFallback,
+  FailoverError,
+  isRetryableError,
+  classifyFailoverReason,
+  computeBackoff 
+} from "./model-fallback.js";
+export type { 
+  ModelRef, 
+  FallbackResult, 
+  FallbackConfig, 
+  FallbackError 
+} from "./model-fallback.js";
+
+// Auth Profiles (Phase 4)
+export {
+  addAuthProfile,
+  removeAuthProfile,
+  getAuthProfile,
+  listAuthProfiles,
+  getApiKeyForProvider,
+  markAuthProfileUsed,
+  markAuthProfileFailure,
+  markAuthProfileGood,
+  rotateApiKey,
+  ensureAuthProfilesFromConfig,
+  isProfileInCooldown,
+  resolveProfilesUnavailableReason,
+  clearAuthProfiles,
+} from "./auth-profiles.js";
+export type { AuthProfile, ResolvedProviderAuth } from "./auth-profiles.js";

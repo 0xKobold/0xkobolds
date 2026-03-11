@@ -18,12 +18,14 @@ export interface EmbeddedRunConfig {
   prompt: string;
   cwd: string;
   workspaceDir?: string;
+  workingDir?: string; // Alias for workspaceDir
   mode?: "plan" | "build";
   extensions?: string[]; // Extension paths (defaults to pi-config)
   useTuiSettings?: boolean; // Load model/persona from TUI config
   model?: string; // Override model
   onUpdate?: (update: any) => void;
   onBlockReply?: (reply: string) => void;
+  task?: string; // Alias for prompt (compatibility)
 }
 
 export interface EmbeddedRunResult {
@@ -34,6 +36,12 @@ export interface EmbeddedRunResult {
     tokens: number;
     model?: string;
     extensions?: string[];
+  };
+  // Compatibility properties for gateway
+  output?: string;
+  stats?: {
+    tokens: { total?: number; input?: number; output?: number };
+    duration?: number;
   };
 }
 

@@ -55,7 +55,38 @@ export type DomainEventType =
   // Security events
   | 'security.issues_found'
   | 'security.scan_completed'
-  // Channel notification events
+  // Session events
+  | 'gateway.session_connected'
+  | 'gateway.session_disconnected'
+  | 'session.run.completed'
+  | 'session.run.linked'
+  // Generative events
+  | 'generative.observation'
+  | 'generative.recap'
+  | 'generative.trigger_reflection'
+  | 'generative.observe_session'
+  | 'generative.query_thread'
+  // Perennial events
+  | 'perennial.save'
+  | 'perennial.save_session'
+  | 'perennial.query_for_session'
+  // Memory integration events
+  | 'memory.session_saved'
+  | 'memory.session.resumed'
+  // Auth profile events
+  | 'auth-profile:added'
+  | 'auth-profile:removed'
+  | 'auth-profile:used'
+  | 'auth-profile:failed'
+  | 'auth-profile:recovered'
+  // Fallback events
+  | 'fallback.attempt'
+  | 'fallback.success'
+  | 'fallback.failed'
+  // Session events
+  | 'session.save'
+  | 'session.load'
+  // Notification channels
   | 'whatsapp.notify'
   | 'telegram.notify'
   | 'discord.notify';

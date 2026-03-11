@@ -19,6 +19,8 @@ import { fileURLToPath } from 'url';
 import { resolve, dirname, join } from 'path';
 import { homedir } from 'os';
 import { existsSync } from 'fs';
+import { startGateway } from './gateway/index';
+import { ensureAuthProfilesFromConfig } from './agent/index';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(__dirname, '..');
@@ -106,6 +108,7 @@ function verifyExtensions(): string[] {
     // Integrations
     '--extension', ext('mcp-extension'),
     '--extension', ext('gateway-extension'),
+    '--extension', ext('gateway-status-extension'),
     // Agent workspace provides advanced_web_fetch tool
     '--extension', ext('agent-workspace-extension'),
     // Deprecated: Use agent-orchestrator-extension instead
@@ -174,14 +177,45 @@ async function main(): Promise<void> {
 
   // TUI Mode: Load with all extensions
   const extensions = verifyExtensions();
-  
+
+  // Start Gateway Server (unless disabled)
+  const gatewayPort = parseInt(process.env.KOBOLD_GATEWAY_PORT || '7777', 10);
+  if (!process.env.KOBOLD_NO_GATEWAY) {
+    try {
+      startGateway({ port: gatewayPort, host: '0.0.0.0' });
+      console.log(`🌐 Gateway started on port ${gatewayPort}`);
+
+      // Load auth profiles from config
+      ensureAuthProfilesFromConfig();
+    } catch (err) {
+      console.warn('⚠️  Failed to start gateway:', err);
+    }
+  }
+
+  // Initialize Session Resume System (auto-save on shutdown)
+  try {
+    const { getSessionResumeSystem } = await import('./memory/session-resume');
+    getSessionResumeSystem();
+    console.log('💾 Session resume system ready (auto-save on Ctrl+C)');
+  } catch (err) {
+    console.warn('⚠️  Session resume not available:', err);
+  }
+
+  // Suggest previous sessions on startup
+  try {
+    const { suggestOnStartup } = await import('../skills/session-resume-skill');
+    await suggestOnStartup();
+  } catch (err) {
+    // Silent fail - not critical
+  }
+
   // Build argv for pi-coding-agent: [node, script, ...extensions]
   // We must modify process.argv because pi-coding-agent reads it directly
   const originalArgv = process.argv;
   process.argv = [originalArgv[0], originalArgv[1], ...extensions];
-  
+
   console.log(''); // newline before pi-coding-agent starts
-  
+
   try {
     return await piMain(extensions);
   } finally {

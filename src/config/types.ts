@@ -235,6 +235,20 @@ export type KoboldConfig = {
   update?: UpdateConfig;
   env?: Record<string, string>;
   cli?: CliConfig;
+  // Provider configs for auth profiles
+  anthropic?: {
+    apiKey?: string;
+    baseUrl?: string;
+  };
+  openai?: {
+    apiKey?: string;
+    baseUrl?: string;
+  };
+  ollama?: {
+    apiKey?: string;
+    baseUrl?: string;
+    host?: string;
+  };
 };
 
 export type ConfigValidationIssue = {

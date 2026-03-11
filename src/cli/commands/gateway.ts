@@ -117,18 +117,16 @@ export function createGatewayCommand(): Command {
       const gateway = getRealGateway();
       const connections = gateway.getConnections();
 
-      if (connections.length === 0) {
+      if (connections.size === 0) {
         console.log("No active connections");
         return;
       }
 
-      console.log(`\nActive connections (${connections.length}):\n`);
+      console.log(`\nActive connections (${connections.size}):\n`);
       
-      for (const conn of connections) {
+      for (const [id, conn] of connections) {
         const age = Math.round((Date.now() - conn.connectedAt.getTime()) / 1000);
-        console.log(`  ${conn.type.toUpperCase()} | ${conn.id.slice(0, 20)}... | ${age}s ago`);
-        if (conn.channel) console.log(`    Channel: ${conn.channel}`);
-        if (conn.user) console.log(`    User: ${conn.user}`);
+        console.log(`  ${conn.type.toUpperCase()} | ${id.slice(0, 20)}... | ${age}s ago`);
       }
       console.log();
     });
