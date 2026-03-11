@@ -42,16 +42,18 @@ export default async function register(pi: ExtensionAPI) {
         state.running = false;
       }
 
-      // Update footer
-      const emoji = state.running ? "🟢" : "🔴";
-      const url = state.gatewayUrl
-        .replace("ws://", "")
-        .replace("wss://", "")
-        .replace(/^localhost:/, "")
-        .replace(/^127\.0\.0\.1:/, "");
-
-      const text = state.running ? `${emoji} GW:${url}` : `${emoji} GW:--`;
-      ctx.ui.setStatus("gateway", text);
+      // Only show in footer if gateway is running
+      if (state.running) {
+        const url = state.gatewayUrl
+          .replace("ws://", "")
+          .replace("wss://", "")
+          .replace(/^localhost:/, "")
+          .replace(/^127\.0\.0\.1:/, "");
+        ctx.ui.setStatus("gateway", `🟢 GW:${url}`);
+      } else {
+        // Clear status when not running (don't show 🔴)
+        ctx.ui.setStatus("gateway", undefined);
+      }
     };
 
     // Initial check

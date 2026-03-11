@@ -1,4 +1,10 @@
-# 0xKobold v0.6.0 "Koclaw Gateway"
+# 0xKobold v0.6.2 "Workspace Aware"
+
+**v0.6.2** — Workspace-aware footer, cleaner gateway display
+
+**v0.6.1** — Gateway auto-start opt-in (fixes port conflicts)
+
+**v0.6.0 "Koclaw Gateway"** — JSON-RPC gateway, session persistence, multi-channel
 
 ```
                          ..
@@ -45,6 +51,13 @@
 ---
 
 ## ✨ Features
+
+### v0.6.2 - Workspace Aware
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Workspace Footer** | ✅ | Shows 🏠 ~/.0xkobold (global) or 📁 /path (local) |
+| **Gateway Indicator** | ✅ | Only shows when gateway is running (cleaner footer) |
+| **/workspace Command** | ✅ | Display current workspace info |
 
 ### v0.6.0 - Koclaw Gateway
 | Feature | Status | Description |
