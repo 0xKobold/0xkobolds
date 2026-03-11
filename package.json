@@ -1,12 +1,12 @@
 {
   "name": "0xkobold",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Your digital familiar - Koclaw-style gateway, session management, and multi-agent orchestration",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "type": "module",
   "bin": {
-    "0xkobold": "./dist/src/cli/index.js"
+    "0xkobold": "dist/src/cli/index.js"
   },
   "exports": {
     ".": {
