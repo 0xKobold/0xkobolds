@@ -235,8 +235,8 @@ describe("Real-time Updates", () => {
     
     const unsubscribe = eventBus.on("agent.spawned", (data: any) => {
       eventReceived = true;
-      expect(data.payload.runId).toBeDefined();
-      expect(data.payload.type).toBe("researcher");
+      expect(data.runId).toBeDefined();
+      expect(data.type).toBe("researcher");
     });
     
     const registry = getDraconicRunRegistry();
@@ -379,10 +379,8 @@ describe("Registry Stats", () => {
   test("calculates stats correctly", async () => {
     const registry = getDraconicRunRegistry();
     
-    // Empty state - stats include additional metadata fields
-    const emptyStats = registry.getStats();
-    expect(emptyStats.totalRuns).toBe(0);
-    expect(emptyStats.activeRuns).toBe(0);
+    // Empty state
+    expect(registry.getStats()).toEqual({ totalRuns: 0, activeRuns: 0 });
     
     // Add running agent
     const run1 = registry.create({
@@ -397,9 +395,7 @@ describe("Registry Stats", () => {
     });
     registry.updateStatus(run1.id, "running");
     
-    const stats1 = registry.getStats();
-    expect(stats1.totalRuns).toBe(1);
-    expect(stats1.activeRuns).toBe(1);
+    expect(registry.getStats()).toEqual({ totalRuns: 1, activeRuns: 1 });
     
     // Add completed agent
     const run2 = registry.create({
@@ -414,9 +410,7 @@ describe("Registry Stats", () => {
     });
     registry.updateStatus(run2.id, "completed");
     
-    const stats2 = registry.getStats();
-    expect(stats2.totalRuns).toBe(2);
-    expect(stats2.activeRuns).toBe(1);
+    expect(registry.getStats()).toEqual({ totalRuns: 2, activeRuns: 1 });
     
     registry.clear();
   });
