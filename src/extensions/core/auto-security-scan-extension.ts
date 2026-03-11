@@ -5,7 +5,7 @@
  * Provides security feedback without blocking the agent.
  */
 
-import { eventBus } from '../event-bus/index.js';
+import { eventBus } from "../../event-bus";
 import { execSync } from 'child_process';
 import { existsSync } from 'fs';
 import { resolve } from 'path';

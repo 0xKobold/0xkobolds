@@ -53,7 +53,11 @@ export type DomainEventType =
   | 'file.read'
   // Security events
   | 'security.issues_found'
-  | 'security.scan_completed';
+  | 'security.scan_completed'
+  // Channel notification events
+  | 'whatsapp.notify'
+  | 'telegram.notify'
+  | 'discord.notify';
 
 // Domain Event Interface
 export interface DomainEvent {

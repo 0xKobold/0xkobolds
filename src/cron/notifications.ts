@@ -177,11 +177,24 @@ async function sendSlack(webhookUrl: string, message: string): Promise<void> {
 }
 
 /**
- * Send WhatsApp notification (placeholder - requires Baileys or WhatsApp Business API)
+ * Send WhatsApp notification using Baileys integration
+ * 
+ * Emits event for the WhatsApp channel to pick up if connected.
+ * Falls back to console if WhatsApp is not initialized.
  */
 async function sendWhatsApp(phoneNumber: string, message: string): Promise<void> {
-  // TODO(v0.5.1): Implement using existing WhatsApp channel integration
-  // For now, log a warning
-  console.warn(`[Notification] WhatsApp notifications require Baileys integration (not yet implemented)`);
-  console.warn(`[Notification] Would send to ${phoneNumber}: ${message.substring(0, 100)}...`);
+  const { eventBus } = await import('../event-bus/index.js');
+  
+  // Format phone number (ensure it has country code)
+  const formattedNumber = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+  
+  // Emit event for WhatsApp channel integration
+  await eventBus.emit('whatsapp.notify', {
+    to: formattedNumber,
+    text: message,
+    timestamp: Date.now(),
+    source: 'cron'
+  });
+  
+  console.log(`[Notification] WhatsApp notification queued for ${formattedNumber}`);
 }

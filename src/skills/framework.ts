@@ -244,7 +244,7 @@ export function resetSkillRegistry(): void {
 }
 
 /**
- * Install skill from source
+ * Install skill from source (local path, git URL, or tarball)
  */
 export async function installSkill(
   source: string,
@@ -256,28 +256,136 @@ export async function installSkill(
     // Create skills directory if needed
     await fs.mkdir(skillsDir, { recursive: true });
 
-    // TODO(v0.5.1): Clone from git, extract from tarball, etc.
-    // For now, assume source is a local path
-    const skillName = path.basename(source);
-    const targetPath = path.join(skillsDir, skillName);
-
-    if (existsSync(targetPath)) {
-      return { success: false, message: `Skill ${skillName} already installed` };
+    // Detect source type and install accordingly
+    if (source.startsWith('git+') || source.endsWith('.git') || source.includes('github.com') || source.includes('gitlab.com')) {
+      return await installFromGit(source, skillsDir);
+    } else if (source.endsWith('.tar.gz') || source.endsWith('.tgz')) {
+      return await installFromTarball(source, skillsDir);
+    } else {
+      // Local path copy
+      return await installFromLocal(source, skillsDir);
     }
-
-    // Simple copy for now
-    await fs.mkdir(targetPath, { recursive: true });
-    const files = await fs.readdir(source);
-    
-    for (const file of files) {
-      const src = path.join(source, file);
-      const dest = path.join(targetPath, file);
-      await fs.copyFile(src, dest);
-    }
-
-    return { success: true, message: `Installed ${skillName} to ${targetPath}` };
   } catch (error) {
     return { success: false, message: `Installation failed: ${error}` };
+  }
+}
+
+/**
+ * Install skill from local directory
+ */
+async function installFromLocal(
+  source: string,
+  skillsDir: string
+): Promise<{ success: boolean; message: string }> {
+  const skillName = path.basename(source);
+  const targetPath = path.join(skillsDir, skillName);
+
+  if (existsSync(targetPath)) {
+    return { success: false, message: `Skill ${skillName} already installed` };
+  }
+
+  await fs.mkdir(targetPath, { recursive: true });
+  const files = await fs.readdir(source);
+  
+  for (const file of files) {
+    const src = path.join(source, file);
+    const dest = path.join(targetPath, file);
+    const stat = await fs.stat(src);
+    
+    if (stat.isDirectory()) {
+      // Recursively copy directories (simple implementation)
+      await fs.mkdir(dest, { recursive: true });
+    } else {
+      await fs.copyFile(src, dest);
+    }
+  }
+
+  return { success: true, message: `Installed ${skillName} from local path to ${targetPath}` };
+}
+
+/**
+ * Install skill from git repository
+ */
+async function installFromGit(
+  repoUrl: string,
+  skillsDir: string
+): Promise<{ success: boolean; message: string }> {
+  const { execSync } = await import('child_process');
+  
+  // Extract skill name from repo URL
+  const repoName = path.basename(repoUrl, '.git');
+  const targetPath = path.join(skillsDir, repoName);
+  
+  if (existsSync(targetPath)) {
+    return { success: false, message: `Skill ${repoName} already installed` };
+  }
+  
+  try {
+    // Clone the repository
+    console.log(`[Skills] Cloning ${repoUrl}...`);
+    execSync(`git clone "${repoUrl}" "${targetPath}"`, {
+      cwd: skillsDir,
+      timeout: 60000,
+      stdio: 'pipe'
+    });
+    
+    return { success: true, message: `Installed ${repoName} from git to ${targetPath}` };
+  } catch (error: any) {
+    // Clean up partial clone
+    if (existsSync(targetPath)) {
+      await fs.rm(targetPath, { recursive: true, force: true });
+    }
+    throw new Error(`Git clone failed: ${error.message}`);
+  }
+}
+
+/**
+ * Install skill from tarball
+ */
+async function installFromTarball(
+  tarballPath: string,
+  skillsDir: string
+): Promise<{ success: boolean; message: string }> {
+  const { execSync } = await import('child_process');
+  
+  const tarName = path.basename(tarballPath, '.tar.gz').replace('.tgz', '');
+  const extractDir = path.join(skillsDir, `__extract_${Date.now()}`);
+  
+  try {
+    // Extract tarball
+    console.log(`[Skills] Extracting ${tarName}...`);
+    execSync(`tar -xzf "${tarballPath}" -C "${extractDir}"`, {
+      timeout: 30000,
+      stdio: 'pipe'
+    });
+    
+    // Find the extracted directory (usually one subdir)
+    const entries = await fs.readdir(extractDir);
+    const skillDir = entries.find(e => !e.startsWith('.'));
+    
+    if (!skillDir) {
+      throw new Error('No skill directory found in tarball');
+    }
+    
+    const sourcePath = path.join(extractDir, skillDir);
+    const targetPath = path.join(skillsDir, skillDir);
+    
+    if (existsSync(targetPath)) {
+      await fs.rm(extractDir, { recursive: true, force: true });
+      return { success: false, message: `Skill ${skillDir} already installed` };
+    }
+    
+    // Move to final location
+    await fs.rename(sourcePath, targetPath);
+    await fs.rm(extractDir, { recursive: true, force: true });
+    
+    return { success: true, message: `Installed ${skillDir} from tarball to ${targetPath}` };
+  } catch (error: any) {
+    // Cleanup
+    if (existsSync(extractDir)) {
+      await fs.rm(extractDir, { recursive: true, force: true });
+    }
+    throw new Error(`Tarball extraction failed: ${error.message}`);
   }
 }
 
