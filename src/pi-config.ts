@@ -55,19 +55,11 @@ export const config: Config = {
 
     // Tool Integrations
     './src/extensions/core/mcp-extension.ts',            // Model Context Protocol support
-    // NOTE: Using gateway-extension.ts above
-    // agent-registry-extension.ts REMOVED - file does not exist
-    // persistent-agents-extension.ts REMOVED - file does not exist
     './src/extensions/core/websearch-enhanced-extension.ts',        // Ollama web search
     './src/extensions/core/update-extension.ts',           // Framework update functionality
     './src/extensions/core/self-update-extension.ts',      // 0xKobold self-update
     './src/extensions/core/perennial-memory-extension.ts', // Long-term memory
     './src/extensions/core/generative-agents-extension.ts', // 🧠 Memory stream, reflection, planning
-    
-    // Mode-Manager REMOVED - Plan/Build modes replaced by natural workflow
-    // Context-aware REMOVED - Superseded by unified sessions
-    // Session-bridge REMOVED - Superseded by unified sessions
-    // Session-manager REMOVED - Superseded by unified sessions
     
     // 🐉 Community Extensions (PI Ecosystem Wrappers)
     './src/extensions/community/draconic-subagents-wrapper.ts',  // pi-subagents bridge
@@ -140,3 +132,4 @@ export type KoboldConfig = typeof config;
 // - session-name-extension.ts → REMOVED (integrated into unified sessions)
 // - handoff-extension.ts → REMOVED (forking is in UnifiedSessionBridge)
 export default config;
+
