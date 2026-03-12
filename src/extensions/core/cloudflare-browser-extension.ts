@@ -443,11 +443,11 @@ export default async function cloudflareBrowserExtension(pi: ExtensionAPI): Prom
   pi.registerTool({
     name: "cloudflare_screenshot",
     label: "/cf_screenshot",
-    description: "Take screenshot with Cloudflare Browser Rendering",
+    description: "Take screenshot with Cloudflare Browser Rendering (inline + saved)",
     parameters: Type.Object({
       url: Type.String({ description: "URL to screenshot" }),
       fullPage: Type.Boolean({ default: false, description: "Full page vs viewport" }),
-      saveToObsidian: Type.Boolean({ default: true, description: "Save PNG" })
+      saveToObsidian: Type.Boolean({ default: true, description: "Save PNG to vault" })
     }),
     async execute(
       _toolCallId: string,
@@ -463,10 +463,17 @@ export default async function cloudflareBrowserExtension(pi: ExtensionAPI): Prom
 
         return {
           content: [
-            { type: "text" as const, text: `📸 ${result.metadata.title}\nStatus: ${result.metadata.status}` },
-            ...(savedPath ? [{ type: "text" as const, text: `💾 ${savedPath}` }] : [])
+            { type: "text" as const, text: `📸 Screenshot: ${result.metadata.title}\n🌐 ${result.metadata.url}` },
+            // Inline image for immediate viewing
+            { type: "image" as const, data: result.screenshot, mimeType: "image/png" },
+            ...(savedPath ? [{ type: "text" as const, text: `💾 Saved to: ${savedPath}` }] : [])
           ],
-          details: { title: result.metadata.title, url: result.metadata.url, savedPath }
+          details: { 
+            title: result.metadata.title, 
+            url: result.metadata.url, 
+            savedPath,
+            imageSize: result.screenshot.length 
+          }
         };
       } catch (error) {
         return {
@@ -482,12 +489,12 @@ export default async function cloudflareBrowserExtension(pi: ExtensionAPI): Prom
   // ========================================================================
   pi.registerTool({
     name: "cloudflare_pdf",
-    label: "/cf_pdf",
-    description: "Generate PDF with Cloudflare Browser Rendering",
+    label: "/cf_pdf", 
+    description: "Generate PDF from URL and save to Obsidian vault",
     parameters: Type.Object({
-      url: Type.String({ description: "URL to PDF" }),
+      url: Type.String({ description: "URL to convert to PDF" }),
       fullPage: Type.Boolean({ default: true, description: "Include full page" }),
-      saveToObsidian: Type.Boolean({ default: true, description: "Save PDF" })
+      saveToObsidian: Type.Boolean({ default: true, description: "Save PDF to vault" })
     }),
     async execute(
       _toolCallId: string,
@@ -503,10 +510,19 @@ export default async function cloudflareBrowserExtension(pi: ExtensionAPI): Prom
 
         return {
           content: [
-            { type: "text" as const, text: `📄 ${result.metadata.title}` },
-            ...(savedPath ? [{ type: "text" as const, text: `💾 ${savedPath}` }] : [])
+            { type: "text" as const, text: `📄 PDF Generated: ${result.metadata.title}` },
+            { type: "text" as const, text: `🌐 Source: ${result.metadata.url}` },
+            ...(savedPath ? [
+              { type: "text" as const, text: `💾 Saved to: ${savedPath}` },
+              { type: "text" as const, text: `📝 Tip: Use file viewer to open the PDF` }
+            ] : [])
           ],
-          details: { title: result.metadata.title, url: result.metadata.url, savedPath }
+          details: { 
+            title: result.metadata.title, 
+            url: result.metadata.url, 
+            savedPath,
+            pdfSize: result.pdf.length 
+          }
         };
       } catch (error) {
         return {
