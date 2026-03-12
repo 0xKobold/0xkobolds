@@ -46,11 +46,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/0xKobold/0xKobolds.git",
+    "url": "git+https://github.com/0xKobold/pi-erc8004.git",
     "directory": "packages/pi-erc8004"
   },
   "bugs": {
-    "url": "https://github.com/0xKobold/0xKobolds/issues"
+    "url": "https://github.com/0xKobold/pi-erc8004/issues"
   },
-  "homepage": "https://github.com/0xKobold/0xKobolds/tree/main/packages/pi-erc8004#readme"
+  "homepage": "https://github.com/0xKobold/pi-erc8004#readme"
 }
