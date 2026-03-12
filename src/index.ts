@@ -84,7 +84,7 @@ function ext(name: string): string {
 function verifyExtensions(): string[] {
   const extensions: string[] = [
     // Infrastructure
-    '--extension', join(packageRoot, 'node_modules', '@0xkobold', 'pi-ollama', 'dist', 'index.js'),  // 🦙 Ollama (npm)
+    '--extension', ext('ollama-extension'),
     
     // Core Features
     // Agent Orchestration (Unified - v0.2.0)
