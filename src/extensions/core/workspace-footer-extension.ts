@@ -11,7 +11,9 @@
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { homedir } from "os";
-import { resolve, relative } from "path";
+import { resolve } from "path";
+import { existsSync } from "fs";
+import { getDraconicLairSystem } from "../../lair/DraconicLairSystem";
 
 interface WorkspaceState {
   isLocal: boolean;
@@ -85,6 +87,32 @@ export default async function register(pi: ExtensionAPI) {
     const emoji = state.isLocal ? "📁" : "🏠";
     const text = `${emoji} ${state.displayPath}`;
     ctx.ui.setStatus("workspace", text);
+
+    // In local mode, check if this directory has a lair and create/notify
+    if (state.isLocal) {
+      const lairSystem = getDraconicLairSystem();
+      const cwd = process.cwd();
+      
+      // getLair() creates one if it doesn't exist
+      const lair = lairSystem.getLair(cwd);
+      const isNew = lairSystem.listLairs().filter(l => l.path === cwd).length === 1;
+      
+      if (isNew) {
+        ctx.ui.notify(
+          `🏰 New Lair Detected\n\n` +
+          `Created: ${lair.name}\n` +
+          `Type: ${lair.type} | Framework: ${lair.framework}\n` +
+          `\nThis project now has persistent context.`,
+          "info"
+        );
+      } else {
+        ctx.ui.notify(
+          `🏰 Lair: ${lair.name}\n` +
+          `Type: ${lair.type} | Framework: ${lair.framework}`,
+          "info"
+        );
+      }
+    }
 
     // Cleanup on shutdown
     pi.on("session_shutdown", async () => {
