@@ -84,7 +84,7 @@ function ext(name: string): string {
 function verifyExtensions(): string[] {
   const extensions: string[] = [
     // Infrastructure
-    '--extension', ext('ollama-extension'),
+    // Note: ollama-extension now loaded via npm:@0xkobold/pi-ollama in pi-config.ts
     
     // Core Features
     // Agent Orchestration (Unified - v0.2.0)
@@ -158,7 +158,7 @@ function verifyExtensions(): string[] {
   ];
 
   // Check that extensions exist
-  const testExt = ext('ollama-extension');
+  const testExt = ext('config-extension');
   if (!existsSync(testExt)) {
     console.error(`⚠️  Warning: Extensions not found at ${extensionDir}`);
     console.error(`   Expected: ${testExt}`);
