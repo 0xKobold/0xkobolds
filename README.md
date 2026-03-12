@@ -1,24 +1,4 @@
-# 0xKobold v0.6.10 "Auto Gateway"
-
-**v0.6.10** — Gateway auto-starts by default for TUI (detects existing)
-
-**v0.6.9** — Fix gateway detection when dev already running
-
-**v0.6.8** — Add /lair-sync command to bridge local/global context
-
-**v0.6.7** — Auto-detect and notify about project lairs in local mode
-
-**v0.6.6** — Enforce global workspace sandboxing, proper CWD isolation
-
-**v0.6.5** — Clean dist/ before build, removes ghost extensions
-
-**v0.6.4** — Fix workspace detection from home directory
-
-**v0.6.3** — Workspace-aware footer, cleaner gateway display
-
-**v0.6.2** — Gateway auto-start opt-in (fixes port conflicts)
-
-**v0.6.0 "Koclaw Gateway"** — JSON-RPC gateway, session persistence, multi-channel
+# 0xKobold
 
 ```
                          ..
@@ -56,7 +36,19 @@
 
 > *"Your digital familiar - a personal AI assistant that connects, persists, and evolves"*
 
-**v0.6.0 "Koclaw Gateway"** — JSON-RPC gateway architecture, session persistence, and seamless multi-channel integration.
+## 🔥 Latest: v0.6.11 "Secret Guardian"
+
+**v0.6.11** — Automatic secret redaction in env commands, README restructure  
+**v0.6.10** — Gateway auto-starts by default for TUI (detects existing)  
+**v0.6.9** — Fix gateway detection when dev already running  
+**v0.6.8** — Add /lair-sync command to bridge local/global context  
+**v0.6.7** — Auto-detect and notify about project lairs in local mode  
+**v0.6.6** — Enforce global workspace sandboxing, proper CWD isolation  
+**v0.6.5** — Clean dist/ before build, removes ghost extensions  
+**v0.6.4** — Fix workspace detection from home directory  
+**v0.6.3** — Workspace-aware footer, cleaner gateway display  
+**v0.6.2** — Gateway auto-start opt-in (fixes port conflicts)  
+**v0.6.0** — JSON-RPC gateway, session persistence, multi-channel
 
 > **New in v0.6.0:** Koclaw Gateway (JSON-RPC), Session Management, Auth Profiles, Session Resume  
 > **From v0.5.0:** Generative Agents, Semantic Memory, Multi-agent Orchestration  
@@ -244,6 +236,28 @@ recall "what was the database decision"
 
 ---
 
+## Secret Management 🔐
+
+Environment variables with automatic redaction:
+
+```bash
+# Show env vars (secrets automatically redacted)
+0xkobold env show
+
+# Show with secrets revealed (careful!)
+0xkobold env show --show-secrets
+
+# Show entire .env file (redacted)
+0xkobold env show --file
+
+# Check status
+0xkobold env status
+```
+
+**Auto-redacted:** TOKEN, KEY, SECRET, PASSWORD, API_KEY, WEBHOOK_URL, and token-like values
+
+---
+
 ## Skills System 🔧
 
 Create custom capabilities without restarting:
@@ -332,6 +346,14 @@ bun run init           # Initialize workspace
 0xkobold gateway health
 ```
 
+### Environment
+```bash
+0xkobold env status              # Check environment status
+0xkobold env show                # Show env vars (redacted)
+0xkobold env show --show-secrets # Show with secrets visible
+0xkobold env show --file         # Show .env file contents
+```
+
 ---
 
 ## Configuration
@@ -408,6 +430,7 @@ eventBus.on('agent.spawned', handler);
 | `src/skills/` | Hot-reload skill system |
 | `src/tui/` | Terminal UI (React-based) |
 | `src/event-bus/` | Decoupled event system |
+| `src/cli/extensions/env.ts` | Secret management with auto-redaction |
 
 ---
 
@@ -455,7 +478,7 @@ bun test --coverage
 │   │   ├── builtin/        # Built-in skills
 │   │   └── loader.ts       # Hot-reload logic
 │   ├── tui/                # Terminal UI
-│   └── utils/              # Utilities (nl-patterns.ts)
+│   └── utils/              # Utilities (nl-patterns.ts, redact.ts)
 ├── skills/                 # Your custom skills (hot-reloaded)
 ├── test/                   # Test suites
 │   ├── unit/
@@ -482,6 +505,8 @@ bun test --coverage
 - `src/agent/auth-profiles.ts` - Auth profile management
 - `src/extensions/core/generative-agents-extension.ts` - Generative agents
 - `src/utils/nl-patterns.ts` - Natural language parsing
+- `src/utils/redact.ts` - Secret redaction utilities
+- `src/cli/extensions/env.ts` - Environment & secrets management
 - `~/.0xkobold/config.json` - User configuration
 - `~/.0xkobold/memory/perennial/knowledge.db` - Semantic memory
 - `CLAUDE.md` - AI assistant context
