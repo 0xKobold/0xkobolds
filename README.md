@@ -1,4 +1,6 @@
-# 0xKobold v0.6.7 "Lair Awareness"
+# 0xKobold v0.6.8 "Lair Sync"
+
+**v0.6.8** — Add /lair-sync command to bridge local/global context
 
 **v0.6.7** — Auto-detect and notify about project lairs in local mode
 
