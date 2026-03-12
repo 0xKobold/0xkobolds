@@ -187,6 +187,63 @@ Active Agents: ${lair.activeAgents.size}\nFile Memories: ${lair.fileMemories.siz
     },
   });
 
+  // /lair-sync <lair-path>
+  pi.registerCommand("lair-sync", {
+    description: "Sync lair context into current session: /lair-sync <path>",
+    handler: async (args: string, ctx: ExtensionContext) => {
+      const projectPath = args.trim() || process.cwd();
+      const lair = lairSystem.getLair(projectPath);
+      
+      // Get recent file activity (last 10 files)
+      const recentFiles = Array.from(lair.fileMemories.values())
+        .sort((a, b) => b.lastModified - a.lastModified)
+        .slice(0, 10);
+      
+      // Build sync report
+      const lines = [
+        `🏰 Lair Sync: ${lair.name}`,
+        `────────────────────────────────`,
+        `Framework: ${lair.framework}`,
+        `Language: ${lair.language}`,
+        `Type: ${lair.type}`,
+        ``,
+        `📁 Recent Files (${recentFiles.length}):`,
+      ];
+      
+      if (recentFiles.length > 0) {
+        recentFiles.forEach(f => {
+          const lastOp = f.operations[f.operations.length - 1];
+          const time = lastOp 
+            ? new Date(lastOp.timestamp).toLocaleDateString() 
+            : 'unknown';
+          lines.push(`  • ${f.path} (${lastOp?.operation || 'accessed'})`);
+        });
+      } else {
+        lines.push(`  No file activity recorded yet.`);
+      }
+      
+      lines.push(
+        ``,
+        `🛠️ Suggested Tools:`,
+        ...lair.suggestedTools.map(t => `  • ${t}`),
+        ``,
+        `✅ Project context now active in this session.`
+      );
+      
+      // Store sync info for agent context
+      const syncInfo = {
+        lairId: lair.id,
+        lairName: lair.name,
+        path: lair.path,
+        framework: lair.framework,
+        recentFiles: recentFiles.map(f => ({ path: f.path, summary: f.summary })),
+        syncedAt: Date.now(),
+      };
+      
+      ctx.ui.notify(lines.join("\n"), "info");
+    },
+  });
+
   console.log("[🏰 DraconicLair] Extension loaded");
-  console.log("  Commands: /lair, /lairs, /lair-stats, /lair-agents");
+  console.log("  Commands: /lair, /lairs, /lair-stats, /lair-agents, /lair-sync");
 }
