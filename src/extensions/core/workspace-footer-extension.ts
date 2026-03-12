@@ -79,21 +79,12 @@ export default async function register(pi: ExtensionAPI) {
     
     console.log(`[WorkspaceFooter] Mode: ${state.isLocal ? 'local' : 'global'}`);
     console.log(`[WorkspaceFooter] Path: ${state.workspacePath}`);
+    console.log(`[WorkspaceFooter] CWD: ${process.cwd()}`);
 
-    // Set initial footer status
+    // Set footer status (cwd already set at entry point)
     const emoji = state.isLocal ? "📁" : "🏠";
     const text = `${emoji} ${state.displayPath}`;
     ctx.ui.setStatus("workspace", text);
-
-    // Update working directory for file operations
-    if (state.workspacePath !== process.cwd()) {
-      try {
-        process.chdir(state.workspacePath);
-        console.log(`[WorkspaceFooter] Changed cwd to: ${state.workspacePath}`);
-      } catch (err) {
-        console.warn(`[WorkspaceFooter] Could not change cwd: ${err}`);
-      }
-    }
 
     // Cleanup on shutdown
     pi.on("session_shutdown", async () => {

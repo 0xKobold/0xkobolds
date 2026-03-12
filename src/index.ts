@@ -39,6 +39,34 @@ const extensionExt = isRunningFromDist ? '.js' : '.ts';
 // This keeps everything in ~/.0xkobold instead of ~/.pi
 process.env.PI_CODING_AGENT_DIR = process.env.PI_CODING_AGENT_DIR || resolve(homedir(), '.0xkobold');
 
+// Change working directory to global workspace when NOT in local mode
+// This ensures file operations are sandboxed to ~/.0xkobold unless --local is used
+const globalWorkspace = resolve(homedir(), '.0xkobold');
+// Check process.argv directly since we're at module level (before main() runs)
+const isLocalMode = process.argv.slice(2).includes('--local');
+
+if (!isLocalMode) {
+  // Global mode: enforce working directory is ~/.0xkobold
+  process.env.KOBOLD_LOCAL_MODE = 'false';
+  if (existsSync(globalWorkspace)) {
+    try {
+      process.chdir(globalWorkspace);
+      process.env.KOBOLD_WORKING_DIR = globalWorkspace;
+      console.log(`[Workspace] Global mode - cwd set to: ${globalWorkspace}`);
+    } catch (err) {
+      console.warn(`[Workspace] Could not change to global workspace: ${err}`);
+    }
+  } else {
+    console.warn(`[Workspace] Global workspace does not exist: ${globalWorkspace}`);
+    console.log(`[Workspace] Run '0xkobold init' to create it`);
+  }
+} else {
+  // Local mode: cwd stays as-is (wherever --local was invoked from)
+  process.env.KOBOLD_LOCAL_MODE = 'true';
+  process.env.KOBOLD_WORKING_DIR = process.cwd();
+  console.log(`[Workspace] Local mode - cwd: ${process.cwd()}`);
+}
+
 // Disable pi-coding-agent's built-in update notifications
 // (we manage our own updates via self-update-extension)
 process.env.PI_SKIP_VERSION_CHECK = process.env.PI_SKIP_VERSION_CHECK || '1';
@@ -157,15 +185,12 @@ async function main(): Promise<void> {
   // Check for --local flag to enable per-project mode
   const localMode = args.includes('--local');
   if (localMode) {
-    // Set local mode env var for extensions to detect
-    process.env.KOBOLD_LOCAL_MODE = 'true';
+    // KOBOLD_LOCAL_MODE and KOBOLD_WORKING_DIR already set at module level
     console.log('🐉 0xKobold starting in LOCAL mode...');
     console.log(`   Project: ${process.cwd()}`);
     console.log(`   Extensions: ${isRunningFromDist ? 'production' : 'development'}`);
   } else {
-    // Explicitly set false for global mode so extensions can detect
-    process.env.KOBOLD_LOCAL_MODE = 'false';
-    process.env.KOBOLD_WORKING_DIR = resolve(homedir(), '.0xkobold');
+    // Env vars already set at module level
     console.log('🐉 0xKobold starting with PI Framework...');
     if (isRunningFromDist) {
       console.log('   Mode: Production (from dist)');
