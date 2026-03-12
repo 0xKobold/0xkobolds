@@ -23,7 +23,7 @@ export const config: Config = {
     // Infrastructure (load FIRST)
     './src/config/unified-config.ts',                    // UNIFIED: Config system (no-op, just types)
     './src/extensions/core/config-extension.ts',           // UNIFIED: /config commands
-    'npm:@0xkobold/pi-ollama',                           // 📦 PUBLISHED: Ollama extension
+    'npm:@0xkobold/pi-ollama',                           // 🦙 Ollama (SHARED - use npm package)
     './src/sessions/UnifiedSessionBridge.ts',              // UNIFIED: Session management
     
     // Core Features
