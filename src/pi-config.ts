@@ -66,6 +66,7 @@ export const config: Config = {
     // 🐉 Community Extensions (PI Ecosystem Wrappers)
     './src/extensions/community/draconic-subagents-wrapper.ts',  // pi-subagents bridge
     './src/extensions/community/draconic-messenger-wrapper.ts',  // pi-messenger bridge
+    '../../node_modules/pi-web-access/index.ts',  // 🕸️ Web search, fetch, research
     
     // 🧠 Context Engine Extension (Koclaw-style context management)
     './src/extensions/core/intelligent-context-extension.ts',  // Intelligent context via framework events
