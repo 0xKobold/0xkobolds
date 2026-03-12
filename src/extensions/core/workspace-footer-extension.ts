@@ -22,11 +22,14 @@ interface WorkspaceState {
 function getWorkspaceState(): WorkspaceState {
   const globalWorkspace = resolve(homedir(), ".0xkobold");
   const workingDir = process.env.KOBOLD_WORKING_DIR || process.cwd();
+  const resolvedWorkingDir = resolve(workingDir);
   
-  // Check if we're in local mode (KOBOLD_WORKING_DIR set to non-global path)
+  // Check if we're in local mode:
+  // 1. KOBOLD_LOCAL_MODE explicitly set to 'true', OR
+  // 2. Working dir is NOT the global workspace
   const isLocal = !!(
     process.env.KOBOLD_LOCAL_MODE === 'true' ||
-    (workingDir && workingDir !== globalWorkspace && !workingDir.startsWith(globalWorkspace))
+    (resolvedWorkingDir !== globalWorkspace && !resolvedWorkingDir.startsWith(globalWorkspace + "/"))
   );
 
   const workspacePath = isLocal ? workingDir : globalWorkspace;
