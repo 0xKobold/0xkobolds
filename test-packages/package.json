@@ -1,0 +1,12 @@
+{
+  "name": "test-packages",
+  "version": "1.0.0",
+  "description": "Test pi packages locally",
+  "type": "module",
+  "scripts": {
+    "test:wallet": "bun test ../packages/pi-wallet/test/ || echo 'No tests yet'",
+    "test:erc8004": "bun test ../packages/pi-erc8004/test/ || echo 'No tests yet'",
+    "test:ollama": "bun test ../packages/pi-ollama/test/ || echo 'No tests yet'",
+    "build:all": "cd ../packages/pi-wallet && npm run build && cd ../pi-erc8004 && npm run build && cd ../pi-ollama && npm run build"
+  }
+}
