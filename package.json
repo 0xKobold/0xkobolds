@@ -16,7 +16,9 @@
     "./package.json": "./package.json"
   },
   "scripts": {
+    "clean": "rm -rf dist/",
     "build": "tsc",
+    "build:clean": "npm run clean && npm run build",
     "dev": "tsc --watch",
     "start": "bun run src/index.ts",
     "cli": "bun run src/cli/index.ts",
@@ -28,7 +30,7 @@
     "update:install": "bun run src/cli/index.ts update install",
     "update:framework": "bun run src/cli/index.ts update framework",
     "setup-hooks": "bash scripts/install-hooks.sh",
-    "prepublishOnly": "bun run build",
+    "prepublishOnly": "npm run clean && npm run build",
     "postinstall": "node scripts/postinstall.js && node scripts/link-pi-extensions.js || echo 'Welcome to 0xKobold! Run: 0xkobold setup'"
   },
   "keywords": [
