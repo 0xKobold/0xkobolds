@@ -1,4 +1,6 @@
-# 0xKobold v0.6.9 "Smart Gateway"
+# 0xKobold v0.6.10 "Auto Gateway"
+
+**v0.6.10** — Gateway auto-starts by default for TUI (detects existing)
 
 **v0.6.9** — Fix gateway detection when dev already running
 
