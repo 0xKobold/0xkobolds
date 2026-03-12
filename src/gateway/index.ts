@@ -51,6 +51,8 @@ export {
   stopGateway,
   getGateway,
   RealGatewayServer,
+  isGatewayRunning,
+  startGatewaySafe,
 } from "./gateway-server";
 
 export type { GatewayConfig } from "./gateway-server";

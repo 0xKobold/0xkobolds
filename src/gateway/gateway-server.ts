@@ -435,12 +435,40 @@ export function createGateway(config?: Partial<GatewayConfig>): RealGatewayServe
   return new RealGatewayServer(config);
 }
 
+export async function isGatewayRunning(port: number = 7777): Promise<boolean> {
+  try {
+    // Quick health check to see if gateway is already running
+    const response = await fetch(`http://localhost:${port}/health`, {
+      signal: AbortSignal.timeout(2000),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export function startGateway(config?: Partial<GatewayConfig>): RealGatewayServer {
+  const finalConfig = { ...DEFAULT_CONFIG, ...config };
+  
   if (!gatewayInstance) {
-    gatewayInstance = new RealGatewayServer(config);
+    gatewayInstance = new RealGatewayServer(finalConfig);
   }
   gatewayInstance.start();
   return gatewayInstance;
+}
+
+export async function startGatewaySafe(config?: Partial<GatewayConfig>): Promise<{ gateway: RealGatewayServer | null; existing: boolean }> {
+  const finalConfig = { ...DEFAULT_CONFIG, ...config };
+  
+  // Check if gateway already running on this port
+  const isRunning = await isGatewayRunning(finalConfig.port);
+  if (isRunning) {
+    console.log(`[Gateway] Already running on port ${finalConfig.port}, connecting instead...`);
+    return { gateway: null, existing: true };
+  }
+  
+  // Otherwise start new gateway
+  return { gateway: startGateway(config), existing: false };
 }
 
 export function stopGateway(): void {

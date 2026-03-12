@@ -211,17 +211,21 @@ async function main(): Promise<void> {
   const gatewayPort = parseInt(process.env.KOBOLD_GATEWAY_PORT || '7777', 10);
   if (process.env.KOBOLD_GATEWAY === '1' || process.env.KOBOLD_GATEWAY === 'true') {
     try {
-      startGateway({ port: gatewayPort, host: '0.0.0.0' });
-      console.log(`🌐 Gateway started on port ${gatewayPort}`);
+      const { isGatewayRunning } = await import('./gateway/gateway-server');
+      const isRunning = await isGatewayRunning(gatewayPort);
+      
+      if (isRunning) {
+        console.log(`🌐 Gateway already running on port ${gatewayPort} (connected as client)`);
+      } else {
+        const { startGateway } = await import('./gateway/index');
+        startGateway({ port: gatewayPort, host: '0.0.0.0' });
+        console.log(`🌐 Gateway started on port ${gatewayPort}`);
+      }
 
       // Load auth profiles from config
       ensureAuthProfilesFromConfig();
     } catch (err: any) {
-      if (err?.code === 'EADDRINUSE') {
-        console.log(`🌐 Gateway already running on port ${gatewayPort} (connecting as client)`);
-      } else {
-        console.warn('⚠️  Failed to start gateway:', err);
-      }
+      console.warn('⚠️  Gateway error:', err?.message || err);
     }
   } else {
     console.log('💡 Gateway auto-start disabled. Set KOBOLD_GATEWAY=1 to enable');
