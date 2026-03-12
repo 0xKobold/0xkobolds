@@ -224,35 +224,42 @@ async function startMainAgent(name: string, ctx: ExtensionContext): Promise<{ su
   const port = 18790 + mainAgents.size + 1;
   const logFile = path.join(logsDir, "agent.log");
   
+  console.log(`[Orchestrator] 🚀 Starting main agent '${name}' on port ${port}...`);
+  
   return new Promise((resolve) => {
-    const child = spawn(
-      "bun",
-      ["run", "src/cli/index.ts", "--local"],
-      {
-        cwd: process.cwd(),
-        env: {
-          ...process.env,
-          KOBOLD_AGENT_NAME: name,
-          KOBOLD_AGENT_MODE: "main",
-          KOBOLD_WORKSPACE: workspaceDir,
-          PI_CODING_AGENT_DIR: agentDir,
-          GATEWAY_PORT: port.toString(),
-          GATEWAY_HOST: "127.0.0.1",
-        },
-        stdio: ["ignore", "pipe", "pipe"],
-        detached: true,
-      }
-    );
+    // Use Bun.spawn for better integration
+    const proc = Bun.spawn({
+      cmd: [
+        "bun",
+        "run",
+        "src/cli/index.ts",
+        "--local",
+        "--agent",
+        name,
+      ],
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        KOBOLD_AGENT_NAME: name,
+        KOBOLD_AGENT_MODE: "main",
+        KOBOLD_WORKSPACE: workspaceDir,
+        PI_CODING_AGENT_DIR: agentDir,
+        GATEWAY_PORT: port.toString(),
+        GATEWAY_HOST: "127.0.0.1",
+      },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
     
-    if (!child.pid) {
-      resolve({ success: false, error: "Failed to spawn process" });
+    if (!proc.pid) {
+      resolve({ success: false, error: "Failed to spawn process (no PID)" });
       return;
     }
     
     const agentProcess: MainAgentProcess = {
       name,
-      process: child,
-      pid: child.pid,
+      process: proc as unknown as ChildProcess, // Type compat
+      pid: proc.pid,
       startedAt: new Date(),
       status: "starting",
       port,
@@ -261,30 +268,55 @@ async function startMainAgent(name: string, ctx: ExtensionContext): Promise<{ su
     
     mainAgents.set(name, agentProcess);
     
-    child.stdout?.on("data", (data: Buffer) => {
-      const text = data.toString();
-      if (text.includes("🐉 0xKobold starting") || text.includes("Extension loaded")) {
-        agentProcess.status = "running";
-      }
-      fs.appendFile(logFile, `[${new Date().toISOString()}] ${text}`).catch(() => {});
-    });
+    // Read stdout and log
+    const reader = proc.stdout.getReader();
+    const readStdout = async () => {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const text = new TextDecoder().decode(value);
+          if (text.includes("🐉 0xKobold starting") || text.includes("Extension loaded")) {
+            agentProcess.status = "running";
+          }
+          fs.appendFile(logFile, `[${new Date().toISOString()}] ${text}`).catch(() => {});
+        }
+      } catch (e) {}
+    };
+    readStdout();
     
-    child.stderr?.on("data", (data: Buffer) => {
-      fs.appendFile(logFile, `[${new Date().toISOString()}] ERROR: ${data.toString()}`).catch(() => {});
-    });
+    // Read stderr
+    const errReader = proc.stderr.getReader();
+    const readStderr = async () => {
+      try {
+        while (true) {
+          const { done, value } = await errReader.read();
+          if (done) break;
+          const text = new TextDecoder().decode(value);
+          fs.appendFile(logFile, `[${new Date().toISOString()}] ERROR: ${text}`).catch(() => {});
+        }
+      } catch (e) {}
+    };
+    readStderr();
     
-    child.on("exit", (code) => {
+    proc.exited.then((code) => {
       mainAgents.delete(name);
       if (code !== 0 && code !== null) {
         console.log(`[Orchestrator] Agent ${name} exited with code ${code}`);
       }
+    }).catch((err) => {
+      console.error(`[Orchestrator] Agent ${name} error:`, err);
+      agentProcess.status = "error";
+      agentProcess.lastError = err.message;
     });
     
+    // Check for startup
     const checkInterval = setInterval(() => {
       if (agentProcess.status === "running") {
         clearInterval(checkInterval);
         clearTimeout(timeout);
-        resolve({ success: true, pid: child.pid });
+        console.log(`[Orchestrator] ✅ Agent '${name}' is running (PID: ${proc.pid})`);
+        resolve({ success: true, pid: proc.pid });
       }
     }, 100);
     
@@ -293,6 +325,8 @@ async function startMainAgent(name: string, ctx: ExtensionContext): Promise<{ su
       if (agentProcess.status === "starting") {
         agentProcess.status = "error";
         agentProcess.lastError = "Startup timeout";
+        console.error(`[Orchestrator] ❌ Agent '${name}' startup timeout`);
+        proc.kill("SIGTERM");
         resolve({ success: false, error: "Agent startup timeout (30s)" });
       }
     }, 30000);
@@ -322,7 +356,7 @@ async function stopMainAgent(name: string): Promise<{ success: boolean; error?: 
   });
 }
 
-// Subagent spawning
+// Subagent spawning - FIXED v0.2.1
 async function spawnSubagent(
   agentName: string,
   task: string,
@@ -332,62 +366,139 @@ async function spawnSubagent(
   const agentConfig = subagentAgents.get(agentName);
   
   if (!agentConfig) {
+    console.error(`[Orchestrator] ❌ Subagent '${agentName}' not found. Available: ${Array.from(subagentAgents.keys()).join(", ")}`);
     return {
       agent: agentName,
       task,
       exitCode: 1,
       output: "",
-      error: `Subagent '${agentName}' not found`,
+      error: `Subagent '${agentName}' not found. Available: ${Array.from(subagentAgents.keys()).join(", ")}`,
       duration: 0,
     };
   }
   
+  console.log(`[Orchestrator] 🚀 Spawning subagent '${agentConfig.name}' for task: ${task.slice(0, 100)}...`);
+  
   return new Promise((resolve) => {
-    const args = [
-      "run",
-      "src/cli/index.ts",
-      "--command",
-      `agent:${agentConfig.name}`,
-      "--task",
-      task,
-    ];
-    
-    const child = spawn("bun", args, {
+    // Use Bun.spawn instead of node:child_process for better integration
+    const proc = Bun.spawn({
+      cmd: [
+        "bun",
+        "run",
+        "src/cli/index.ts",
+        "--mode",
+        "subagent",
+        "--type",
+        agentConfig.name,
+        "--task",
+        task,
+        "--model",
+        agentConfig.model,
+        "--tools",
+        agentConfig.tools.join(","),
+      ],
       cwd: process.cwd(),
       env: {
         ...process.env,
         KOBOLD_SUBAGENT: "true",
+        KOBOLD_AGENT_NAME: agentConfig.name,
         KOBOLD_AGENT_MODEL: agentConfig.model,
         KOBOLD_AGENT_TOOLS: agentConfig.tools.join(","),
+        KOBOLD_SYSTEM_PROMPT: agentConfig.systemPrompt,
       },
-      stdio: ["ignore", "pipe", "pipe"],
+      stdout: "pipe",
+      stderr: "pipe",
+      onExit(code, signal) {
+        console.log(`[Orchestrator] Subagent '${agentConfig.name}' exited with code ${code} (signal: ${signal})`);
+      },
     });
     
     let output = "";
-    let error = "";
+    let errorOutput = "";
+    let killed = false;
     
-    child.stdout?.on("data", (data: Buffer) => {
-      output += data.toString();
-    });
+    // Read stdout
+    const reader = proc.stdout.getReader();
+    const readStdout = async () => {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const text = new TextDecoder().decode(value);
+          output += text;
+          console.log(`[Subagent ${agentConfig.name}] ${text.slice(0, 200)}`);
+        }
+      } catch (e) {
+        // Reader closed
+      }
+    };
     
-    child.stderr?.on("data", (data: Buffer) => {
-      error += data.toString();
-    });
+    // Read stderr
+    const errReader = proc.stderr.getReader();
+    const readStderr = async () => {
+      try {
+        while (true) {
+          const { done, value } = await errReader.read();
+          if (done) break;
+          const text = new TextDecoder().decode(value);
+          errorOutput += text;
+          console.error(`[Subagent ${agentConfig.name}] ${text.slice(0, 200)}`);
+        }
+      } catch (e) {
+        // Reader closed
+      }
+    };
     
-    child.on("close", (code) => {
+    // Start reading
+    readStdout();
+    readStderr();
+    
+    // Resolve when process exits
+    proc.exited.then((code) => {
+      if (!killed) {
+        resolve({
+          agent: agentConfig.name,
+          task,
+          exitCode: code || 0,
+          output: output.trim(),
+          error: errorOutput.trim() || undefined,
+          duration: Date.now() - startTime,
+        });
+      }
+    }).catch((err) => {
       resolve({
         agent: agentConfig.name,
         task,
-        exitCode: code || 0,
+        exitCode: 1,
         output: output.trim(),
-        error: error.trim() || undefined,
+        error: errorOutput.trim() || err.message,
         duration: Date.now() - startTime,
       });
     });
     
-    setTimeout(() => {
-      child.kill("SIGTERM");
+    // Timeout handling
+    const timeout = setTimeout(() => {
+      killed = true;
+      console.log(`[Orchestrator] ⏱️ Subagent '${agentConfig.name}' timeout (5 min)`);
+      proc.kill("SIGTERM");
+      
+      // Force kill after graceful timeout
+      setTimeout(() => {
+        proc.kill("SIGKILL");
+      }, 5000);
+      
+      resolve({
+        agent: agentConfig.name,
+        task,
+        exitCode: 124,
+        output: output.trim(),
+        error: errorOutput.trim() || "Timeout (5 minutes)",
+        duration: Date.now() - startTime,
+      });
     }, 5 * 60 * 1000);
+    
+    // Cleanup timeout on exit
+    proc.exited.then(() => clearTimeout(timeout));
   });
 }
 
