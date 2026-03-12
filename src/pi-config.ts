@@ -76,9 +76,9 @@ export const config: Config = {
     // 🔗 Obsidian Bridge (NEW - Heartbeat-integrated task sync)
     './src/extensions/core/obsidian-bridge-extension.ts',  // Obsidian vault integration
 
-    // 🪙 Wallet + ERC-8004 (Agent economy)
-    './src/extensions/core/wallet-extension.ts',           // CDP Agentic Wallet + x402
-    './src/extensions/core/erc8004-extension.ts',          // ERC-8004 identity & reputation
+    // 🪙 Wallet + ERC-8004 (Agent economy - PUBLISHED)
+    'npm:@0xkobold/pi-wallet',                           // CDP Agentic + Ethers.js + x402
+    'npm:@0xkobold/pi-erc8004',                          // ERC-8004 identity & reputation
   ],
 
   // Custom keybindings
