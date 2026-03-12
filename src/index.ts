@@ -207,15 +207,17 @@ async function main(): Promise<void> {
   // TUI Mode: Load with all extensions
   const extensions = verifyExtensions();
 
-  // Start Gateway Server (opt-in via env var)
+  // Start Gateway Server (auto-start by default for TUI, skip if disabled)
   const gatewayPort = parseInt(process.env.KOBOLD_GATEWAY_PORT || '7777', 10);
-  if (process.env.KOBOLD_GATEWAY === '1' || process.env.KOBOLD_GATEWAY === 'true') {
+  const gatewayDisabled = process.env.KOBOLD_GATEWAY === '0' || process.env.KOBOLD_GATEWAY === 'false';
+  
+  if (!gatewayDisabled) {
     try {
       const { isGatewayRunning } = await import('./gateway/gateway-server');
       const isRunning = await isGatewayRunning(gatewayPort);
       
       if (isRunning) {
-        console.log(`🌐 Gateway already running on port ${gatewayPort} (connected as client)`);
+        console.log(`🌐 Gateway detected on port ${gatewayPort} (connected as client)`);
       } else {
         const { startGateway } = await import('./gateway/index');
         startGateway({ port: gatewayPort, host: '0.0.0.0' });
@@ -226,9 +228,10 @@ async function main(): Promise<void> {
       ensureAuthProfilesFromConfig();
     } catch (err: any) {
       console.warn('⚠️  Gateway error:', err?.message || err);
+      console.log('💡 Disable gateway with KOBOLD_GATEWAY=0 if needed');
     }
   } else {
-    console.log('💡 Gateway auto-start disabled. Set KOBOLD_GATEWAY=1 to enable');
+    console.log('💡 Gateway disabled (KOBOLD_GATEWAY=0)');
   }
 
   // Initialize Session Resume System (auto-save on shutdown)
