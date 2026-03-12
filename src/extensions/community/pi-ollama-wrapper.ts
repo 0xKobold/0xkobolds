@@ -1,21 +1,28 @@
 /**
- * �️ Pi Ollama - Community Extension Wrapper
+ * 🦙 Pi Ollama - Community Extension Wrapper
  * 
- * Wraps @0xkobold/pi-ollama npm package using Draconic Extension Loader
+ * Wraps @0xkobold/pi-ollama npm package
+ * 
+ * Note: This extension is loaded via pi-config.ts
+ * The npm package is loaded via `pi install npm:@0xkobold/pi-ollama`
  */
 
-import { createExtensionWrapper } from '../core/draconic-extension-loader.js';
+import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
-export default createExtensionWrapper({
-  name: 'pi-ollama',
-  description: 'Ollama LLM integration with accurate context detection',
-  npmPackage: '@0xkobold/pi-ollama',
-  bridgeEvents: true,
-  discordNotifications: false, // Can enable for model updates
-  onLoad: (pi) => {
-    console.log('[🦙] Ollama models ready via npm package');
-  },
-  onUnload: () => {
-    console.log('[🦙] Ollama extension unloaded');
-  },
-});
+export default async function register(pi: ExtensionAPI) {
+  console.log("[🦙 PiOllama] Loading npm package...");
+  
+  try {
+    // Dynamic import from npm package
+    const ollamaMod = await import("@0xkobold/pi-ollama");
+    const ollamaExt = ollamaMod.default || ollamaMod;
+    
+    // Initialize the extension
+    await ollamaExt(pi);
+    
+    console.log("[🦙 PiOllama] npm package loaded successfully");
+  } catch (err) {
+    console.error("[🦙 PiOllama] Failed to load npm package:", err);
+    throw err;
+  }
+}
