@@ -12,7 +12,7 @@ import {
   TextChannel,
   ThreadChannel
 } from "discord.js";
-import { getRealGateway } from "./server.js";
+import { getGateway } from "./gateway-server.js";
 
 export interface DiscordBotConfig {
   token: string;
@@ -79,7 +79,7 @@ class DiscordBotIntegration {
     
     // Unregister from gateway
     if (this.gatewayConnectionId) {
-      const gateway = getRealGateway();
+      const gateway = getGateway();
       gateway.removeConnection(this.gatewayConnectionId);
     }
 
@@ -92,7 +92,7 @@ class DiscordBotIntegration {
    * Register with gateway server
    */
   private registerWithGateway(): void {
-    const gateway = getRealGateway();
+    const gateway = getGateway();
     
     this.gatewayConnectionId = gateway.registerConnection({
       type: "discord",
@@ -149,7 +149,7 @@ class DiscordBotIntegration {
     }
 
     // Forward to gateway
-    const gateway = getRealGateway();
+    const gateway = getGateway();
     gateway.emit("message", {
       connection: {
         id: this.gatewayConnectionId,
