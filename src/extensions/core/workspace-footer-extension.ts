@@ -19,18 +19,39 @@ interface WorkspaceState {
   displayPath: string;
 }
 
+function formatPath(p: string): string {
+  const home = homedir();
+  if (p === home) return "~";
+  if (p.startsWith(home + "/")) return "~" + p.slice(home.length);
+  return p;
+}
+
 function getWorkspaceState(): WorkspaceState {
   const globalWorkspace = resolve(homedir(), ".0xkobold");
+  
+  // Priority 1: Explicit KOBOLD_LOCAL_MODE flag ('true' or 'false')
+  const explicitMode = process.env.KOBOLD_LOCAL_MODE;
+  if (explicitMode === 'true') {
+    const workingDir = process.env.KOBOLD_WORKING_DIR || process.cwd();
+    return {
+      isLocal: true,
+      workspacePath: workingDir,
+      displayPath: formatPath(workingDir),
+    };
+  }
+  if (explicitMode === 'false') {
+    return {
+      isLocal: false,
+      workspacePath: globalWorkspace,
+      displayPath: "~/.0xkobold",
+    };
+  }
+  
+  // Fallback: Legacy path comparison (shouldn't reach here with v0.6.4+)
   const workingDir = process.env.KOBOLD_WORKING_DIR || process.cwd();
   const resolvedWorkingDir = resolve(workingDir);
-  
-  // Check if we're in local mode:
-  // 1. KOBOLD_LOCAL_MODE explicitly set to 'true', OR
-  // 2. Working dir is NOT the global workspace
-  const isLocal = !!(
-    process.env.KOBOLD_LOCAL_MODE === 'true' ||
-    (resolvedWorkingDir !== globalWorkspace && !resolvedWorkingDir.startsWith(globalWorkspace + "/"))
-  );
+  const isLocal = resolvedWorkingDir !== globalWorkspace && 
+                  !resolvedWorkingDir.startsWith(globalWorkspace + "/");
 
   const workspacePath = isLocal ? workingDir : globalWorkspace;
   

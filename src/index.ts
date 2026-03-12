@@ -163,6 +163,9 @@ async function main(): Promise<void> {
     console.log(`   Project: ${process.cwd()}`);
     console.log(`   Extensions: ${isRunningFromDist ? 'production' : 'development'}`);
   } else {
+    // Explicitly set false for global mode so extensions can detect
+    process.env.KOBOLD_LOCAL_MODE = 'false';
+    process.env.KOBOLD_WORKING_DIR = resolve(homedir(), '.0xkobold');
     console.log('🐉 0xKobold starting with PI Framework...');
     if (isRunningFromDist) {
       console.log('   Mode: Production (from dist)');
