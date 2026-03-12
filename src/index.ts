@@ -84,7 +84,7 @@ function ext(name: string): string {
 function verifyExtensions(): string[] {
   const extensions: string[] = [
     // Infrastructure
-    '--extension', ext('ollama-extension'),
+    // Note: ollama-extension loaded via pi-config.ts
     
     // Core Features
     // Agent Orchestration (Unified - v0.2.0)
