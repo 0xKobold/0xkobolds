@@ -1,0 +1,45 @@
+{
+  "name": "@0xkobold/pi-wallet",
+  "version": "1.0.0",
+  "description": "CDP Agentic Wallet + x402 payments for pi-coding-agent. Zero-setup agent wallets with Base L2 support",
+  "keywords": ["pi-package", "wallet", "ethereum", "base", "cdp", "x402", "agent-economy"],
+  "author": "0xKobold",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/",
+    "src/",
+    "README.md",
+    "test/"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "bun test",
+    "lint": "echo 'No linter configured'",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "pi": {
+    "extensions": ["./dist/index.js"],
+    "image": "https://www.coinbase.com/img/press/coinbase-logo.png"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": ">=0.6.0",
+    "@sinclair/typebox": "^0.32.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/0xKobold/pi-wallet.git"
+  },
+  "bugs": {
+    "url": "https://github.com/0xKobold/pi-wallet/issues"
+  },
+  "homepage": "https://github.com/0xKobold/pi-wallet#readme"
+}

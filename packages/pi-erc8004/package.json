@@ -1,0 +1,55 @@
+{
+  "name": "@0xkobold/pi-erc8004",
+  "version": "1.0.0",
+  "description": "ERC-8004 Protocol for pi-coding-agent. Agent identity, reputation, and discovery on Base L2",
+  "keywords": [
+    "pi-package",
+    "erc-8004",
+    "agent",
+    "identity",
+    "reputation",
+    "ethereum",
+    "base",
+    "agents",
+    "discovery"
+  ],
+  "author": "0xKobold",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/",
+    "src/",
+    "README.md",
+    "test/"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "bun test",
+    "lint": "echo 'No linter configured'",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "pi": {
+    "extensions": ["./dist/index.js"],
+    "image": "https://8004.org/logo.svg"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": ">=0.6.0",
+    "@sinclair/typebox": "^0.32.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/0xKobold/pi-erc8004.git"
+  },
+  "bugs": {
+    "url": "https://github.com/0xKobold/pi-erc8004/issues"
+  },
+  "homepage": "https://8004.org"
+}
