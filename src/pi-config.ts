@@ -66,6 +66,9 @@ export const config: Config = {
     // 🐉 Community Extensions (PI Ecosystem Wrappers)
     './src/extensions/community/draconic-subagents-wrapper.ts',  // pi-subagents bridge
     './src/extensions/community/draconic-messenger-wrapper.ts',  // pi-messenger bridge
+    
+    // 🔗 Obsidian Bridge (NEW - Heartbeat-integrated task sync)
+    './src/extensions/core/obsidian-bridge-extension.ts',  // Obsidian vault integration
   ],
 
   // Custom keybindings
@@ -120,6 +123,13 @@ export const config: Config = {
     '0xkobold.heartbeat.enabled': true,
     '0xkobold.heartbeat.every': '30m',
     '0xkobold.heartbeat.ackMaxChars': 300,
+    
+    // Obsidian Bridge settings (NEW)
+    '0xkobold.obsidian.enabled': false, // Opt-in, user enables when ready
+    '0xkobold.obsidian.vault': 'obsidian_vault', // Relative to ~/.0xkobold/
+    '0xkobold.obsidian.tasksFile': '10-Action/Tasks.md',
+    '0xkobold.obsidian.pollOn': ['morning', 'evening', 'periodic'],
+    '0xkobold.obsidian.autoCreateVault': true, // Create vault if doesn't exist
   },
 };
 
