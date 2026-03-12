@@ -1,4 +1,6 @@
-# 0xKobold v0.6.8 "Lair Sync"
+# 0xKobold v0.6.9 "Smart Gateway"
+
+**v0.6.9** — Fix gateway detection when dev already running
 
 **v0.6.8** — Add /lair-sync command to bridge local/global context
 
