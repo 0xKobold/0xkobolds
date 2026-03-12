@@ -1,7 +1,6 @@
 # 0xKobold
 
-<!-- Banner Image Placeholder - Consider creating a PNG/SVG version of the ASCII art below -->
-<pre align="center">
+```
                          ..
             .                                        ..
                  . ,^   .                   .   .....          ......
@@ -16,7 +15,7 @@
      ..,!``I,!]JZXJ{]I,,~~;,  I[_<-t}1doCdfdQCOB%oJ{+?{ddMO@@@#@o>` .:-< .
       .``l;;{QW%###WQZ+;>>I ...<YfZ{]}Xb!IQ@@8%W@@QJ{[-JJZ@@@@@@%dZbMX[,..
      . II ,I]bo%8%%MQd?>;  .    ;li   . ,Z@@@@#@MI]~ZUOX}YB@@@@@8oQY};
-      . ^>^.^~fbXXdZf_,, Il .         I~d@@#MOIY>l[ZoW@@@@@@@@@UIMO{.
+      . ^>^.^~fbXXdZf_,, Il .         I~d@@#MOIY>l[ZoW@@@@@@@@@UIMO{.   
         `I!<` ,lllll :,i;,^`    ...~+<d#oJQQbIIJdUB@@@@@@@#%OU8WW@@81+,`
        .,i[l:i!, `:I<-l<-, ^^`  ..:]ZodXIdbC1i1Z#@@@@@@%%BWWoO%@@@@%bQf[^.
        .J-I ~I!.iCU->-1_<`ii>~:....:_1}It}!.::+tX%#@%MbMBQ%@@@@@@%%WbY]+-~`.
@@ -32,162 +31,256 @@
                               . ^+IoQWQbOQXdJbfU#BdUZYJI[{[--l>:`
                                 `><+-]1??_~>++~!]J{}~>i>>;!;`     ..
                                                    `         . ..
-                                 ........ ......... ..........
-</pre>
-
-<p align="center">
-  <strong>Your Digital Familiar—A Personal AI Assistant That Connects, Persists, and Evolves</strong>
-</p>
-
-<p align="center">
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#features">Features</a> •
-  <a href="#multi-agent-system">Multi-Agent</a> •
-  <a href="#documentation">Docs</a> •
-  <a href="#architecture">Architecture</a>
-</p>
-
-<!-- Badges -->
-<p align="center">
-  <img src="https://img.shields.io/badge/version-0.6.11-blue.svg" alt="Version">
-  <img src="https://img.shields.io/badge/bun-1.0+-black.svg" alt="Bun">
-  <img src="https://img.shields.io/badge/typescript-5.0+-blue.svg" alt="TypeScript">
-  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
-</p>
-
----
-
-## 📖 Table of Contents
-
-- [Quick Start](#quick-start)
-- [What is 0xKobold?](#what-is-0xkobold)
-- [Features](#features)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Multi-Agent System](#multi-agent-system)
-- [Configuration](#configuration)
-- [Architecture](#architecture)
-- [Contributing](#contributing)
-- [License](#license)
-
----
-
-## 🚀 Quick Start
-
-```bash
-# Install Bun (required)
-curl -fsSL https://bun.sh/install | bash
-
-# Clone and install
-git clone https://github.com/MoikasLabs/0xkobold.git
-cd 0xkobold
-bun install
-
-# Initialize workspace
-bun run init
-
-# Start your familiar
-bun run start
+                                 ........ ......... .........
 ```
 
-**That's it!** 0xKobold will guide you through first-time setup.
+> *"Your digital familiar - a personal AI assistant that connects, persists, and evolves"*
 
----
+## 🔥 Latest: v0.6.11 "Secret Guardian"
 
-## 🤔 What is 0xKobold?
+**v0.6.11** — Automatic secret redaction in env commands, README restructure  
+**v0.6.10** — Gateway auto-starts by default for TUI (detects existing)  
+**v0.6.9** — Fix gateway detection when dev already running  
+**v0.6.8** — Add /lair-sync command to bridge local/global context  
+**v0.6.7** — Auto-detect and notify about project lairs in local mode  
+**v0.6.6** — Enforce global workspace sandboxing, proper CWD isolation  
+**v0.6.5** — Clean dist/ before build, removes ghost extensions  
+**v0.6.4** — Fix workspace detection from home directory  
+**v0.6.3** — Workspace-aware footer, cleaner gateway display  
+**v0.6.2** — Gateway auto-start opt-in (fixes port conflicts)  
+**v0.6.0** — JSON-RPC gateway, session persistence, multi-channel
 
-0xKobold is a **personal AI assistant framework** built on open standards. Think of it as a digital familiar that:
-
-- **Remembers** everything (semantic memory with Ollama embeddings)
-- **Multiplies** itself (spawn specialized agent subordinates)
-- **Connects** everywhere (WebSocket gateway, Discord, Telegram, WhatsApp)
-- **Evolve** its skills (hot-reload TypeScript extensions)
-- **Secures** your secrets (automatic redaction)
-
-**Built for:** Developers who want their AI to *actually* understand their codebase, remember their preferences, and work autonomously.
+> **New in v0.6.0:** Koclaw Gateway (JSON-RPC), Session Management, Auth Profiles, Session Resume  
+> **From v0.5.0:** Generative Agents, Semantic Memory, Multi-agent Orchestration  
+> **From v0.3.0:** Multi-channel (WhatsApp, Telegram, Slack), Docker Sandbox
 
 ---
 
 ## ✨ Features
 
-### 🎯 Multi-Agent Orchestration
-Spawn specialized agents that collaborate:
+### v0.6.3 - Workspace Fix
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Path Resolution** | ✅ | Fixed workspace detection from home directory |
+| **startsWith Fix** | ✅ | Correctly handles paths like /home/user vs /home/user/.0xkobold |
+
+### v0.6.2 - Workspace Aware
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Workspace Footer** | ✅ | Shows 🏠 ~/.0xkobold (global) or 📁 /path (local) |
+| **Gateway Indicator** | ✅ | Only shows when gateway is running (cleaner footer) |
+| **/workspace Command** | ✅ | Display current workspace info |
+
+### v0.6.0 - Koclaw Gateway
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Koclaw Gateway** | ✅ | JSON-RPC WebSocket/HTTP gateway with method handlers |
+| **Session Management** | ✅ | SQLite-based session persistence with metadata |
+| **Session Resume** | ✅ | Auto-save on shutdown, restore previous sessions |
+| **Auth Profiles** | ✅ | Multiple API keys per provider with automatic rotation |
+| **Gateway Auto-Start** | ✅ | Gateway starts automatically with TUI |
+| **Gateway Protocol** | ✅ | Hello/Connect/Request/Response/Event frame protocol |
+
+### v0.5.0 - Draconic Intelligence
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Multi-Agent Orchestration** | ✅ | Spawn specialized agents with unified `/agent-orchestrate` API |
+| **Generative Agents** | ✅ | Memory stream, reflection, planning (Stanford HCI research) |
+| **Semantic Memory** | ✅ | Ollama-powered embeddings with hybrid search |
+| **Natural Language Commands** | ✅ | Parse "spawn a worker" → structured commands |
+
+### v0.3.0 - The Gap Closer
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **WhatsApp** | ✅ | Baileys integration with QR pairing |
+| **Telegram** | ✅ | Complete bot with webhooks |
+| **Slack** | ✅ | Webhook & slash commands |
+| **Docker Sandbox** | ✅ | Secure container execution |
+| **Tailscale** | ✅ | Zero-config VPN for remote access |
+| **Vision (AI)** | ✅ | Claude Vision image analysis |
+| **Audio** | ✅ | Whisper transcription |
+| **PDF** | ✅ | Text extraction & metadata |
+| **Hot-Reload Skills** | ✅ | Add capabilities without restart |
+| **Discord Integration** | ✅ | Bot interface |
+| **WebSocket Gateway** | ✅ | Real-time communication (port 18789) |
+
+---
+
+## Quick Start
+
+### Prerequisites
 
 ```bash
-# Spawn agents for specific tasks
-/agent-orchestrate spawn coordinator "plan a feature"
-/agent-orchestrate spawn specialist "implement auth"
-/agent-orchestrate spawn researcher "analyze codebase"
+# Install Bun (required)
+curl -fsSL https://bun.sh/install | bash
 
-# Or use natural language
+# Install Ollama (for local LLM)
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull qwen2.5-coder:14b
+ollama pull nomic-embed-text  # For semantic memory
+```
+
+### Install & Run
+
+```bash
+# Clone repository
+git clone https://github.com/kobolds/0xKobolds.git
+cd 0xKobolds
+
+# Install dependencies
+bun install
+
+# Initialize workspace
+bun run init
+
+# Start 0xKobold
+bun run start
+```
+
+---
+
+## Multi-Agent System 🎯
+
+Spawn specialized agents for different tasks:
+
+```bash
+# Spawn via commands
+/agent-spawn coordinator "plan a feature"
+/agent-spawn specialist "implement auth"
+/agent-spawn researcher "analyze codebase"
+/agent-spawn reviewer "check for security issues"
+
+# Or natural language
 spawn a worker to fix the database connection
+analyze this complex architecture problem
+delegate the user authentication project
 ```
 
-| Type | Best For |
-|------|----------|
-| 🎯 **Coordinator** | Task decomposition, managing workflows |
-| 🧠 **Specialist** | Deep domain expertise (security, architecture) |
-| 🔍 **Researcher** | Information gathering, analysis |
-| ⚒️ **Worker** | Implementation, coding |
-| 👁️ **Reviewer** | Code review, validation |
+### Agent Types
 
-### 🧠 Generative Agents (Stanford HCI Research)
+| Type | Emoji | Best For |
+|------|-------|----------|
+| coordinator | 🎯 | Task decomposition, delegation |
+| specialist | 🧠 | Deep domain expertise |
+| researcher | 🔍 | Information gathering |
+| worker | ⚒️ | Implementation |
+| reviewer | 👁️ | Code review, validation |
 
-Agents that **remember, reflect, and plan** like humans:
+---
+
+## Koclaw Gateway 🌐
+
+JSON-RPC style gateway for multi-channel integration with session persistence.
 
 ```bash
-# Automatic memory capture
-- Every interaction
-- Every tool execution
-- Every decision
+# Gateway API endpoints
+GET  /health          # Health check
+GET  /protocol        # List available methods
+WS   /ws              # WebSocket endpoint
 
-# Reflection (auto-triggered)
-/agent-reflections              # Show insights from memory
-
-# Planning
-/agent-plans                   # View hierarchical plans
-/generative_plan daily         # Create action plan
-```
-
-**Memory Categories:** `observation` → `thought` → `action` → `reflection`
-
-### 🌐 Koclaw Gateway (v0.6.0)
-
-JSON-RPC gateway for multi-channel integration:
-
-```typescript
-// Connect via WebSocket
-const ws = new WebSocket('ws://localhost:7777/ws');
-
-// Protocol frames
+# Protocol frames
 { type: "hello", protocol: "1", version: "2" }
 { type: "connect", sessionKey: "...", agent: "..." }
 { type: "request", id: "...", method: "agent.run", params: {...} }
 { type: "response", id: "...", result: {...} }
+{ type: "event", event: "agent.spawned", data: {...} }
 ```
 
-**Features:**
-- Session persistence across restarts
-- Multi-provider auth profiles (auto-rotation)
-- Real-time events
+### Session Management
 
-### 🔧 Hot-Reload Skills
+Sessions automatically persist across restarts:
 
-Add capabilities without restarting:
+```bash
+# Sessions auto-save on shutdown
+Ctrl+C → Session saved → Restart → Resume from previous
+
+# List active sessions via CLI
+0xkobold gateway connections list
+```
+
+### Auth Profiles
+
+Multiple API keys per provider with automatic rotation:
+
+```bash
+# Use auth profiles automatically
+Config → Detect provider → Load profile → Rotate on failure
+```
+
+---
+
+## Generative Agents 🧠
+
+Based on Stanford HCI research. Agents that remember, reflect, and plan:
+
+```bash
+# Automatic memory capture
+- User interactions
+- Tool executions
+- Agent decisions
+
+# Reflection (auto-triggered every 20 observations)
+/agent-reflections              # Show insights
+
+# Planning
+/agent-plans                    # View plans
+/agent-status                   # Agent stats
+
+# Manual memory operations
+remember "User prefers TypeScript"
+recall "what was the database decision"
+```
+
+**Memory Categories:** observation, thought, action, reflection  
+**Retrieval:** Combines recency × importance × relevance
+
+---
+
+## Secret Management 🔐
+
+Environment variables with automatic redaction:
+
+```bash
+# Show env vars (secrets automatically redacted)
+0xkobold env show
+
+# Show with secrets revealed (careful!)
+0xkobold env show --show-secrets
+
+# Show entire .env file (redacted)
+0xkobold env show --file
+
+# Check status
+0xkobold env status
+```
+
+**Auto-redacted:** TOKEN, KEY, SECRET, PASSWORD, API_KEY, WEBHOOK_URL, and token-like values
+
+---
+
+## Skills System 🔧
+
+Create custom capabilities without restarting:
 
 ```typescript
 // skills/my-skill.ts
+import { Skill } from '../src/skills/types';
+
 export const mySkill: Skill = {
   name: 'mySkill',
   description: 'What it does',
-  risk: 'medium',
+  risk: 'medium',  // safe | medium | high
   toolDefinition: {
     type: 'function',
     function: {
       name: 'mySkill',
+      description: 'For the LLM',
       parameters: {
         type: 'object',
-        properties: { param: { type: 'string' } }
+        properties: {
+          param: { type: 'string' }
+        },
+        required: ['param']
       }
     }
   },
@@ -197,157 +290,75 @@ export const mySkill: Skill = {
 };
 ```
 
-**Changes appear immediately**—no rebuild required.
-
-### 🔐 Secret Management
-
-Automatic redaction of sensitive values:
-
-```bash
-# Show env vars (secrets redacted)
-0xkobold env show
-# TOKEN=***
-# API_KEY=***
-
-# Show with secrets (careful!)
-0xkobold env show --show-secrets
-```
-
-**Auto-redacted:** `TOKEN`, `KEY`, `SECRET`, `PASSWORD`, `API_KEY`, `WEBHOOK_URL`
+**Auto-reload enabled** - changes appear immediately!
 
 ---
 
-## 📦 Installation
+## Commands
 
-### Prerequisites
-
-| Dependency | Version | Install |
-|------------|---------|---------|
-| **Bun** | 1.0+ | `curl -fsSL https://bun.sh/install \| bash` |
-| **Ollama** | Latest | `curl -fsSL https://ollama.com/install.sh \| sh` |
-
-### Full Setup
-
+### Core
 ```bash
-# 1. Clone repository
-git clone https://github.com/MoikasLabs/0xkobold.git
-cd 0xkobold
-
-# 2. Install dependencies
-bun install
-
-# 3. Initialize workspace (~/.0xkobold/)
-bun run init
-
-# 4. Pull recommended models (optional)
-ollama pull qwen2.5-coder:14b
-ollama pull nomic-embed-text  # For semantic memory
-
-# 5. Start 0xKobold
-bun run start
+bun run start          # Start main server
+bun run dev            # TypeScript watch mode
+bun run build          # Compile to dist/
+bun run tui            # Start Terminal UI
+bun run cli            # Run CLI commands
+bun run init           # Initialize workspace
 ```
 
-### Development Mode
-
-```bash
-# Watch mode for development
-bun run dev
-
-# Or manually rebuild
-bun run build
-bun run start
-```
-
----
-
-## 💻 Usage
-
-### Basic Commands
-
+### Agent Orchestration
 ```bash
 /agent-orchestrate list                    # List all agents
 /agent-orchestrate spawn_main coordinator  # Spawn main agent
-/agent-orchestrate delegate "complex task" # Auto-delegate
+/agent-orchestrate spawn_subagent worker "task"
+/agent-orchestrate analyze "complex task"  # Analyze complexity
+/agent-orchestrate delegate "big project"  # Auto-delegate
+```
 
-# Memory
-/remember "User prefers TypeScript"
-/recall "what was the database decision"
+### Generative Agents
+```bash
+/agent-memories         # Show memory stream
+/agent-reflections      # Show insights
+/agent-plans           # Show plans
+/agent-status          # Agent stats
+/generative_observe "what happened"
+/generative_reflect    # Generate insights
+/generative_plan daily # Create daily plan
+```
 
-# Gateway (if enabled)
-0xkobold gateway status
+### Memory
+```bash
+/remember "Content" --category fact --importance 0.9
+/recall "vague description"
+/memories              # List recent
+/memory-export         # Export to file
+```
+
+### Gateway Commands
+```bash
+# Start/stop gateway
+0xkobold gateway start           # Start gateway server
+0xkobold gateway stop            # Stop gateway
+0xkobold gateway status          # Show gateway status
+
+# List connections
 0xkobold gateway connections list
+0xkobold gateway health
 ```
 
-### Natural Language
-
-0xKobold understands natural commands:
-
+### Environment
+```bash
+0xkobold env status              # Check environment status
+0xkobold env show                # Show env vars (redacted)
+0xkobold env show --show-secrets # Show with secrets visible
+0xkobold env show --file         # Show .env file contents
 ```
-User: "spawn a worker to fix the database connection"
-→ Interprets as: /agent-orchestrate spawn_subagent worker "fix database connection"
-
-User: "analyze this complex architecture problem"
-→ Interprets as: /agent-orchestrate analyze "complex architecture problem"
-```
-
-### CLI vs TUI
-
-| Mode | Command | Use Case |
-|------|---------|----------|
-| **TUI** | `bun run start` | Interactive terminal UI |
-| **CLI** | `bun run cli <command>` | Scripting, automation |
-| **Dev** | `bun run dev` | Development with hot reload |
 
 ---
 
-## 🏛️ Architecture
+## Configuration
 
-### Extension-Based Architecture
-
-```
-src/extensions/
-├── core/
-│   ├── agent-orchestrator-extension.ts    # Multi-agent orchestration
-│   ├── generative-agents-extension.ts     # Memory, reflection, planning
-│   ├── perennial-memory-extension.ts      # Semantic memory (Ollama)
-│   ├── cloudflare-browser-extension.ts    # Web rendering, screenshots, PDFs
-│   ├── gateway-extension.ts               # WebSocket gateway
-│   └── discord-extension.ts               # Discord bot integration
-└── community/
-    └── draconic-subagents-wrapper.ts      # PI ecosystem bridge
-```
-
-### Key Components
-
-| Component | Purpose | File |
-|-----------|---------|------|
-| **Agent Runtime** | Core agent loop with subagent support | `src/agent/` |
-| **Koclaw Gateway** | JSON-RPC WebSocket/HTTP server | `src/gateway/` |
-| **Event Bus** | Decoupled event system | `src/event-bus/` |
-| **Memory Layer** | SQLite persistence, session resume | `src/memory/` |
-| **Skills System** | Hot-reload capabilities | `src/skills/` |
-| **TUI** | React-based terminal UI | `src/tui/` |
-
-### Event-Driven Design
-
-```typescript
-// Emit events
-eventBus.emit('agent.spawned', payload);
-
-// Listen for events
-eventBus.on('agent.spawned', handler);
-```
-
-**Benefits:**
-- Loose coupling between components
-- Testable, observable system
-- Easy to extend with new features
-
----
-
-## 🔧 Configuration
-
-Global config location: `~/.0xkobold/config.json`
+Global config: `~/.0xkobold/config.json`
 
 ```json
 {
@@ -370,128 +381,144 @@ Global config location: `~/.0xkobold/config.json`
     "port": 7777,
     "host": "0.0.0.0"
   },
-  "obsidian": {
-    "enabled": true,
-    "vault": "obsidian_vault"
+  "channels": {
+    "discord": { "enabled": false }
   }
 }
 ```
 
-### Environment Variables
+---
 
-Create `~/.0xkobold/.env`:
+## Architecture
 
-```bash
-# Ollama Cloud (optional)
-OLLAMA_API_KEY=your_key_here
+### Extension-Based
 
-# Cloudflare Browser (optional)
-CLOUDFLARE_API_TOKEN=your_token
-CLOUDFLARE_ACCOUNT_ID=your_account_id
-
-# Discord bot (optional)
-DISCORD_TOKEN=your_token
 ```
+src/extensions/
+├── core/
+│   ├── agent-orchestrator-extension.ts    # Multi-agent orchestration
+│   ├── generative-agents-extension.ts     # Memory, reflection, planning
+│   ├── perennial-memory-extension.ts      # Semantic memory (Ollama)
+│   ├── gateway-extension.ts               # WebSocket server (v0.6.0)
+│   ├── gateway-status-extension.ts        # Gateway TUI integration
+│   ├── discord-extension.ts               # Discord bot
+│   └── ...
+└── community/
+    ├── draconic-subagents-wrapper.ts      # PI ecosystem bridge
+    └── ...
+```
+
+### Event-Driven
+
+```typescript
+eventBus.emit('agent.spawned', payload);
+eventBus.on('agent.spawned', handler);
+```
+
+### Key Components
+
+| Component | Purpose |
+|-----------|---------|
+| `src/agent/` | Agent runtime with subagent support |
+| `src/gateway/` | Koclaw JSON-RPC gateway (port 7777) |
+| `src/gateway/protocol/` | Frame types (Hello, Connect, Request, Response, Event) |
+| `src/gateway/methods/` | Method handlers (agent.run, agent.status, etc.) |
+| `src/memory/` | Conversation persistence & session management |
+| `src/memory/session-store.ts` | SQLite session persistence |
+| `src/memory/session-resume.ts` | Auto-save/restore sessions |
+| `src/memory/memory-integration.ts` | Gateway + generative agents bridge |
+| `src/skills/` | Hot-reload skill system |
+| `src/tui/` | Terminal UI (React-based) |
+| `src/event-bus/` | Decoupled event system |
+| `src/cli/extensions/env.ts` | Secret management with auto-redaction |
 
 ---
 
-## 📚 Documentation
-
-- **[Architecture Guide](docs/architecture.md)** — System design and patterns
-- **[Skills Guide](docs/skills.md)** — Creating custom capabilities
-- **[API Reference](docs/api.md)** — Gateway protocol and methods
-- **[Contributing](CONTRIBUTING.md)** — Development guidelines
-
-**Research & Analysis:**
-- [Research/8004-Protocol-Research.md](RESEARCH-8004.md) — ERC-8004 integration plan
-- [Research/x402-Protocol-Research.md](research/x402-protocol.md) — Payment protocol analysis
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-**Quick contribution workflow:**
-
-```bash
-# 1. Fork and clone
-git clone https://github.com/YOUR_USERNAME/0xkobold.git
-
-# 2. Create feature branch
-git checkout -b feature/amazing-feature
-
-# 3. Install pre-commit hooks
-bun install
-
-# 4. Make changes (tests run automatically on commit)
-git add .
-git commit -m "feat: add amazing feature"
-
-# 5. Push and create PR
-git push origin feature/amazing-feature
-```
-
-### Code Standards
-
-- **TypeScript** — Strict mode enabled
-- **Bun** — Required runtime
-- **Pre-commit hooks** — Auto-run tests and build
-- **Semantic commits** — `feat:`, `fix:`, `docs:`, etc.
-
-### Testing
+## Testing
 
 ```bash
 # Run all tests
 bun test
 
-# Specific suites
-bun test test/unit/
+# Specific test suites
+bun test test/unit/extensions/generative-agents.test.ts
 bun test test/integration/
+bun test test/e2e/
 
-# With coverage
+# Test coverage
 bun test --coverage
+```
+
+**Test Suites:**
+- Unit: Core logic (scoring, relevance, parsing)
+- Integration: Database operations, persistence
+- E2E: Full agent lifecycle (observe → reflect → plan)
+
+---
+
+## Project Structure
+
+```
+0xKobold/
+├── src/
+│   ├── agent/              # Agent runtime & orchestration
+│   ├── approval/           # Risk-based approval
+│   ├── channels/           # Discord integration
+│   ├── cli/                # CLI commands
+│   ├── config/             # Configuration
+│   ├── discord/            # Discord bot
+│   ├── event-bus/          # Event system
+│   ├── extensions/         # Extensions
+│   │   ├── core/           # Built-in extensions
+│   │   └── community/      # Community wrappers
+│   ├── gateway/            # WebSocket gateway
+│   ├── llm/                # LLM providers (Ollama)
+│   ├── memory/             # Persistence layer
+│   ├── skills/             # Skill system
+│   │   ├── builtin/        # Built-in skills
+│   │   └── loader.ts       # Hot-reload logic
+│   ├── tui/                # Terminal UI
+│   └── utils/              # Utilities (nl-patterns.ts, redact.ts)
+├── skills/                 # Your custom skills (hot-reloaded)
+├── test/                   # Test suites
+│   ├── unit/
+│   ├── integration/
+│   └── e2e/
+├── docs/                   # Documentation
+│   ├── archive/            # Historical docs
+│   ├── research/             # Research notes
+│   └── usage.md, workflow.md # Living docs
+└── scripts/                # Deployment scripts
 ```
 
 ---
 
-## 🗺️ Roadmap
+## Key Files
 
-| Version | Features | Status |
-|---------|----------|--------|
-| **v0.6.x** | Context pruning, Web tools, ERC-8004 research | 🟡 In Progress |
-| **v0.7.0** | ERC-8004 identity integration | 🔴 Planned |
-| **v0.8.0** | Agent marketplace (x402 + ERC-8004) | 🔴 Planned |
-| **v1.0.0** | Stable API, plugin ecosystem | 🔴 Future |
-
-**Active Research:**
-- 🌐 [x402 Protocol](RESEARCH-8004.md) — Internet-native payments
-- 🔐 [ERC-8004](RESEARCH-8004.md) — Trustless agent identity
-- ☁️ [Cloudflare Browser](src/extensions/core/cloudflare-browser-extension.ts) — Web rendering
-
----
-
-## 🙏 Acknowledgments
-
-- **Stanford HCI Lab** — Generative Agents research
-- **PI Community** — Extension ecosystem patterns
-- **Coinbase** — x402 protocol inspiration
-- **Contributors** — See [Contributors](https://github.com/MoikasLabs/0xkobold/graphs/contributors)
+- `src/pi-config.ts` - PI framework configuration
+- `src/gateway/gateway-server.ts` - Koclaw gateway server
+- `src/gateway/protocol/` - JSON-RPC protocol frames
+- `src/gateway/methods/agent.ts` - Gateway agent handlers
+- `src/memory/session-store.ts` - Session persistence
+- `src/memory/session-resume.ts` - Auto-save/restore
+- `src/memory/memory-integration.ts` - Gateway + memory bridge
+- `src/agent/auth-profiles.ts` - Auth profile management
+- `src/extensions/core/generative-agents-extension.ts` - Generative agents
+- `src/utils/nl-patterns.ts` - Natural language parsing
+- `src/utils/redact.ts` - Secret redaction utilities
+- `src/cli/extensions/env.ts` - Environment & secrets management
+- `~/.0xkobold/config.json` - User configuration
+- `~/.0xkobold/memory/perennial/knowledge.db` - Semantic memory
+- `CLAUDE.md` - AI assistant context
 
 ---
 
-## 📄 License
+## License
 
-MIT © 2026 — See [LICENSE](LICENSE) for details.
+MIT © 2026
 
 ---
 
-<p align="center">
-  <strong>Built while you sleep by your Digital Familiar 🐉</strong>
-</p>
+**Built while you sleep by your Digital Familiar** 🐉
 
-<p align="center">
-  <a href="https://github.com/MoikasLabs/0xkobold">GitHub</a> •
-  <a href="https://github.com/MoikasLabs/0xkobold/issues">Issues</a> •
-  <a href="https://github.com/MoikasLabs/0xkobold/discussions">Discussions</a>
-</p>
+*Join the evolution on [Github](https://github.com/MoikasLabs/0xkobold)*
