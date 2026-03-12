@@ -1,4 +1,6 @@
-# 0xKobold v0.6.6 "Workspace Isolation"
+# 0xKobold v0.6.7 "Lair Awareness"
+
+**v0.6.7** — Auto-detect and notify about project lairs in local mode
 
 **v0.6.6** — Enforce global workspace sandboxing, proper CWD isolation
 
