@@ -56,8 +56,9 @@ export const config: Config = {
 
     // Tool Integrations
     './src/extensions/core/mcp-extension.ts',            // Model Context Protocol support
-    './node_modules/@aliou/pi-processes/src/index.ts',   // Background process management (dev servers, watchers)
+    './node_modules/@aliou/pi-processes/src/index.ts',   // Background process management
     './src/extensions/core/websearch-enhanced-extension.ts',        // Ollama web search
+    './src/extensions/core/cloudflare-browser-extension.ts',  // ☁️ Browser Rendering (opt-in)
     './src/extensions/core/update-extension.ts',           // Framework update functionality
     './src/extensions/core/self-update-extension.ts',      // 0xKobold self-update
     './src/extensions/core/perennial-memory-extension.ts', // Long-term memory

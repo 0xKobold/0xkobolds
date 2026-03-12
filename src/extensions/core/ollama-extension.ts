@@ -5,7 +5,8 @@
  * Refactored: DRY, Functional, OOP, KISS, SOC2 Compliant
  */
 
-import type { ExtensionAPI, ProviderModelConfig } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ProviderModelConfig, AgentToolResult } from "@mariozechner/pi-coding-agent";
+import { Type } from "@sinclair/typebox";
 import { config } from "../../config/unified-config.js";
 
 // ============================================================================
@@ -486,6 +487,73 @@ export default async function ollamaExtension(pi: ExtensionAPI): Promise<void> {
     });
 
     registerCommands(pi, service);
+
+    // ========================================================================
+    // WEB SEARCH (Ollama Cloud only)
+    // Only available when using Ollama Cloud (hasApiKey = true)
+    // ========================================================================
+    if (hasApiKey) {
+      pi.registerTool({
+        name: "ollama_web_search",
+        label: "/ollama_web_search",
+        description: "Search web using Ollama Cloud API (requires OLLAMA_API_KEY)",
+        // @ts-ignore TypeBox schema
+        parameters: Type.Object({
+          query: Type.String({ description: "Search query" }),
+          max_results: Type.Number({ default: 5, description: "Max results (1-10)" }),
+        }),
+        async execute(
+          _toolCallId: string,
+          params: { query: string; max_results?: number },
+          _signal: AbortSignal,
+          onUpdate: any
+        ): Promise<AgentToolResult<any>> {
+          try {
+            onUpdate?.({ content: [{ type: "text", text: `🔍 Searching Ollama web: "${params.query}"...` }] });
+
+            const response = await fetch(`${CONFIG.CLOUD_URL}/api/web_search`, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${CONFIG.API_KEY}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                query: params.query,
+                max_results: Math.min(params.max_results || 5, 10)
+              })
+            });
+
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+            }
+
+            const data = await response.json() as { results: Array<{ title: string; url: string; content: string }> };
+            
+            const formatted = data.results.map((r, i) => 
+              `${i + 1}. **${r.title}**\n   ${r.url}\n   ${r.content.slice(0, 200)}...`
+            ).join("\n\n");
+
+            return {
+              content: [{
+                type: "text" as const,
+                text: `## Search Results: "${params.query}"\n\n${formatted}`
+              }],
+              details: { query: params.query, results: data.results.length, data }
+            };
+          } catch (error) {
+            return {
+              content: [{
+                type: "text" as const,
+                text: `❌ Web search failed: ${error instanceof Error ? error.message : String(error)}`
+              }],
+              details: { error: String(error) }
+            };
+          }
+        }
+      });
+
+      console.log("[Ollama] Web search tool registered (cloud mode)");
+    }
 
     SecurityLogger.log("extension_loaded", true);
     console.log(`[Ollama] Ready with ${models.length} models`);
