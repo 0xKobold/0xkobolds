@@ -1,4 +1,4 @@
-# 0xKobold v0.6.2 "Workspace Aware"
+# 0xKobold v0.6.3 "Workspace Fix"
 
 **v0.6.2** — Workspace-aware footer, cleaner gateway display
 
@@ -51,6 +51,12 @@
 ---
 
 ## ✨ Features
+
+### v0.6.3 - Workspace Fix
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Path Resolution** | ✅ | Fixed workspace detection from home directory |
+| **startsWith Fix** | ✅ | Correctly handles paths like /home/user vs /home/user/.0xkobold |
 
 ### v0.6.2 - Workspace Aware
 | Feature | Status | Description |
