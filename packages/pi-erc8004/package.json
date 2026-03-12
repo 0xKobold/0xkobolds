@@ -1,6 +1,6 @@
 {
   "name": "@0xkobold/pi-erc8004",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "ERC-8004 Protocol for pi-coding-agent. Agent identity, reputation, and discovery on Base L2",
   "keywords": [
     "pi-package",

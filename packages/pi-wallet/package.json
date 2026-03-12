@@ -1,8 +1,16 @@
 {
   "name": "@0xkobold/pi-wallet",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "CDP Agentic Wallet + x402 payments for pi-coding-agent. Zero-setup agent wallets with Base L2 support",
-  "keywords": ["pi-package", "wallet", "ethereum", "base", "cdp", "x402", "agent-economy"],
+  "keywords": [
+    "pi-package",
+    "wallet",
+    "ethereum",
+    "base",
+    "cdp",
+    "x402",
+    "agent-economy"
+  ],
   "author": "0xKobold",
   "license": "MIT",
   "main": "dist/index.js",
@@ -21,10 +29,16 @@
     "prepublishOnly": "npm run build && npm test"
   },
   "pi": {
-    "extensions": ["./dist/index.js"],
+    "extensions": [
+      "./dist/index.js"
+    ],
     "image": "https://www.coinbase.com/img/press/coinbase-logo.png"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@walletconnect/core": "^2.23.8",
+    "@walletconnect/web3wallet": "^1.16.1",
+    "ethers": "^6.13.5"
+  },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": ">=0.6.0",
     "@sinclair/typebox": "^0.32.0"
@@ -32,7 +46,8 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "@walletconnect/types": "^2.17.0"
   },
   "repository": {
     "type": "git",
