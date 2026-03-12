@@ -1,4 +1,6 @@
-# 0xKobold v0.6.5 "Clean Build"
+# 0xKobold v0.6.6 "Workspace Isolation"
+
+**v0.6.6** — Enforce global workspace sandboxing, proper CWD isolation
 
 **v0.6.5** — Clean dist/ before build, removes ghost extensions
 
