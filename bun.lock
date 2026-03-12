@@ -5,7 +5,7 @@
     "": {
       "name": "@0xkobold/core",
       "dependencies": {
-        "@0xkobold/pi-ollama": "^0.1.3",
+        "@0xkobold/pi-ollama": "^0.1.4",
         "@aliou/pi-processes": "^0.6.2",
         "@mariozechner/pi-agent-core": "0.57.1",
         "@mariozechner/pi-coding-agent": "0.57.1",
@@ -34,14 +34,14 @@
         "@types/blessed": "^0.1.27",
         "@types/bun": "latest",
         "@types/json5": "^2.2.0",
-        "@types/node": "^20.19.35",
+        "@types/node": "^20.19.37",
         "bun-types": "latest",
         "typescript": "^5.9.3",
       },
     },
   },
   "packages": {
-    "@0xkobold/pi-ollama": ["@0xkobold/pi-ollama@0.1.3", "", { "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.6.0", "@sinclair/typebox": ">=0.32.0" } }, "sha512-GOR9JI+nFK6eA8FXLdRDpTkIT8PpX0EiEojnwZW5aLYf08WqRbM41fOsHEVOqVN01+g8EgW/v+LsN3eTcfDuNQ=="],
+    "@0xkobold/pi-ollama": ["@0xkobold/pi-ollama@0.1.4", "", { "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.6.0", "@sinclair/typebox": ">=0.32.0" } }, "sha512-Z5DOs8tEVdmKoqjyHc8zDcOzpSdLolZVK9qcjjcLJUTHcBmeaim/hg3sOjjimeaXu8EDc72J7v/rK/PcqNoFwA=="],
 
     "@aliou/pi-processes": ["@aliou/pi-processes@0.6.2", "", { "dependencies": { "@aliou/pi-utils-settings": "^0.10.0", "@aliou/pi-utils-ui": "^0.1.0", "@aliou/sh": "^0.1.0", "@sinclair/typebox": "^0.34.41" }, "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.51.0", "@mariozechner/pi-tui": ">=0.51.0" }, "optionalPeers": ["@mariozechner/pi-coding-agent", "@mariozechner/pi-tui"] }, "sha512-FjG90EXoR+dJR9XhyCnvvw8mdXDFb3O+5NYBV5osu8p39I0RGNFlB2EqtdPzqD9Bt8u62WU5SIlnCWBN0klvGA=="],
 
