@@ -30,9 +30,10 @@
   },
   "pi": {
     "extensions": [
-      "./src/index.ts"
+      "./dist/index.js"
     ],
-    "image": "https://www.coinbase.com/img/press/coinbase-logo.png"
+    "image": "https://www.coinbase.com/img/press/coinbase-logo.png",
+    "icon": "💰"
   },
   "dependencies": {
     "@walletconnect/core": "^2.23.8",

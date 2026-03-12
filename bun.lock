@@ -5,7 +5,7 @@
     "": {
       "name": "@0xkobold/core",
       "dependencies": {
-        "@0xkobold/pi-ollama": "^0.1.4",
+        "@0xkobold/pi-ollama": "0.1.7",
         "@aliou/pi-processes": "^0.6.2",
         "@mariozechner/pi-agent-core": "0.57.1",
         "@mariozechner/pi-coding-agent": "0.57.1",
@@ -41,7 +41,7 @@
     },
   },
   "packages": {
-    "@0xkobold/pi-ollama": ["@0xkobold/pi-ollama@0.1.4", "", { "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.6.0", "@sinclair/typebox": ">=0.32.0" } }, "sha512-Z5DOs8tEVdmKoqjyHc8zDcOzpSdLolZVK9qcjjcLJUTHcBmeaim/hg3sOjjimeaXu8EDc72J7v/rK/PcqNoFwA=="],
+    "@0xkobold/pi-ollama": ["@0xkobold/pi-ollama@0.1.7", "", { "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.6.0", "@sinclair/typebox": ">=0.32.0" } }, "sha512-nyPDKnK6WWke3UlO4wtZTTYuMI7IyQqDW9pW760+7L+KwyxuBmD6fg67mKwI6qx9oGJhWs6FdSygSiOQErm6FA=="],
 
     "@aliou/pi-processes": ["@aliou/pi-processes@0.6.2", "", { "dependencies": { "@aliou/pi-utils-settings": "^0.10.0", "@aliou/pi-utils-ui": "^0.1.0", "@aliou/sh": "^0.1.0", "@sinclair/typebox": "^0.34.41" }, "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.51.0", "@mariozechner/pi-tui": ">=0.51.0" }, "optionalPeers": ["@mariozechner/pi-coding-agent", "@mariozechner/pi-tui"] }, "sha512-FjG90EXoR+dJR9XhyCnvvw8mdXDFb3O+5NYBV5osu8p39I0RGNFlB2EqtdPzqD9Bt8u62WU5SIlnCWBN0klvGA=="],
 

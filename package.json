@@ -1,6 +1,6 @@
 {
   "name": "0xkobold",
-  "version": "0.6.11",
+  "version": "0.7.0",
   "description": "Your digital familiar - Koclaw-style gateway, session management, and multi-agent orchestration",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -43,7 +43,7 @@
   "author": "0xKobold Team",
   "license": "MIT",
   "dependencies": {
-    "@0xkobold/pi-ollama": "^0.1.4",
+    "@0xkobold/pi-ollama": "0.1.7",
     "@aliou/pi-processes": "^0.6.2",
     "@mariozechner/pi-agent-core": "0.57.1",
     "@mariozechner/pi-coding-agent": "0.57.1",

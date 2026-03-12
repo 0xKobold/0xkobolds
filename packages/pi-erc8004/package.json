@@ -32,9 +32,10 @@
   },
   "pi": {
     "extensions": [
-      "./src/index.ts"
+      "./dist/index.js"
     ],
-    "image": "https://8004.org/logo.svg"
+    "image": "https://8004.org/logo.svg",
+    "icon": "🔐"
   },
   "dependencies": {},
   "peerDependencies": {

@@ -11,7 +11,8 @@
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { eventBus } from "../event-bus/index.js";
+// @ts-ignore - Event bus import
+import { eventBus } from "../event-bus/index";
 
 interface ExtensionWrapperOptions {
   name: string;

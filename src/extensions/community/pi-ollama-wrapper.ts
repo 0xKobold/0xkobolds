@@ -14,8 +14,12 @@ export default async function register(pi: ExtensionAPI) {
   
   try {
     // Dynamic import from npm package
-    const ollamaMod = await import("@0xkobold/pi-ollama");
-    const ollamaExt = ollamaMod.default || ollamaMod;
+    const ollamaMod: any = await import("@0xkobold/pi-ollama");
+    const ollamaExt = ollamaMod.default;
+    
+    if (typeof ollamaExt !== 'function') {
+      throw new Error('Pi-ollama does not export a callable default');
+    }
     
     // Initialize the extension
     await ollamaExt(pi);

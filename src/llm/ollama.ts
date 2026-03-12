@@ -7,15 +7,37 @@
  */
 
 import type { LLMProvider, ChatOptions, ChatResponse, Message } from './types';
-import { 
-  getOllamaBaseUrl, 
-  getOllamaApiKey, 
-  checkLocalOllama,
-  modelRequiresApiKey 
-} from '../extensions/core/ollama-extension';
 
 // Cloud URL for fallback
 const CLOUD_URL = 'https://ollama.com';
+
+// Helper functions (previously imported from extension)
+async function checkLocalOllama(): Promise<boolean> {
+  try {
+    const res = await fetch('http://localhost:11434/api/tags', { 
+      method: 'GET',
+      signal: AbortSignal.timeout(5000)
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function getOllamaBaseUrl(modelId: string): string {
+  // If model has cloud/ prefix or no local Ollama, use cloud
+  if (modelId.includes('cloud/')) return CLOUD_URL;
+  return 'http://localhost:11434';
+}
+
+function getOllamaApiKey(): string | undefined {
+  return process.env.OLLAMA_API_KEY;
+}
+
+function modelRequiresApiKey(modelId: string): boolean {
+  // Cloud models require API key
+  return modelId.includes('cloud/') || modelId.startsWith('cloud-');
+}
 
 /**
  * Ollama Provider
