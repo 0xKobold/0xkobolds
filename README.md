@@ -1,8 +1,12 @@
-# 0xKobold v0.6.3 "Workspace Fix"
+# 0xKobold v0.6.5 "Clean Build"
 
-**v0.6.2** — Workspace-aware footer, cleaner gateway display
+**v0.6.5** — Clean dist/ before build, removes ghost extensions
 
-**v0.6.1** — Gateway auto-start opt-in (fixes port conflicts)
+**v0.6.4** — Fix workspace detection from home directory
+
+**v0.6.3** — Workspace-aware footer, cleaner gateway display
+
+**v0.6.2** — Gateway auto-start opt-in (fixes port conflicts)
 
 **v0.6.0 "Koclaw Gateway"** — JSON-RPC gateway, session persistence, multi-channel
 
