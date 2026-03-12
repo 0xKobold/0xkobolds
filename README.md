@@ -36,8 +36,9 @@
 
 > *"Your digital familiar - a personal AI assistant that connects, persists, and evolves"*
 
-## 🔥 Latest: v0.6.11 "Secret Guardian"
+## 🔥 Latest: v0.7.0 "NPM Release"
 
+**v0.7.0** — Published to npm! `@0xkobold/pi-*` extension packages available  
 **v0.6.11** — Automatic secret redaction in env commands, README restructure  
 **v0.6.10** — Gateway auto-starts by default for TUI (detects existing)  
 **v0.6.9** — Fix gateway detection when dev already running  
@@ -104,6 +105,13 @@
 | **Discord Integration** | ✅ | Bot interface |
 | **WebSocket Gateway** | ✅ | Real-time communication (port 18789) |
 
+### v0.7.0 - NPM Extensions
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Pi Ollama** | ✅ | `@0xkobold/pi-ollama` - Local + Cloud Ollama models |
+| **Pi Wallet** | ✅ | `@0xkobold/pi-wallet` - CDP Agentic Wallet + x402 payments |
+| **Pi ERC-8004** | ✅ | `@0xkobold/pi-erc8004` - Agent identity + reputation |
+
 ---
 
 ## Quick Start
@@ -121,6 +129,21 @@ ollama pull nomic-embed-text  # For semantic memory
 ```
 
 ### Install & Run
+
+#### Option 1: Install from npm (Recommended)
+
+```bash
+# Install globally
+npm install -g 0xkobold
+
+# Initialize workspace
+0xkobold init
+
+# Start 0xKobold
+0xkobold start
+```
+
+#### Option 2: Clone from source
 
 ```bash
 # Clone repository
@@ -291,6 +314,32 @@ export const mySkill: Skill = {
 ```
 
 **Auto-reload enabled** - changes appear immediately!
+
+---
+
+## NPM Extension Packages 📦
+
+Official Pi extensions published to npm:
+
+### `@0xkobold/pi-ollama`
+Local + Cloud Ollama models with auto-discovery
+```bash
+pi install npm:@0xkobold/pi-ollama
+```
+
+### `@0xkobold/pi-wallet`
+CDP Agentic Wallet + x402 payments + Ethers.js backup
+```bash
+pi install npm:@0xkobold/pi-wallet
+```
+
+### `@0xkobold/pi-erc8004`
+ERC-8004 identity + reputation on Base L2
+```bash
+pi install npm:@0xkobold/pi-erc8004
+```
+
+**Note:** Pi extensions use the `pi install` CLI, not npm directly.
 
 ---
 
