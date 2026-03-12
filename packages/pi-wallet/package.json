@@ -1,6 +1,6 @@
 {
   "name": "@0xkobold/pi-wallet",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CDP Agentic Wallet + x402 payments for pi-coding-agent. Zero-setup agent wallets with Base L2 support",
   "keywords": [
     "pi-package",
@@ -30,7 +30,7 @@
   },
   "pi": {
     "extensions": [
-      "./dist/index.js"
+      "./src/index.ts"
     ],
     "image": "https://www.coinbase.com/img/press/coinbase-logo.png"
   },

@@ -1,6 +1,6 @@
 {
   "name": "@0xkobold/pi-erc8004",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "ERC-8004 Protocol for pi-coding-agent. Agent identity, reputation, and discovery on Base L2",
   "keywords": [
     "pi-package",
@@ -31,7 +31,9 @@
     "prepublishOnly": "npm run build && npm test"
   },
   "pi": {
-    "extensions": ["./dist/index.js"],
+    "extensions": [
+      "./src/index.ts"
+    ],
     "image": "https://8004.org/logo.svg"
   },
   "dependencies": {},
