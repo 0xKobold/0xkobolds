@@ -1,62 +1,43 @@
 /**
  * Pi Wallet Extension
  * 
- * CDP Agentic Wallet + x402 payments for pi-coding-agent
- * Zero-setup agent economy with Base L2 support
+ * Universal wallet support for pi-coding-agent:
+ * - CDP Agentic Wallet (email-based, zero-setup)
+ * - Existing wallets (read-only, ethers.js, hardware)
+ * - x402 protocol for machine-to-machine payments
  * 
  * Installation:
  *   pi install npm:@0xkobold/pi-wallet
  * 
- * Features:
- * - CDP Agentic Wallet (zero setup, email-based)
- * - x402 protocol for machine-to-machine payments
- * - Base L2 (mainnet + Sepolia) support
- * - Works with or without .0xkobold directory
- * - Configurable storage path
+ * Commands:
+ *   /wallet-create --email me@example.com           [NEW - CDP]
+ *   /wallet-import --address 0x... --type readonly [EXISTING - just monitor]
+ *   /wallet-import --address 0x... --type ethers    [EXISTING - self-custody]
+ *   /wallet-import --address 0x... --type hardware  [EXISTING - MetaMask/Ledger]
  * 
  * Environment Variables:
- *   PI_WALLET_DIR - Custom storage directory
- *   PI_WALLET_CHAIN - Default chain (base|sepolia)
- *   PI_WALLET_MAX_AMOUNT - Max transaction amount
- * 
- * Commands:
- *   /wallet-create --email me@example.com
- *   /wallet-status
- *   /wallet-send --to 0x... --amount 1.5 [--token USDC] [--chain base]
- *   /wallet-trade --amount 100 USDC ETH [--max-slippage 1.5]
- *   /wallet-x402 --url https://api.service.com/pay [--budget 0.01]
- * 
- * Tools:
- *   wallet_send - Send crypto payments
- *   wallet_x402_pay - Pay via 402 protocol
+ *   PI_WALLET_ADDRESS=0x...    [Use existing wallet]
+ *   PI_WALLET_TYPE=readonly    [agentic|ethers|hardware|readonly]
+ *   PI_WALLET_CHAIN=base       [base|sepolia]
  * 
  * @see https://github.com/0xKobold/pi-wallet
- * @see https://docs.cdp.coinbase.com/agentic-wallet
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { $ } from "bun";
 import { join } from "path";
 import { homedir } from "os";
-import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 
 // ============================================================================
-// CONFIGURATION - Works with or without .0xkobold
+// CONFIGURATION
 // ============================================================================
 
 function getWalletDir(): string {
-  // Priority: env var > pi config > .0xkobold > default
   const envDir = process.env.PI_WALLET_DIR;
   if (envDir) return envDir;
-
-  // Check if .0xkobold exists
   const koboldDir = join(homedir(), ".0xkobold");
-  if (existsSync(koboldDir)) {
-    return join(koboldDir, "wallets");
-  }
-
-  // Default: pi config dir
+  if (existsSync(koboldDir)) return join(koboldDir, "wallets");
   return join(homedir(), ".pi", "wallet");
 }
 
@@ -64,32 +45,34 @@ const WALLET_DIR = getWalletDir();
 const WALLET_CONFIG = join(WALLET_DIR, "config.json");
 
 const BASE_CONFIG = {
-  mainnet: {
-    name: "base",
-    chainId: 8453,
-    rpc: "https://mainnet.base.org",
-    explorer: "https://basescan.org",
-  },
-  sepolia: {
-    name: "base-sepolia",
-    chainId: 84532,
-    rpc: "https://sepolia.base.org",
-    explorer: "https://sepolia.basescan.org",
-    faucet: "https://www.coinbase.com/faucets",
-  },
+  mainnet: { name: "base", chainId: 8453, rpc: "https://mainnet.base.org", explorer: "https://basescan.org" },
+  sepolia: { name: "base-sepolia", chainId: 84532, rpc: "https://sepolia.base.org", explorer: "https://sepolia.basescan.org" },
 };
 
+type WalletType = "agentic" | "ethers" | "hardware" | "readonly";
+
 interface WalletConfig {
-  activeProvider: "agentic" | null;
+  activeProvider: WalletType | null;
   agentic?: {
     email: string;
     authenticated: boolean;
     address?: string;
-    createdAt?: number;
+    createdAt: number;
   };
   ethers?: {
-    encryptedKey: string;
     address: string;
+    encryptedKey?: string;
+    createdAt: number;
+  };
+  hardware?: {
+    address: string;
+    provider: "metamask" | "ledger" | "trezor" | "walletconnect";
+    connected: boolean;
+    createdAt: number;
+  };
+  readonlyWallet?: {
+    address: string;
+    label?: string;
     createdAt: number;
   };
   settings: {
@@ -101,23 +84,43 @@ interface WalletConfig {
 }
 
 // ============================================================================
-// STORAGE - Portable across platforms
+// STORAGE
 // ============================================================================
 
-function ensureDir(path: string) {
-  if (!existsSync(path)) {
-    mkdirSync(path, { recursive: true, mode: 0o700 });
-  }
+function ensureDir() { 
+  if (!existsSync(WALLET_DIR)) mkdirSync(WALLET_DIR, { recursive: true, mode: 0o700 }); 
 }
 
 function loadConfig(): WalletConfig {
-  ensureDir(WALLET_DIR);
+  // Check for env var wallet first (for quick setup)
+  const envAddress = process.env.PI_WALLET_ADDRESS;
+  const envType = (process.env.PI_WALLET_TYPE || "readonly") as WalletType;
+  
+  if (envAddress && envAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+    console.log("[pi-wallet] Using environment wallet:", envAddress.slice(0, 10) + "...");
+    return {
+      activeProvider: envType,
+      readonlyWallet: {
+        address: envAddress,
+        label: "Environment Wallet",
+        createdAt: Date.now(),
+      },
+      settings: {
+        defaultChain: (process.env.PI_WALLET_CHAIN as keyof typeof BASE_CONFIG) || "sepolia",
+        maxTransactionAmount: process.env.PI_WALLET_MAX_AMOUNT || "100",
+        requireConfirmation: true,
+      },
+      lastUpdated: Date.now(),
+    };
+  }
+
+  ensureDir();
   if (!existsSync(WALLET_CONFIG)) {
     const cfg: WalletConfig = {
       activeProvider: null,
       settings: {
-        defaultChain: (process.env.PI_WALLET_CHAIN as any) || "sepolia",
-        maxTransactionAmount: process.env.PI_WALLET_MAX_AMOUNT || "100",
+        defaultChain: "sepolia",
+        maxTransactionAmount: "100",
         requireConfirmation: true,
       },
       lastUpdated: Date.now(),
@@ -127,49 +130,37 @@ function loadConfig(): WalletConfig {
   }
   try {
     return JSON.parse(readFileSync(WALLET_CONFIG, "utf-8"));
-  } catch (e) {
-    console.error("[pi-wallet] Failed to load config, using defaults:", e);
-    return {
-      activeProvider: null,
-      settings: {
-        defaultChain: "sepolia",
-        maxTransactionAmount: "100",
-        requireConfirmation: true,
-      },
-      lastUpdated: Date.now(),
+  } catch {
+    return { 
+      activeProvider: null, 
+      settings: { defaultChain: "sepolia", maxTransactionAmount: "100", requireConfirmation: true }, 
+      lastUpdated: Date.now() 
     };
   }
 }
 
 function saveConfig(c: WalletConfig) {
-  ensureDir(WALLET_DIR);
+  ensureDir();
   c.lastUpdated = Date.now();
-  
-  // Atomic write with secure permissions
   const tmp = WALLET_CONFIG + ".tmp";
   writeFileSync(tmp, JSON.stringify(c, null, 2), { mode: 0o600 });
-  
-  // Rename is atomic on POSIX
-  const fs = require("fs");
-  fs.renameSync(tmp, WALLET_CONFIG);
+  require("fs").renameSync(tmp, WALLET_CONFIG);
 }
 
 // ============================================================================
-// CDP AGENTIC PROVIDER (npx awal)
+// PROVIDERS
 // ============================================================================
 
 class AgenticProvider {
   private async exec(args: string[]): Promise<unknown> {
     try {
-      const result = await Bun.$`npx awal ${args}`.text();
+      const { $ } = await import("bun");
+      const result = await $`npx awal ${args}`.text();
       return JSON.parse(result);
     } catch {
-      try {
-        const result = await Bun.$`awal ${args}`.text();
-        return JSON.parse(result);
-      } catch (e) {
-        throw new Error("CDP Agentic Wallet not installed. Run: npm install -g @coinbase/awal");
-      }
+      const { $ } = await import("bun");
+      const result = await $`awal ${args}`.text();
+      return JSON.parse(result);
     }
   }
 
@@ -180,224 +171,230 @@ class AgenticProvider {
 
   async login(email: string) {
     const r = await this.exec(["auth", "login", email, "--json"]) as any;
-    return { flowId: r?.flowId, msg: r?.message || `Check ${email} for code` };
+    return { flowId: r?.flowId, msg: r?.message || `Check ${email}` };
   }
 
   async balance(chain = "base") {
     const r = await this.exec(["balance", "--chain", chain, "--json"]) as any;
-    return { eth: r?.eth, usdc: r?.usdc, network: r?.network };
-  }
-
-  async address() {
-    const r = await this.exec(["address", "--json"]) as any;
-    return r?.address;
+    return { eth: r?.eth, usdc: r?.usdc };
   }
 
   async send(amount: string, to: string, chain = "base") {
     const r = await this.exec(["send", amount, to, "--chain", chain, "--json"]) as any;
-    return { tx: r?.txHash, status: r?.status || "pending" };
-  }
-
-  async trade(amount: string, from: string, to: string) {
-    const r = await this.exec(["trade", amount, from, to, "--json"]) as any;
-    return { tx: r?.txHash, status: r?.status || "pending" };
-  }
-
-  async x402(url: string) {
-    const r = await this.exec(["x402", "pay", url, "--json"]) as any;
-    return { ok: r?.success, data: r?.data, cost: r?.cost };
+    return { tx: r?.txHash, status: r?.status };
   }
 }
-
-const provider = new AgenticProvider();
 
 // ============================================================================
 // COMMAND HANDLERS
 // ============================================================================
 
+const provider = new AgenticProvider();
+
 async function handleCreate(args: string, ctx: any) {
   const email = args.match(/--email\s+(\S+)/)?.[1];
-  if (!email || !email.includes("@")) {
+  if (!email?.includes("@")) {
     ctx.ui?.notify?.("Usage: /wallet-create --email me@example.com", "warning");
     return;
   }
 
   const cfg = loadConfig();
   cfg.activeProvider = "agentic";
-  cfg.agentic = {
-    email,
-    authenticated: false,
-    createdAt: Date.now(),
-  };
+  cfg.agentic = { email, authenticated: false, createdAt: Date.now() };
 
   try {
-    const login = await provider.login(email);
+    await provider.login(email);
     saveConfig(cfg);
-
     ctx.ui?.notify?.([
       "🪙 CDP Agentic Wallet Created!",
-      "",
       `Email: ${email}`,
-      `Storage: ${WALLET_DIR}`,
-      "",
-      "📧 Check your email for verification code",
+      "📧 Check email for verification code",
     ].join("\n"), "success");
   } catch (e: any) {
     ctx.ui?.notify?.(`Failed: ${e.message}`, "error");
   }
+}
+
+async function handleImport(args: string, ctx: any) {
+  const addrMatch = args.match(/--address\s+(0x[a-fA-F0-9]{40})/);
+  const typeMatch = args.match(/--type\s+(ethers|hardware|readonly)/);
+  const labelMatch = args.match(/--label\s+"([^"]+)"/);
+
+  if (!addrMatch) {
+    ctx.ui?.notify?.([
+      "📥 Import Existing Wallet",
+      "",
+      "Usage:",
+      "  /wallet-import --address 0x... --type readonly [--label \"My Wallet\"]",
+      "",
+      "Types:",
+      "  • readonly  - Monitor only, no keys stored",
+      "  • ethers    - Self-custody (Phase 2: encrypted keys)",
+      "  • hardware  - MetaMask/Ledger (Phase 2: connect)",
+      "",
+      "Quick setup:",
+      "  export PI_WALLET_ADDRESS=0x...",
+      "  export PI_WALLET_TYPE=readonly",
+    ].join("\n"), "info");
+    return;
+  }
+
+  const address = addrMatch[1];
+  const type = (typeMatch?.[1] || "readonly") as WalletType;
+  const label = labelMatch?.[1];
+
+  const cfg = loadConfig();
+  cfg.activeProvider = type;
+
+  switch (type) {
+    case "readonly":
+      cfg.readonlyWallet = { address, label, createdAt: Date.now() };
+      break;
+    case "ethers":
+      cfg.ethers = { address, createdAt: Date.now() };
+      break;
+    case "hardware":
+      cfg.hardware = { address, provider: "metamask", connected: false, createdAt: Date.now() };
+      break;
+  }
+
+  saveConfig(cfg);
+  ctx.ui?.notify?.([
+    `📥 Wallet Imported (${type})`,
+    `Address: ${address.slice(0, 6)}...${address.slice(-4)}`,
+    label ? `Label: ${label}` : "",
+    type === "readonly" ? "\n⚠️ Read-only: Cannot send transactions" : "",
+  ].filter(Boolean).join("\n"), "success");
 }
 
 async function handleStatus(ctx: any) {
   const cfg = loadConfig();
-  const active = cfg.activeProvider;
+  const type = cfg.activeProvider;
 
-  if (!active) {
+  if (!type) {
     ctx.ui?.notify?.([
       "💰 No wallet configured",
       "",
-      `Storage: ${WALLET_DIR}`,
+      "Create new:",
+      "  /wallet-create --email me@example.com",
       "",
-      "Create: /wallet-create --email me@example.com",
+      "Import existing:",
+      "  /wallet-import --address 0x... --type readonly",
+      "",
+      "Or use environment:",
+      "  export PI_WALLET_ADDRESS=0x...",
+      "  export PI_WALLET_TYPE=readonly",
     ].join("\n"), "info");
     return;
   }
 
-  try {
-    const st = await provider.status();
-    const bal = await provider.balance(cfg.settings.defaultChain);
+  const lines = [
+    "💰 Wallet Status",
+    "",
+    `Type: ${type}`,
+    `Chain: ${cfg.settings.defaultChain} (${BASE_CONFIG[cfg.settings.defaultChain].chainId})`,
+  ];
 
-    const addr = st.addr || cfg.agentic?.address;
-    if (addr && cfg.agentic) {
-      cfg.agentic.address = addr;
-      saveConfig(cfg);
-    }
-
-    ctx.ui?.notify?.([
-      "💰 Wallet Status",
-      "",
-      `Provider: ${active}`,
-      `Storage: ${WALLET_DIR}`,
-      `Auth: ${st.auth ? "✅" : "⏳"}`,
-      `Address: ${addr ? addr.slice(0, 6) + "..." + addr.slice(-4) : "N/A"}`,
-      `Network: ${cfg.settings.defaultChain}`,
-      `Chain ID: ${BASE_CONFIG[cfg.settings.defaultChain].chainId}`,
-      "",
-      "Balances:",
-      `  ETH: ${bal.eth || "0"}`,
-      `  USDC: ${bal.usdc || "0"}`,
-      "",
-      "Send: /wallet-send --to 0x... --amount 0.01",
-    ].join("\n"), "info");
-  } catch (e: any) {
-    ctx.ui?.notify?.(`Error: ${e.message}`, "error");
+  // Show address based on type
+  let address: string | undefined;
+  switch (type) {
+    case "agentic":
+      address = cfg.agentic?.address;
+      lines.push(`Email: ${cfg.agentic?.email || "N/A"}`);
+      break;
+    case "ethers":
+      address = cfg.ethers?.address;
+      lines.push("Mode: Self-custody (encrypted key storage)");
+      break;
+    case "hardware":
+      address = cfg.hardware?.address;
+      lines.push(`Provider: ${cfg.hardware?.provider || "N/A"}`);
+      lines.push("Mode: Hardware wallet connection");
+      break;
+    case "readonly":
+      address = cfg.readonlyWallet?.address;
+      lines.push(`Label: ${cfg.readonlyWallet?.label || "N/A"}`);
+      lines.push("Mode: Read-only monitoring");
+      break;
   }
+
+  if (address) {
+    lines.push(`Address: ${address.slice(0, 6)}...${address.slice(-4)}`);
+  }
+
+  // Try to get balance if agentic
+  if (type === "agentic") {
+    try {
+      const bal = await provider.balance(cfg.settings.defaultChain);
+      lines.push("", "Balances:", `  ETH: ${bal.eth || "0"}`, `  USDC: ${bal.usdc || "0"}`);
+    } catch {
+      lines.push("", "Balances: Unable to fetch");
+    }
+  } else if (address) {
+    lines.push("", `💡 Check balance: ${BASE_CONFIG[cfg.settings.defaultChain].explorer}/address/${address}`);
+  }
+
+  lines.push("", type === "readonly" ? "⚠️ Read-only: Cannot send" : "Send: /wallet-send --to 0x... --amount 0.01");
+
+  ctx.ui?.notify?.(lines.filter(Boolean).join("\n"), "info");
 }
 
 async function handleSend(args: string, ctx: any) {
-  const toMatch = args.match(/--to\s+(0x[a-fA-F0-9]+)/);
-  const amtMatch = args.match(/--amount\s+([\d.]+)/);
-  const tokenMatch = args.match(/--token\s+(\w+)/i);
-  const chainMatch = args.match(/--chain\s+(\w+)/);
+  const cfg = loadConfig();
+  const type = cfg.activeProvider;
 
-  if (!toMatch || !amtMatch) {
-    ctx.ui?.notify?.("Usage: /wallet-send --to 0x... --amount 1.5 [--token USDC] [--chain base]", "warning");
+  if (!type) {
+    ctx.ui?.notify?.("No wallet configured. Use /wallet-create or /wallet-import", "warning");
     return;
   }
 
-  const cfg = loadConfig();
-  const chain = (chainMatch ? chainMatch[1] : cfg.settings.defaultChain) as keyof typeof BASE_CONFIG;
+  if (type === "readonly") {
+    ctx.ui?.notify?.([
+      "❌ Cannot send from read-only wallet",
+      "",
+      "To send transactions, use one of these wallet types:",
+      "  • agentic  - Create: /wallet-create --email me@example.com",
+      "  • ethers   - Import: /wallet-import --address 0x... --type ethers",
+      "  • hardware - Import: /wallet-import --address 0x... --type hardware",
+      "",
+      "Or use an external wallet app to send from this address.",
+    ].join("\n"), "error");
+    return;
+  }
+
+  if (type !== "agentic") {
+    ctx.ui?.notify?.([
+      `⏳ ${type} wallet sending not yet implemented`,
+      "",
+      "Currently supported:",
+      "  • agentic (CDP) - fully implemented",
+      "",
+      "Coming in Phase 2:",
+      "  • ethers (self-custody with ethers.js)",
+      "  • hardware (MetaMask/Ledger integration)",
+    ].join("\n"), "warning");
+    return;
+  }
+
+  const toMatch = args.match(/--to\s+(0x[a-fA-F0-9]{40})/);
+  const amtMatch = args.match(/--amount\s+([\d.]+)/);
+
+  if (!toMatch || !amtMatch) {
+    ctx.ui?.notify?.("Usage: /wallet-send --to 0x... --amount 1.5", "warning");
+    return;
+  }
 
   const to = toMatch[1];
   const amount = amtMatch[1];
-  const token = tokenMatch ? tokenMatch[1].toUpperCase() : "ETH";
 
   try {
-    ctx.ui?.notify?.([
-      "🔄 Sending Transaction",
-      "",
-      `To: ${to.slice(0, 6)}...${to.slice(-4)}`,
-      `Amount: ${amount} ${token}`,
-      `Network: ${BASE_CONFIG[chain].name}`,
-    ].join("\n"), "info");
-
-    const r = await provider.send(amount, to, chain);
-
+    ctx.ui?.notify?.(`Sending ${amount} ETH to ${to.slice(0, 6)}...`, "info");
+    const result = await provider.send(amount, to, cfg.settings.defaultChain);
     ctx.ui?.notify?.([
       "🎉 Transaction Sent!",
-      "",
-      `Status: ${r.status || "pending"}`,
-      `Tx Hash: ${r.tx}`,
-      `Explorer: ${BASE_CONFIG[chain].explorer}/tx/${r.tx}`,
+      `Tx: ${result.tx}`,
+      `Status: ${result.status}`,
     ].join("\n"), "success");
-  } catch (e: any) {
-    ctx.ui?.notify?.(`Failed: ${e.message}`, "error");
-  }
-}
-
-async function handleTrade(args: string, ctx: any) {
-  const parts = args.trim().split(/\s+/);
-  const amount = parts[0];
-  const from = parts[1]?.toUpperCase();
-  const to = parts[2]?.toUpperCase();
-
-  if (!amount || !from || !to) {
-    ctx.ui?.notify?.("Usage: /wallet-trade AMOUNT FROM TO [--max-slippage 1.5]", "warning");
-    return;
-  }
-
-  try {
-    ctx.ui?.notify?.(`Trading ${amount} ${from} → ${to}...`, "info");
-    const r = await provider.trade(amount, from, to);
-
-    ctx.ui?.notify?.([
-      "🔄 Trade Submitted",
-      "",
-      `Status: ${r.status || "pending"}`,
-      `Tx: ${r.tx}`,
-    ].join("\n"), "success");
-  } catch (e: any) {
-    ctx.ui?.notify?.(`Failed: ${e.message}`, "error");
-  }
-}
-
-async function handleX402(args: string, ctx: any) {
-  const urlMatch = args.match(/--url\s+(\S+)/);
-  const budgetMatch = args.match(/--budget\s+([\d.]+)/);
-
-  if (!urlMatch) {
-    ctx.ui?.notify?.("Usage: /wallet-x402 --url https://api.service.com [--budget 0.01]", "warning");
-    return;
-  }
-
-  const url = urlMatch[1];
-  const budget = budgetMatch ? parseFloat(budgetMatch[1]) : 0.01;
-
-  try {
-    ctx.ui?.notify?.([
-      "💳 x402 Payment",
-      "",
-      `URL: ${url}`,
-      `Max Budget: ${budget} ETH`,
-      "Sending...",
-    ].join("\n"), "info");
-
-    const r = await provider.x402(url);
-
-    if (r.ok) {
-      ctx.ui?.notify?.([
-        "✅ Payment Successful",
-        "",
-        `Cost: ${r.cost || "unknown"}`,
-        `Access granted to: ${url}`,
-      ].join("\n"), "success");
-    } else {
-      ctx.ui?.notify?.([
-        "❌ Payment Failed",
-        "",
-        `URL: ${url}`,
-        `Error: ${r.data || "unknown"}`,
-      ].join("\n"), "error");
-    }
   } catch (e: any) {
     ctx.ui?.notify?.(`Failed: ${e.message}`, "error");
   }
@@ -408,55 +405,52 @@ async function handleX402(args: string, ctx: any) {
 // ============================================================================
 
 export default function walletExtension(pi: ExtensionAPI) {
-  // Commands
   pi.registerCommand("wallet-create", {
-    description: "Create CDP Agentic Wallet",
+    description: "Create new CDP Agentic Wallet",
     handler: (args: string, ctx: any) => handleCreate(args, ctx),
   });
 
+  pi.registerCommand("wallet-import", {
+    description: "Import existing wallet (readonly/ethers/hardware)",
+    handler: (args: string, ctx: any) => handleImport(args, ctx),
+  });
+
   pi.registerCommand("wallet-status", {
-    description: "Check wallet status and balances",
+    description: "Check wallet status",
     handler: (_args: string, ctx: any) => handleStatus(ctx),
   });
 
   pi.registerCommand("wallet-send", {
-    description: "Send crypto payments",
+    description: "Send crypto (agentic only for now)",
     handler: (args: string, ctx: any) => handleSend(args, ctx),
   });
 
-  pi.registerCommand("wallet-trade", {
-    description: "Trade tokens via swap",
-    handler: (args: string, ctx: any) => handleTrade(args, ctx),
-  });
-
-  pi.registerCommand("wallet-x402", {
-    description: "Pay via x402 protocol",
-    handler: (args: string, ctx: any) => handleX402(args, ctx),
-  });
-
-  // Unified command
   pi.registerCommand("wallet", {
-    description: "Wallet management (CDP Agentic + x402)",
+    description: "Wallet management (multi-type)",
     handler: async (argsStr: string, ctx: any) => {
       const [sub, ...rest] = argsStr.trim().split(/\s+/);
       const restStr = rest.join(" ");
       switch (sub) {
         case "create": return handleCreate(restStr, ctx);
+        case "import": return handleImport(restStr, ctx);
         case "status": return handleStatus(ctx);
         case "send": return handleSend(restStr, ctx);
-        case "trade": return handleTrade(restStr, ctx);
-        case "x402": return handleX402(restStr, ctx);
         default:
           ctx.ui?.notify?.([
             "💰 Wallet Commands",
             "",
-            "/wallet create --email me@example.com",
-            "/wallet status",
-            "/wallet send --to 0x... --amount 0.01 [--token USDC]",
-            "/wallet trade 10 USDC ETH",
-            "/wallet x402 --url https://api.example.com/pay",
+            "Create CDP Wallet:",
+            "  /wallet create --email me@example.com",
             "",
-            `Storage: ${WALLET_DIR}`,
+            "Import Existing:",
+            "  /wallet import --address 0x... --type readonly",
+            "",
+            "Quick Setup (Environment):",
+            "  export PI_WALLET_ADDRESS=0x742d35Cc6634C0532925a3b8D4C9db96590f6C7E",
+            "  export PI_WALLET_TYPE=readonly",
+            "",
+            "Send:",
+            "  /wallet send --to 0x... --amount 0.01",
           ].join("\n"), "info");
       }
     },
@@ -464,24 +458,30 @@ export default function walletExtension(pi: ExtensionAPI) {
 
   // Tools
   pi.registerTool({
-    name: "wallet_send" as any,
+    // @ts-ignore
+    name: "wallet_send",
+    // @ts-ignore  
     label: "/wallet_send",
-    description: "Send ETH/USDC to address",
+    description: "Send ETH (agentic wallets only)",
+    // @ts-ignore
     parameters: Type.Object({
       to: Type.String(),
       amount: Type.String(),
       token: Type.Optional(Type.String({ default: "ETH" })),
-      chain: Type.Optional(Type.String({ default: "base" })),
-    }) as any,
+    }),
     // @ts-ignore
     async execute(_id: string, args: any, _s: any, onUpdate: any, _c: any) {
+      const cfg = loadConfig();
+      if (cfg.activeProvider === "readonly") {
+        return { content: [{ type: "text", text: "Read-only wallet cannot send" }], details: { error: "Read-only" } };
+      }
+      if (cfg.activeProvider !== "agentic") {
+        return { content: [{ type: "text", text: `${cfg.activeProvider} sending not yet implemented` }], details: { error: "Not implemented" } };
+      }
       onUpdate?.("Sending...");
       try {
-        const tx = await provider.send(args.amount, args.to, args.chain || "base");
-        return {
-          content: [{ type: "text", text: `Sent ${args.amount} ${args.token} to ${args.to.slice(0,10)}...` }],
-          details: tx,
-        };
+        const result = await provider.send(args.amount, args.to);
+        return { content: [{ type: "text", text: `Sent ${args.amount} to ${args.to.slice(0,8)}...` }], details: result };
       } catch (e: any) {
         return { content: [{ type: "text", text: `Error: ${e.message}` }], details: { error: e.message } };
       }
@@ -489,34 +489,25 @@ export default function walletExtension(pi: ExtensionAPI) {
   });
 
   pi.registerTool({
-    name: "wallet_x402_pay" as any,
-    label: "/wallet_x402_pay",
-    description: "Pay via x402 protocol",
-    parameters: Type.Object({
-      url: Type.String(),
-      maxBudget: Type.Optional(Type.Number({ default: 0.01 })),
-    }) as any,
     // @ts-ignore
-    async execute(_id: string, args: any, _s: any, onUpdate: any, _c: any) {
-      onUpdate?.("Paying via x402...");
-      try {
-        const r = await provider.x402(args.url);
-        return {
-          content: [{ type: "text", text: r.ok ? "Payment successful" : `Failed: ${r.data || "unknown"}` }],
-          details: r,
-        };
-      } catch (e: any) {
-        return { content: [{ type: "text", text: `Error: ${e.message}` }], details: { error: e.message } };
-      }
+    name: "wallet_get_address",
+    // @ts-ignore
+    label: "/wallet_get_address",
+    description: "Get current wallet address",
+    // @ts-ignore
+    parameters: Type.Object({}),
+    // @ts-ignore
+    async execute() {
+      const cfg = loadConfig();
+      const address = cfg.agentic?.address || cfg.ethers?.address || cfg.hardware?.address || cfg.readonlyWallet?.address;
+      return { content: [{ type: "text", text: address || "No wallet" }], details: { address, type: cfg.activeProvider } };
     },
   });
 
-  console.log("[pi-wallet] Loaded");
-  console.log(`[pi-wallet] Storage: ${WALLET_DIR}`);
-  console.log("[pi-wallet] Commands: /wallet [create|status|send|trade|x402]");
-  console.log("[pi-wallet] Chains: base (8453), sepolia (84532)");
-  console.log("[pi-wallet] Tools: wallet_send, wallet_x402_pay");
+  console.log("[pi-wallet] Multi-type wallet extension loaded");
+  console.log("[pi-wallet] Types: agentic | ethers | hardware | readonly");
+  console.log("[pi-wallet] Quick import: export PI_WALLET_ADDRESS=0x...");
 }
 
-// Re-export for programmatic use
-export { AgenticProvider, loadConfig, BASE_CONFIG };
+// Re-exports
+export { loadConfig, WalletConfig, WalletType, BASE_CONFIG };
