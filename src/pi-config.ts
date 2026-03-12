@@ -67,6 +67,9 @@ export const config: Config = {
     './src/extensions/community/draconic-subagents-wrapper.ts',  // pi-subagents bridge
     './src/extensions/community/draconic-messenger-wrapper.ts',  // pi-messenger bridge
     
+    // 🧠 Context Engine Extension (Koclaw-style context management)
+    './src/extensions/core/context-engine-extension.ts',  // Context lifecycle management
+    
     // 🔗 Obsidian Bridge (NEW - Heartbeat-integrated task sync)
     './src/extensions/core/obsidian-bridge-extension.ts',  // Obsidian vault integration
   ],
