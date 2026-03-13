@@ -58,8 +58,9 @@ export const config: Config = {
     './src/extensions/core/mcp-extension.ts',            // Model Context Protocol support
     './node_modules/@aliou/pi-processes/src/index.ts',   // Background process management
     './src/extensions/core/websearch-enhanced-extension.ts',        // Ollama web search
-    './src/extensions/core/cloudflare-browser-extension.ts',  // ☁️ Browser Rendering (opt-in)
-    './src/extensions/core/wallet-extension.ts',         // 🪙 CDP Agentic + Ethers.js + ERC-8004
+    // './src/extensions/core/cloudflare-browser-extension.ts',  // MOVED: Now at npm:@0xkobold/pi-cloudflare-browser
+    './node_modules/@0xkobold/pi-cloudflare-browser/dist/index.js',  // ☁️ Browser Rendering (published)
+    './src/extensions/core/wallet-extension.ts',         // 🪙 CDP Agentic + Ethers.js (legacy - published as @0xkobold/pi-wallet)
     './src/extensions/core/update-extension.ts',           // Framework update functionality
     './src/extensions/core/self-update-extension.ts',      // 0xKobold self-update
     './src/extensions/core/perennial-memory-extension.ts', // Long-term memory
@@ -73,8 +74,9 @@ export const config: Config = {
     // 🧠 Context Engine Extension (Koclaw-style context management)
     './src/extensions/core/intelligent-context-extension.ts',  // Intelligent context via framework events
     
-    // 🔗 Obsidian Bridge (NEW - Heartbeat-integrated task sync)
-    './src/extensions/core/obsidian-bridge-extension.ts',  // Obsidian vault integration
+    // 🔗 Obsidian Bridge (published)
+    // './src/extensions/core/obsidian-bridge-extension.ts',  // MOVED: Now at npm:@0xkobold/pi-obsidian-bridge
+    './node_modules/@0xkobold/pi-obsidian-bridge/dist/index.js',  // 📓 Obsidian vault sync
 
     // 🪙 Wallet + ERC-8004 (Agent economy - PUBLISHED)
     'npm:@0xkobold/pi-wallet',                           // CDP Agentic + Ethers.js + x402

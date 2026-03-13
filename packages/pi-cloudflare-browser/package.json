@@ -1,0 +1,50 @@
+{
+  "name": "@0xkobold/pi-cloudflare-browser",
+  "version": "0.1.0",
+  "description": "Cloudflare Browser Rendering for pi-coding-agent",
+  "icon": "🌐",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "pi": {
+    "extensions": ["./dist/index.js"]
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "pi-extension",
+    "cloudflare",
+    "browser-rendering",
+    "screenshot",
+    "pdf",
+    "web-crawler"
+  ],
+  "author": "0xKobold",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0xKobold/pi-cloudflare-browser.git"
+  },
+  "bugs": {
+    "url": "https://github.com/0xKobold/pi-cloudflare-browser/issues"
+  },
+  "homepage": "https://github.com/0xKobold/pi-cloudflare-browser#readme",
+  "files": [
+    "dist/",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@sinclair/typebox": ">=0.32.0",
+    "@mariozechner/pi-coding-agent": ">=0.57.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}
