@@ -108,6 +108,13 @@ export class TieredMemory {
       )
     `);
 
+    // Migration: Add archived column if it doesn't exist (for existing databases)
+    try {
+      this.db.run(`ALTER TABLE memory_items ADD COLUMN archived BOOLEAN DEFAULT FALSE`);
+    } catch (e) {
+      // Column already exists, ignore error
+    }
+
     // Categories (Layer 3) - evolving summaries
     this.db.run(`
       CREATE TABLE IF NOT EXISTS memory_categories (
@@ -136,7 +143,12 @@ export class TieredMemory {
     // Indexes
     this.db.run(`CREATE INDEX IF NOT EXISTS idx_resources_session ON memory_resources(session_id)`);
     this.db.run(`CREATE INDEX IF NOT EXISTS idx_items_category ON memory_items(category_id)`);
-    this.db.run(`CREATE INDEX IF NOT EXISTS idx_items_archived ON memory_items(archived)`);
+    // Archived column may be added by migration, handle gracefully
+    try {
+      this.db.run(`CREATE INDEX IF NOT EXISTS idx_items_archived ON memory_items(archived)`);
+    } catch (e) {
+      // Index will be created after migration adds the column
+    }
 
     console.log("[TieredMemory] Schema initialized");
   }

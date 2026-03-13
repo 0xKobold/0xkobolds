@@ -29,7 +29,7 @@ import type {
 // Constants
 const MEMORY_DIR = path.join(homedir(), ".0xkobold", "memory", "perennial");
 const DB_PATH = path.join(MEMORY_DIR, "knowledge.db");
-const CURRENT_SCHEMA_VERSION = 2; // Bumped for new tables
+const CURRENT_SCHEMA_VERSION = 3; // Bumped for checkpoint schema updates
 const EMBEDDING_DIM = 768;
 
 // Extended type for legacy compatibility
@@ -225,6 +225,26 @@ async function initDatabase(): Promise<Database> {
 
       -- Update schema version
       UPDATE _metadata SET value = '2' WHERE key = 'schema_version';
+    `,
+    2: `
+      -- Migration v2: Add missing columns to memory_checkpoints
+      ALTER TABLE memory_checkpoints ADD COLUMN parent_checkpoint_id TEXT REFERENCES memory_checkpoints(id);
+      ALTER TABLE memory_checkpoints ADD COLUMN conversation_data TEXT;
+      ALTER TABLE memory_checkpoints ADD COLUMN tool_call_state TEXT;
+      ALTER TABLE memory_checkpoints ADD COLUMN context_window TEXT;
+      ALTER TABLE memory_checkpoints ADD COLUMN reason TEXT DEFAULT 'manual';
+      ALTER TABLE memory_checkpoints ADD COLUMN tags TEXT;
+      ALTER TABLE memory_checkpoints ADD COLUMN restored_count INTEGER DEFAULT 0;
+      ALTER TABLE memory_checkpoints ADD COLUMN last_restored_at TEXT;
+
+      -- Add index for parent_checkpoint_id
+      CREATE INDEX IF NOT EXISTS idx_checkpoints_parent ON memory_checkpoints(parent_checkpoint_id);
+
+      -- Note: archived column for memory_items is handled by TieredMemory.initSchema()
+      -- which gracefully handles existing tables
+
+      -- Update schema version
+      UPDATE _metadata SET value = '3' WHERE key = 'schema_version';
     `,
   };
 

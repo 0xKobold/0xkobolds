@@ -88,10 +88,35 @@ export class CheckpointManager {
       )
     `);
 
+    // Migration: Add columns if they don't exist (for existing databases)
+    const columnsToAdd = [
+      { name: 'parent_checkpoint_id', type: 'TEXT' },
+      { name: 'conversation_data', type: 'TEXT' },
+      { name: 'tool_call_state', type: 'TEXT' },
+      { name: 'context_window', type: 'TEXT' },
+      { name: 'reason', type: 'TEXT' },
+      { name: 'tags', type: 'TEXT' },
+      { name: 'restored_count', type: 'INTEGER DEFAULT 0' },
+      { name: 'last_restored_at', type: 'TEXT' },
+    ];
+
+    for (const col of columnsToAdd) {
+      try {
+        this.db.run(`ALTER TABLE memory_checkpoints ADD COLUMN ${col.name} ${col.type}`);
+      } catch (e) {
+        // Column already exists, ignore
+      }
+    }
+
     // Indexes
     this.db.run(`CREATE INDEX IF NOT EXISTS idx_checkpoints_session ON memory_checkpoints(session_id)`);
     this.db.run(`CREATE INDEX IF NOT EXISTS idx_checkpoints_created ON memory_checkpoints(created_at)`);
-    this.db.run(`CREATE INDEX IF NOT EXISTS idx_checkpoints_parent ON memory_checkpoints(parent_checkpoint_id)`);
+    // Parent checkpoint index - may fail if column doesn't exist yet (migration pending)
+    try {
+      this.db.run(`CREATE INDEX IF NOT EXISTS idx_checkpoints_parent ON memory_checkpoints(parent_checkpoint_id)`);
+    } catch (e) {
+      // Index will be created after migration
+    }
 
     console.log("[CheckpointManager] Schema initialized");
   }
