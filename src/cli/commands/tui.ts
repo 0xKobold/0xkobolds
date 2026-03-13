@@ -15,9 +15,14 @@ export const tuiCommand = new Command()
   .option("-r, --remote <url>", "Connect to remote gateway instead of local (e.g., wss://vps.example.com:7777)")
   .option("--token <token>", "Authentication token for remote gateway")
   .action(async (options) => {
-    // The main TUI entry point is src/index.ts (relative to package root)
+    // The main TUI entry point - check for source first (dev), then compiled (prod)
     const packageRoot = resolve(__dirname, "../../..");
-    const tuiEntryPoint = resolve(packageRoot, "src/index.ts");
+    const devEntry = resolve(packageRoot, "src/index.ts");
+    const prodEntry = resolve(packageRoot, "dist/src/index.js");
+    
+    // Use source if available (development), otherwise compiled (production/npm)
+    const tuiEntryPoint = existsSync(devEntry) ? devEntry : prodEntry;
+    const isCompiled = tuiEntryPoint === prodEntry;
 
     // Determine working directory: global workspace by default, or current dir with --local
     const globalWorkspace = resolve(homedir(), ".0xkobold");
@@ -84,6 +89,11 @@ export const tuiCommand = new Command()
 
     try {
       const args = [tuiEntryPoint];
+      
+      // Pass through --local flag if set (for the entry point to handle)
+      if (options.local) {
+        args.push("--local");
+      }
 
       // Add any custom extensions if provided
       if (options.extensions) {
@@ -92,7 +102,14 @@ export const tuiCommand = new Command()
         }
       }
 
-      const child = spawn("bun", args, {
+      // Use bun for .ts files, node for compiled .js files
+      const runner = isCompiled ? "node" : "bun";
+      
+      if (isCompiled) {
+        console.log(`[Using compiled entry point: ${tuiEntryPoint}]`);
+      }
+
+      const child = spawn(runner, args, {
         stdio: "inherit",
         shell: true,
         // Always run from package root so extensions resolve correctly
