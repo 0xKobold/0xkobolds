@@ -166,15 +166,24 @@ graph_edges            (relationships)
 
 ---
 
+## Integration Status ✅ COMPLETE
+
+### ✅ Integrated into perennial-memory-extension.ts (Commit 0a82c19)
+- Smart Write Rules filtering in `perennial_save` and `/remember`
+- Tiered Memory ingestion and retrieval
+- Conflict detection background processing
+- Knowledge Graph node/edge queries
+- Checkpoint create/restore commands
+- Decay job tools and commands
+
 ## Next Steps (Optional Enhancements)
 
-- [ ] Integrate into perennial-memory-extension.ts UI commands
 - [ ] Add tests for all new modules
-- [ ] Document usage patterns
+- [ ] Document usage patterns in `/docs/memory-architecture/`
 - [ ] Performance tuning (vector search indexing)
 - [ ] Multi-user isolation
 - [ ] Memory migration tools
 
 ---
 
-**HEARTBEAT_OK** - All features implemented. System ready.
+**HEARTBEAT_OK** - Memory Architecture 100% complete and integrated. System ready.
