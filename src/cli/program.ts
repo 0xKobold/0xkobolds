@@ -54,6 +54,7 @@ export function createCli(): Command {
   const program = new Command("0xkobold")
     .version(version || "1.0.0")
     .description("0xKobold - Multi-Agent Automation Platform")
+    .option("-l, --local", "Use current directory as workspace (TUI mode)")
     .showHelpAfterError("\nUse --help for more information.");
 
   // Core service commands
@@ -100,6 +101,11 @@ export function createCli(): Command {
     .command("tui", { isDefault: true })
     .description("Start interactive TUI (default)")
     .action(async () => {
+      // Check if --local flag was passed globally
+      const opts = program.opts();
+      if (opts.local) {
+        process.argv.push("--local");
+      }
       const { main } = await import("../index.js");
       await main();
     });
