@@ -73,6 +73,12 @@ export type DomainEventType =
   // Memory integration events
   | 'memory.session_saved'
   | 'memory.session.resumed'
+  // Memory architecture events (Phase 2-3)
+  | 'memory.resource_ingested'
+  | 'memory.consolidate_resource'
+  | 'memory.summarize_category'
+  | 'memory.reindex'
+  | 'memory.needs_resolution'
   // Auth profile events
   | 'auth-profile:added'
   | 'auth-profile:removed'

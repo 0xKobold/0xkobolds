@@ -8,6 +8,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { homedir } from "node:os";
 import { randomUUID } from "node:crypto";
+import { shouldStore, explainDecision } from "../../memory/smart-write-rules.js";
 
 // Constants
 const MEMORY_DIR = path.join(homedir(), ".0xkobold", "memory", "perennial");
@@ -33,11 +34,11 @@ interface MemoryEntry {
 // Database initialization with migrations
 async function initDatabase(): Promise<Database> {
   await fs.mkdir(MEMORY_DIR, { recursive: true });
-  
+
   const db = new Database(DB_PATH);
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA synchronous = NORMAL;");
-  
+
   // Get current version (handle first-run case where _metadata doesn't exist)
   let version = "0";
   try {
@@ -47,7 +48,7 @@ async function initDatabase(): Promise<Database> {
     // _metadata table doesn't exist yet - this is a fresh database
     version = "0";
   }
-  
+
   // Run migrations
   const migrations: Record<number, string> = {
     0: `
@@ -58,7 +59,7 @@ async function initDatabase(): Promise<Database> {
       );
       INSERT OR REPLACE INTO _metadata VALUES ('schema_version', '1');
       INSERT OR REPLACE INTO _metadata VALUES ('created_at', datetime('now'));
-      
+
       -- Core memories table
       CREATE TABLE IF NOT EXISTS memories (
         id TEXT PRIMARY KEY,
@@ -73,38 +74,38 @@ async function initDatabase(): Promise<Database> {
         session_id TEXT,
         embedding BLOB -- 768 floats, stored as bytes
       );
-      
+
       -- Full-text search index
-      CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts 
+      CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts
       USING fts5(id, content, content_rowid=rowid);
-      
+
       -- Triggers to keep FTS in sync
-      CREATE TRIGGER IF NOT EXISTS memories_insert_fts 
+      CREATE TRIGGER IF NOT EXISTS memories_insert_fts
       AFTER INSERT ON memories BEGIN
         INSERT INTO memories_fts(rowid, content) VALUES (new.rowid, new.content);
       END;
-      
+
       CREATE TRIGGER IF NOT EXISTS memories_delete_fts
       AFTER DELETE ON memories BEGIN
         DELETE FROM memories_fts WHERE rowid = old.rowid;
       END;
-      
+
       CREATE TRIGGER IF NOT EXISTS memories_update_fts
       AFTER UPDATE ON memories BEGIN
         UPDATE memories_fts SET content = new.content WHERE rowid = new.rowid;
       END;
-      
+
       -- Indexes
       CREATE INDEX IF NOT EXISTS idx_memories_timestamp ON memories(timestamp);
       CREATE INDEX IF NOT EXISTS idx_memories_category ON memories(category);
       CREATE INDEX IF NOT EXISTS idx_memories_project ON memories(project);
       CREATE INDEX IF NOT EXISTS idx_memories_importance ON memories(importance);
-      
+
       -- Schema version
       UPDATE _metadata SET value = '1' WHERE key = 'schema_version';
     `,
   };
-  
+
   const currentVersion = parseInt(version as string, 10);
   for (let v = currentVersion; v < CURRENT_SCHEMA_VERSION; v++) {
     if (migrations[v]) {
@@ -112,7 +113,7 @@ async function initDatabase(): Promise<Database> {
       db.exec(migrations[v]);
     }
   }
-  
+
   return db;
 }
 
@@ -126,11 +127,11 @@ async function getEmbedding(text: string, ollamaUrl: string): Promise<number[]> 
       prompt: text,
     }),
   });
-  
+
   if (!response.ok) {
     throw new Error(`Ollama error: ${response.status}`);
   }
-  
+
   const data = await response.json() as { embedding: number[] };
   return data.embedding;
 }
@@ -147,10 +148,10 @@ function embeddingToBlob(embedding: number[]): Buffer {
 // Deserialize - handles both Bun Blob/ArrayBuffer and Node Buffer
 function blobToEmbedding(blob: Buffer | ArrayBuffer | Uint8Array): number[] {
   const embedding: number[] = [];
-  const dataView = blob instanceof ArrayBuffer 
-    ? new DataView(blob) 
+  const dataView = blob instanceof ArrayBuffer
+    ? new DataView(blob)
     : new DataView(blob.buffer, blob.byteOffset, blob.byteLength);
-    
+
   for (let i = 0; i < EMBEDDING_DIM; i++) {
     embedding.push(dataView.getFloat32(i * 4, true)); // little-endian
   }
@@ -172,13 +173,13 @@ function cosineSimilarity(a: number[], b: number[]): number {
 
 export default async function perennialMemoryExtension(pi: ExtensionAPI) {
   console.log("[Perennial Memory] Loading...");
-  
+
   // Get Ollama URL from config or use default
   const config = (pi as any).config || {};
   const ollamaUrl = config.ollama?.url || "http://localhost:11434";
-  
+
   const db = await initDatabase();
-  
+
   // Check Ollama availability
   let ollamaAvailable = false;
   try {
@@ -190,7 +191,7 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
   } catch {
     console.warn("[Perennial Memory] Ollama not available - semantic search disabled");
   }
-  
+
   // TOOL: Save memory with embedding
   pi.registerTool({
     name: "perennial_save",
@@ -216,7 +217,25 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
         lastAccessed: new Date().toISOString(),
         sessionId: ctx.sessionManager?.getSessionId?.(),
       };
-      
+
+      // SMART WRITE RULES: Check if this should be stored
+      const shouldRemember = shouldStore(entry.content, entry.category);
+      if (!shouldRemember) {
+        const explanation = explainDecision(entry.content, entry.category);
+        console.log(`[Perennial Memory] Smart filter rejected:\n${explanation}`);
+        return {
+          content: [{
+            type: "text" as const,
+            text: `⚡ Content filtered by smart write rules\n(Detected as ephemeral/transient)`,
+          }],
+          details: {
+            filtered: true,
+            reason: "Below threshold for storage",
+            explanation,
+          },
+        };
+      }
+
       // Get embedding if Ollama available
       let embedding: number[] | undefined;
       if (ollamaAvailable) {
@@ -227,10 +246,10 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
           console.warn("[Perennial Memory] Failed to get embedding:", err);
         }
       }
-      
+
       // Save to database
       db.query(`
-        INSERT INTO memories (id, content, timestamp, category, tags, project, importance, 
+        INSERT INTO memories (id, content, timestamp, category, tags, project, importance,
                             access_count, last_accessed, session_id, embedding)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
@@ -246,7 +265,7 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
         entry.sessionId || null,
         embedding ? embeddingToBlob(embedding) : null
       );
-      
+
       return {
         content: [{
           type: "text" as const,
@@ -256,7 +275,7 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
       };
     },
   });
-  
+
   // TOOL: Hybrid search
   pi.registerTool({
     name: "perennial_search",
@@ -273,32 +292,32 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
       const limit = (params.limit as number) || 10;
       const category = params.category as string | undefined;
       const project = params.project as string | undefined;
-      
+
       const results: Array<MemoryEntry & { score: number; matchType: string }> = [];
-      
+
       // 1. Semantic search (if Ollama available)
       if (ollamaAvailable) {
         try {
           const queryEmbedding = await getEmbedding(query, ollamaUrl);
-          
+
           // Get all entries with embeddings (limit to recent 1000 for performance)
           const rows = db.query(`
-            SELECT id, content, timestamp, category, tags, project, importance, 
+            SELECT id, content, timestamp, category, tags, project, importance,
                    access_count, last_accessed, embedding
             FROM memories
             WHERE embedding IS NOT NULL
             ORDER BY timestamp DESC
             LIMIT 1000
           `).all() as any[];
-          
+
           for (const row of rows) {
             const entryEmbedding = blobToEmbedding(row.embedding);
             const similarity = cosineSimilarity(queryEmbedding, entryEmbedding);
-            
+
             // Apply temporal decay
             const ageDays = (Date.now() - new Date(row.timestamp).getTime()) / (1000 * 60 * 60 * 24);
             const decay = Math.exp(-Math.log(2) * ageDays / 30); // 30-day half-life
-            
+
             results.push({
               id: row.id,
               content: row.content,
@@ -317,10 +336,10 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
           console.warn("[Perennial Memory] Semantic search failed:", err);
         }
       }
-      
+
       // 2. Text search (always works)
       const textMatches = db.query(`
-        SELECT m.id, m.content, m.timestamp, m.category, m.tags, m.project, 
+        SELECT m.id, m.content, m.timestamp, m.category, m.tags, m.project,
                m.importance, m.access_count, m.last_accessed
         FROM memories m
         JOIN memories_fts fts ON m.rowid = fts.rowid
@@ -330,7 +349,7 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
         ORDER BY rank
         LIMIT ?
       `).all(query, ...(category ? [category] : []), ...(project ? [project] : []), limit) as any[];
-      
+
       for (const row of textMatches) {
         // Check if already in results
         const existing = results.find(r => r.id === row.id);
@@ -353,30 +372,30 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
           });
         }
       }
-      
+
       // Sort by score and take top results
       const sorted = results
         .sort((a, b) => b.score - a.score)
         .slice(0, limit);
-      
+
       // Update access counts
       for (const r of sorted) {
         db.query(`UPDATE memories SET access_count = access_count + 1, last_accessed = ? WHERE id = ?`)
           .run(new Date().toISOString(), r.id);
       }
-      
+
       // Format output
-      const formatted = sorted.length 
+      const formatted = sorted.length
         ? sorted.map((r, i) => `${i + 1}. [${r.matchType}] ${r.content.slice(0, 70)}... (score: ${(r.score * 100).toFixed(1)}%)`).join("\n")
         : "No memories found";
-      
+
       return {
         content: [{ type: "text" as const, text: `🏛️ ${sorted.length} memories found:\n\n${formatted}` }],
         details: { count: sorted.length, results: sorted },
       };
     },
   });
-  
+
   // TOOL: Export memories
   pi.registerTool({
     name: "perennial_export",
@@ -390,11 +409,11 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
       const format = (params.format || "jsonl") as string;
       const timestamp = new Date().toISOString().split("T")[0];
       const outputPath = (params.output as string) || path.join(MEMORY_DIR, "exports", `memories-${timestamp}.${format}`);
-      
+
       await fs.mkdir(path.dirname(outputPath), { recursive: true });
-      
+
       const rows = db.query(`SELECT * FROM memories ORDER BY timestamp`).all() as any[];
-      
+
       if (format === "jsonl") {
         const lines = rows.map(row => JSON.stringify({
           id: row.id,
@@ -411,14 +430,14 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
         // Copy SQLite database
         await fs.copyFile(DB_PATH, outputPath);
       }
-      
+
       return {
         content: [{ type: "text" as const, text: `📦 Exported ${rows.length} memories to ${outputPath}` }],
         details: { count: rows.length, path: outputPath },
       };
     },
   });
-  
+
   // COMMANDS
   pi.registerCommand("remember", {
     description: "Save a memory forever: /remember \"Content\" --category fact --importance 0.9",
@@ -428,20 +447,28 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
         ctx.ui.notify("❌ Usage: /remember \"content\" --category fact", "error");
         return;
       }
-      
+
       const options: Record<string, string> = {};
       for (const opt of opts) {
         const [k, ...v] = opt.split(" ");
         options[k] = v.join(" ");
       }
-      
+
+      // SMART WRITE RULES: Check if this should be stored
+      const shouldRemember = shouldStore(content.trim(), (options.category || "context") as MemoryEntry["category"]);
+      if (!shouldRemember) {
+        const explanation = explainDecision(content.trim(), (options.category || "context") as MemoryEntry["category"]);
+        ctx.ui.notify(`⚡ Filtered by smart write rules:\n${explanation.split('\n').slice(0, 3).join('\n')}`, "warning");
+        return;
+      }
+
       let embedding: number[] | undefined;
       if (ollamaAvailable) {
         try {
           embedding = await getEmbedding(content, ollamaUrl);
         } catch {}
       }
-      
+
       const entry = {
         id: randomUUID(),
         content: content.trim(),
@@ -450,7 +477,7 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
         tags: options.tags?.split(",").map((t: string) => t.trim()) || [],
         importance: parseFloat(options.importance || "0.5"),
       };
-      
+
       db.query(`
         INSERT INTO memories (id, content, timestamp, category, tags, importance, access_count, session_id${embedding ? ', embedding' : ''})
         VALUES (?, ?, ?, ?, ?, ?, 0, ?${embedding ? ', ?' : ''})
@@ -464,11 +491,11 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
         ctx.sessionManager?.getSessionId?.() || null,
         ...(embedding ? [embeddingToBlob(embedding)] : [])
       );
-      
+
       ctx.ui.notify(`🏛️ Remembered forever: ${entry.id.slice(0, 8)}${embedding ? " (semantic)" : ""}`, "info");
     },
   });
-  
+
   pi.registerCommand("recall", {
     description: "Recall by meaning: /recall \"that auth thing we did\"",
     handler: async (args: string, ctx: ExtensionContext) => {
@@ -476,16 +503,16 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
         ctx.ui.notify("❌ Usage: /recall \"vague description of what you remember\"", "error");
         return;
       }
-      
+
       // Use the search tool
       const limit = 5;
       let results: any[] = [];
-      
+
       if (ollamaAvailable) {
         try {
           const queryEmbedding = await getEmbedding(args, ollamaUrl);
           const rows = db.query(`SELECT id, content, category, importance, embedding FROM memories WHERE embedding IS NOT NULL LIMIT 1000`).all() as any[];
-          
+
           results = rows
             .map(row => ({
               ...row,
@@ -495,7 +522,7 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
             .slice(0, limit);
         } catch {}
       }
-      
+
       // Fallback to text search
       if (results.length === 0) {
         const rows = db.query(`
@@ -504,16 +531,16 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
           WHERE memories_fts MATCH ?
           LIMIT ?
         `).all(args, limit) as any[];
-        
+
         results = rows.map(r => ({ ...r, score: 0.7 }));
       }
-      
+
       ctx.ui.notify(results.length
         ? `🏛️ Found:\n${results.map((r, i) => `${i + 1}. [${r.category}] ${r.content.slice(0, 60)}...`).join("\n")}`
         : "No memories match that description", "info");
     },
   });
-  
+
   pi.registerCommand("memories", {
     description: "List recent memories",
     handler: async (_args: string, ctx: ExtensionContext) => {
@@ -523,7 +550,7 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
         : "No memories yet", "info");
     },
   });
-  
+
   pi.registerCommand("memory-export", {
     description: "Export memories to file",
     handler: async (_args: string, ctx: ExtensionContext) => {
@@ -539,7 +566,82 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
       ctx.ui.notify(`📦 Exported ${rows.length} memories to ${outputPath}`, "info");
     },
   });
-  
+
+  // ═════════════════════════════════════════════════════════════════
+  // MEMORY AUDIT UI
+  // ═════════════════════════════════════════════════════════════════
+
+  pi.registerCommand("memory-audit", {
+    description: "Full memory audit: categories, breakdown, recent access",
+    handler: async (_args: string, ctx: ExtensionContext) => {
+      // Get audit statistics
+      const totalRow = db.query(`SELECT COUNT(*) as total FROM memories`).get() as { total: number };
+      const total = totalRow?.total || 0;
+      
+      // By category
+      const catRows = db.query(`SELECT category, COUNT(*) as count FROM memories GROUP BY category ORDER BY count DESC`).all() as any[];
+      const byCategory = catRows.map(r => `${r.category}: ${r.count}`).join("\n  ");
+      
+      // By date
+      const now = Date.now();
+      const dayAgo = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+      const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const monthAgo = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
+      
+      const lastDay = (db.query(`SELECT COUNT(*) as n FROM memories WHERE timestamp > ?`).get(dayAgo) as { n: number })?.n || 0;
+      const lastWeek = (db.query(`SELECT COUNT(*) as n FROM memories WHERE timestamp > ?`).get(weekAgo) as { n: number })?.n || 0;
+      const lastMonth = (db.query(`SELECT COUNT(*) as n FROM memories WHERE timestamp > ?`).get(monthAgo) as { n: number })?.n || 0;
+      const older = total - lastMonth;
+      
+      // Top tags
+      const tagRows = db.query(`SELECT tags FROM memories`).all() as any[];
+      const tagCounts: Record<string, number> = {};
+      for (const row of tagRows) {
+        const tags = JSON.parse(row.tags || "[]");
+        for (const tag of tags) {
+          tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        }
+      }
+      const topTags = Object.entries(tagCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([tag, count]) => `${tag}: ${count}`)
+        .join("\n  ");
+      
+      // Recently accessed
+      const recentAccess = db.query(`SELECT id, content, last_accessed FROM memories ORDER BY last_accessed DESC LIMIT 5`).all() as any[];
+      const recent = recentAccess.map(r => `[${r.id.slice(0, 8)}] ${r.content.slice(0, 40)}... (${new Date(r.last_accessed).toLocaleDateString()})`).join("\n  ");
+      
+      const audit = [
+        `📊 MEMORY AUDIT REPORT`,
+        ``,
+        `Total Memories: ${total}`,
+        ``,
+        `📁 By Category:`,
+        `  ${byCategory || "None"}`,
+        ``,
+        `📅 By Date:`,
+        `  Last 24h: ${lastDay}`,
+        `  Last 7 days: ${lastWeek}`,
+        `  Last 30 days: ${lastMonth}`,
+        `  Older: ${older}`,
+        ``,
+        `🏷️ Top Tags:`,
+        `  ${topTags || "None"}`,
+        ``,
+        `👁️ Recently Accessed:`,
+        `  ${recent || "None"}`,
+        ``,
+        `Commands:`,
+        `  /memories - List recent`,
+        `  /recall "query" - Search by meaning`,
+        `  /memory-export - Export all`,
+      ].join("\n");
+      
+      ctx.ui.notify(audit, "info");
+    },
+  });
+
   console.log("[Perennial Memory] Ready");
   console.log(`  Database: ${DB_PATH}`);
   console.log(`  Schema: v${CURRENT_SCHEMA_VERSION}`);
