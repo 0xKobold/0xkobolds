@@ -1,189 +1,282 @@
-# Memory Architecture Implementation
+# HEARTBEAT - 0xKobold Streamlining Project
 
-**Started:** 2026-03-12  
-**Completed:** 2026-03-13 00:25  
-**Status:** ✅ **100% COMPLETE**  
+> Track progress for memory consolidation and architecture streamlining
 
----
+## 🎯 Project Overview
 
-## Phase 1: Quick Wins ✅ COMPLETE
+Consolidate and streamline 0xKobold's architecture following the router consolidation pattern.
 
-### Feature 1: Smart Write Rules ✅ DONE
-- [x] Design intent classifier for memory-worthy content (`src/memory/smart-write-rules.ts`)
-- [x] Filter ephemeral conversations (greetings, weather, time queries)
-- [x] Keyword analysis (high-value vs low-value)
-- [x] Pattern detection (preferences, decisions, commands)
-- [x] Integrated into `/remember` command
-- [x] Integrated into `perennial_save` tool
-
-### Feature 2: Memory Audit UI ✅ DONE
-- [x] Create `/memory-audit` command
-- [x] Show user their complete memory profile:
-  - Total memories count
-  - Breakdown by category
-  - Timeline (24h / 7d / 30d / older)
-  - Top tags
-  - Recently accessed items
-- [x] Export functionality via `/memory-export`
+**Started:** 2026-03-14
+**Owner:** Claude + moika
 
 ---
 
-## Phase 2: Architecture ✅ COMPLETE
+## 📋 Action Tasks
 
-### Feature 3: Three-Tier Memory Hierarchy ✅ DONE
-- [x] Layer 1: Resources - `memory_resources` table (raw transcripts)
-- [x] Layer 2: Items - `memory_items` table (atomic facts extracted via LLM)
-- [x] Layer 3: Categories - `memory_categories` table (evolving summaries)
-- [x] Write path: Ingest → Extract → Batch → Evolve (`src/memory/tiered-memory.ts`)
-- [x] Read path: Tiered retrieval with sufficiency check
-- [x] Active summary evolution (handle contradictions by rewriting, not appending)
-- [x] Integration with perennial system via event bus
+### Phase 1: Memory Consolidation (HIGH PRIORITY)
 
-### Feature 4: Memory Decay Jobs ✅ DONE
-- [x] **Nightly consolidation** (3 AM via Heartbeat)
-  - Merge redundant memories
-  - Promote hot memories
-  - Process unprocessed resources
-- [x] **Weekly summarization**
-  - Compress category summaries
-  - Archive old items (90+ days)
-  - Prune stale memories (180+ days)
-- [x] **Monthly re-indexing**
-  - Rebuild embeddings
-  - Archive dead nodes
-- [x] Pruning policies: Archive @ 90d, Prune @ 180d (configurable)
-- [x] Archive vs delete decisions with audit logging
-- [x] Schedule tracking in `memory_decay_schedule`
+| Task | Status | Assignee | Notes |
+|------|--------|----------|-------|
+| Rename generative-agents to learning-extension | ⬜ TODO | - | Reflects reflection + planning |
+| Analyze memory_stream + session-store overlap | ⬜ TODO | - | |
+| Design unified session schema | ⬜ TODO | - | Merge conversation + memory_stream |
+| Create migration script for tables | ⬜ TODO | - | Preserve existing data |
+| Update references to new extension | ⬜ TODO | - | |
+| Test unified memory system | ⬜ TODO | - | |
 
----
+### Phase 2: Safety Extension Consolidation
 
-## Phase 3: Advanced ✅ COMPLETE
+| Task | Status | Assignee | Notes |
+|------|--------|----------|-------|
+| Merge auto-security-scan into draconic-safety | ⬜ TODO | - | |
+| Merge compaction-safeguard into draconic-safety | ⬜ TODO | - | |
+| Update extension loading order | ⬜ TODO | - | |
+| Test safety guards work together | ⬜ TODO | - | |
 
-### Feature 5: Conflict Detection ✅ DONE
-- [x] Detect contradictions in user preferences (`src/memory/conflict-detector.ts`)
-- [x] LLM-based conflict type classification:
-  - CONTRADICTION: "I love" vs "I hate"
-  - UPDATE: New information about same thing
-  - DUPLICATE: Same information
-- [x] Auto-resolution above confidence threshold
-- [x] Archive old vs update in place
-- [x] User notification for low-confidence conflicts
-- [x] Conflict audit trail in `memory_conflicts` table
+### Phase 3: Router Provider Abstraction
 
-### Feature 6: Knowledge Graph Memory ✅ DONE
-- [x] Graph structure for ERC-8004 integration (`src/memory/context-graph.ts`)
-- [x] Hybrid retrieval: Vector (discovery) + Graph traversal (precision)
-- [x] Nodes: Agents, concepts, entities, skills, domains
-- [x] Edges: TRUSTS, ATTESTED, HAS_SKILL, HAS_DOMAIN
-- [x] Automatic edge re-weighting based on access patterns
-- [x] ERC-8004 primitives: Agent identity, Trust attestation, Skill certification
+| Task | Status | Assignee | Notes |
+|------|--------|----------|-------|
+| Create provider-agnostic interface | ⬜ TODO | - | |
+| Add provider routing to router-core | ⬜ TODO | - | |
+| Wire Anthropic through router | ⬜ TODO | - | Used in cron jobs |
+| Test multi-provider routing | ⬜ TODO | - | |
 
-### Feature 7: Checkpoint System ✅ DONE
-- [x] Atomic session snapshots (`src/memory/checkpoint-manager.ts`)
-- [x] State serialization: messages, tool calls, memory thread, context
-- [x] Resume from checkpoint with full restoration
-- [x] Fork sessions from checkpoints (optional)
-- [x] Automatic pruning (max 50 per session, 7-day age limit)
-- [x] Checkpoint chain for debugging
-- [x] Restore counting for analytics
+### Phase 4: Event Types Cleanup
+
+| Task | Status | Assignee | Notes |
+|------|--------|----------|-------|
+| Audit unused event types (43 found) | ⬜ TODO | - | |
+| Remove dead events from event-bus | ⬜ TODO | - | |
+| Document remaining events | ⬜ TODO | - | |
+
+### Phase 5: Migration & Deployment
+
+| Task | Status | Assignee | Notes |
+|------|--------|----------|-------|
+| Create migration checklist | ⬜ TODO | - | Raspberry Pi + Digital Ocean |
+| Document infrastructure deps | ⬜ TODO | - | |
+| Create deployment scripts | ⬜ TODO | - | |
+| Test migration on backup | ⬜ TODO | - | |
 
 ---
 
-## Implementation Summary
+## 📊 Current Architecture Analysis
 
-### New Files Created
+### Memory Systems (Before)
+
 ```
-src/
-├── memory/
-│   ├── smart-write-rules.ts       (Smart filtering)
-│   ├── tiered-memory.ts            (3-layer hierarchy)
-│   ├── memory-decay.ts             (Maintenance jobs)
-│   ├── conflict-detector.ts        (Contradiction detection)
-│   ├── context-graph.ts            (Knowledge graph)
-│   ├── checkpoint-manager.ts       (Session snapshots)
-│   └── types.ts                    (Shared types)
-
-HEARTBEAT.md                        (This tracking file)
+┌─────────────────────────────────────────────────────────────────┐
+│                     CURRENT STATE                                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  generative-agents-extension                                    │
+│  ├── agents.db                                                  │
+│  │   ├── agents (agent state)                                  │
+│  │   ├── memory_stream (observations, thoughts, actions)       │
+│  │   ├── reflections ( synthesized insights)                   │
+│  │   └── plans (daily, action, project plans)                  │
+│  └── Requires perennial for embeddings                          │
+│                                                                  │
+│  perennial-memory-extension                                     │
+│  ├── knowledge.db                                               │
+│  │   ├── memories (long-term facts/decisions)                  │
+│  │   ├── memory_resources (raw session data)                   │
+│  │   ├── memory_items (extracted from resources)               │
+│  │   ├── memory_categories (auto-grouped)                      │
+│  │   └── memory_decay_schedule (cleanup jobs)                  │
+│  └── Features: decay, conflict detection, context graph       │
+│                                                                  │
+│  session-store                                                  │
+│  └── sessions.db                                                │
+│      └── Conversation history with timestamps                    │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Database Schema Additions
-```sql
--- Tiered memory
-memory_resources       (raw transcripts)
-memory_items           (atomic facts)
-memory_categories      (evolving summaries)
+### Memory Systems (After - Target)
 
--- Decay
-memory_decay_schedule  (job timing)
-memory_decay_log       (audit trail)
-
--- Conflicts
-memory_conflicts       (detected contradictions)
-
--- Checkpoints
-memory_checkpoints     (session snapshots)
-
--- Knowledge graph
-graph_nodes            (entities)
-graph_edges            (relationships)
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     TARGET STATE                                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  learning-extension (renamed from generative-agents)           │
+│  ├── learning.db                                                │
+│  │   ├── agents (agent state)                                  │
+│  │   ├── memory_stream → MERGED into sessions                  │
+│  │   ├── reflections (synthesized insights)                     │
+│  │   └── plans (daily, action, project plans)                  │
+│  └── Uses perennial for embeddings                              │
+│                                                                  │
+│  perennial-memory-extension (unchanged)                         │
+│  └── knowledge.db (long-term semantic storage)                  │
+│                                                                  │
+│  session-store (ENHANCED)                                       │
+│  └── sessions.db                                                │
+│      ├── sessions (conversation history)                       │
+│      ├── session_events (was memory_stream)                    │
+│      │   - type: observation|thought|action|reflection        │
+│      │   - importance: number                                   │
+│      │   - embedding: vector                                    │
+│      └── Enhanced with importance + embeddings                  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Commands Added
-- `/memory-audit` - Full memory profile
-- `/remember` - Now with smart filtering
-- `/recall` - Search by meaning
-- `/memories` - List recent
-- `/memory-export` - Export all
+---
 
-### Tools Available
-- `perennial_save` - With smart write rules
-- `perennial_search` - Semantic + text search
-- `perennial_export` - Portable backup
+## 🔍 Research Notes
+
+### Hermes Agent Pattern (Stanford Generative Agents)
+
+From `generative-agents-extension.ts`:
+- **Memory Stream**: Chronological record of experiences (observations, thoughts, actions)
+- **Reflection**: Periodic synthesis of memories into higher-level insights
+- **Planning**: Hierarchical daily plans with action steps
+- **Retrieval**: Recency × Importance × Relevance scoring
+
+Key insight from Stanford paper:
+> "The memory stream is essentially a session-scoped event log with importance scoring. This overlaps with session history."
+
+### Overlap Analysis
+
+| Data | generative-agents | session-store | perennial-memory |
+|------|------------------|---------------|------------------|
+| Event timestamp | ✅ memory_stream | ✅ sessions | ✅ memories |
+| Importance score | ✅ | ❌ | ✅ |
+| Embeddings | ✅ | ❌ | ✅ |
+| Session linking | ✅ | ✅ | ✅ |
+| Reflection synthesis | ✅ | ❌ | ❌ |
+| Planning | ✅ | ❌ | ❌ |
+| Long-term storage | ❌ | ❌ | ✅ |
+
+**Overlap Score**: `memory_stream` ≈ `sessions` + importance + embeddings
 
 ---
 
-## Key Principles Applied (from Rohit's Article)
+## 📁 Files to Modify
 
-✅ **"Memory is infrastructure, not a feature"**
-- Three-tier architecture with clear separation
-- Decay as essential maintenance (not optional)
-- Checkpointing for determinism/recoverability
+### Phase 1 Files
 
-✅ **"Similarity ≠ Truth"**
-- Conflict detection for contradictions
-- LLM-based resolution (not just embeddings)
-- Category evolution with rewrite (not append)
+```
+src/extensions/core/generative-agents-extension.ts
+  → Rename to learning-extension.ts
+  → Remove memory_stream table (use session-store)
 
-✅ **"Chat history ≠ Memory"**
-- Smart write rules filter ephemeral content
-- Extraction of atomic facts from transcripts
-- Tiered retrieval (summary → items → raw)
+src/memory/session-store.ts
+  → Add importance column
+  → Add embedding column
+  → Add event_type column
 
-✅ **"Never forget doesn't mean remember every token"**
-- Automatic decay policies
-- Archive vs delete decisions
-- Token-efficient retrieval strategies
+src/extensions/core/perennial-memory-extension.ts
+  → Update to read from enhanced session-store
 
----
+src/pi-config.ts
+  → Update extension path
+```
 
-## Integration Status ✅ COMPLETE
+### Phase 2 Files
 
-### ✅ Integrated into perennial-memory-extension.ts (Commit 0a82c19)
-- Smart Write Rules filtering in `perennial_save` and `/remember`
-- Tiered Memory ingestion and retrieval
-- Conflict detection background processing
-- Knowledge Graph node/edge queries
-- Checkpoint create/restore commands
-- Decay job tools and commands
+```
+src/extensions/core/draconic-safety-extension.ts
+  → Merge auto-security-scan logic
+  → Merge compaction-safeguard logic
 
-## Next Steps (Optional Enhancements)
+src/extensions/core/auto-security-scan-extension.ts
+  → DELETE (merged)
 
-- [ ] Add tests for all new modules
-- [ ] Document usage patterns in `/docs/memory-architecture/`
-- [ ] Performance tuning (vector search indexing)
-- [ ] Multi-user isolation
-- [ ] Memory migration tools
+src/extensions/core/compaction-safeguard-v2.ts
+  → DELETE (merged)
+```
 
 ---
 
-**HEARTBEAT_OK** - Memory Architecture 100% complete and integrated. System ready.
+## 🚀 Migration Plan: Raspberry Pi + Digital Ocean
+
+### Pre-Migration Checklist
+
+- [ ] Backup ~/.0xkobold/ (all databases)
+- [ ] List environment variables (OLLAMA_*, ANTHROPIC_*, DISCORD_*)
+- [ ] Export config.json
+- [ ] Document cron jobs
+- [ ] List installed extensions
+- [ ] Backup obsidian_vault/
+
+### Digital Ocean Files to Migrate
+
+```
+DO Server → Raspberry Pi:
+├── ~/.0xkobold/
+│   ├── config.json (merge)
+│   ├── agents.db (merge)
+│   ├── sessions.db (merge)
+│   ├── memory/ (merge)
+│   ├── generative/ (merge)
+│   ├── obsidian_vault/ (sync)
+│   └── auth-profiles.db (merge)
+├── Environment variables
+├── Cron job definitions
+└── Custom skills/ (sync)
+```
+
+### Raspberry Pi Setup
+
+```
+1. Install Bun on Pi
+2. Clone 0xKobolds repo
+3. Run bun install
+4. Copy ~/.0xkobold/ from DO
+5. Merge databases (manual or script)
+6. Start with: bun run start
+7. Verify Discord/gateway connections
+```
+
+---
+
+## ✅ Completion Criteria
+
+### Phase 1 Done When
+- [ ] generative-agents renamed to learning-extension
+- [ ] memory_stream merged into sessions
+- [ ] All tests pass
+- [ ] Memory retrieval still works
+- [ ] Reflection still triggers
+
+### Phase 2 Done When
+- [ ] All safety logic in one file
+- [ ] Extension count reduced by 2
+- [ ] No regressions in guards
+
+### Phase 3 Done When
+- [ ] Router can select Ollama OR Anthropic
+- [ ] Cron jobs still work with both providers
+
+### Phase 5 Done When
+- [ ] Pi running 0xKobold
+- [ ] All databases migrated
+- [ ] Discord bot connected
+- [ ] Gateway accessible
+
+---
+
+## 📝 Notes
+
+### 2026-03-14 Session Notes
+
+1. Successfully consolidated router from 4 files to 3 files
+2. Created architecture documentation (ARCHITECTURE.md + architecture.svg)
+3. Copied docs to Obsidian vault
+4. Identified memory consolidation as top priority
+5. User will be AFK for several hours
+6. Target: Raspberry Pi deployment tomorrow
+
+### Questions for Next Session
+
+1. Should learning-extension also handle planning OR keep plans separate?
+2. What's the retention policy for memory_stream vs sessions?
+3. Do we need bidirectional sync between DO and Pi?
+
+---
+
+*Last Updated: 2026-03-14 16:05 EDT*
