@@ -400,7 +400,13 @@ async function spawnSubagentInternal(
     
     if (gatewayRunning) {
       console.log(`[Orchestrator] Using gateway at port ${gatewayPort}`);
-      return await spawnViaGateway(agentConfig, task, ctx, gatewayPort);
+      try {
+        return await spawnViaGateway(agentConfig, task, ctx, gatewayPort);
+      } catch (gatewayErr: any) {
+        // Gateway doesn't support /spawn endpoint - fallback to simulation
+        console.log(`[Orchestrator] Gateway missing /spawn endpoint, using simulation`);
+        return await simulateSubagentExecution(agentConfig, task, ctx);
+      }
     } else {
       console.log(`[Orchestrator] Gateway not running, using simulated execution`);
       return await simulateSubagentExecution(agentConfig, task, ctx);
