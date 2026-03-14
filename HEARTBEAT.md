@@ -128,6 +128,36 @@ Consolidate and streamline 0xKobold's architecture following the router consolid
 
 ## 🔍 Research Notes
 
+### Memory Architecture Implementation (Documented)
+
+**Three-Phase Implementation based on [Rohit's article](https://rohit.chat/memory):**
+
+#### Phase 1: Smart Write Rules (`smart-write-rules.ts`)
+- Filter ephemeral content before storage
+- Categories: decision, fact, task, context, error, learning, preference
+- Ephemeral: greeting, filler (not stored)
+- Uses LLM to analyze memory worthiness
+
+#### Phase 2: Three-Tier Memory (`tiered-memory.ts`)
+```
+Layer 1: Resources (raw transcripts) → memory_resources
+Layer 2: Items (atomic facts) → memory_items  
+Layer 3: Categories (summaries) → memory_categories
+```
+- Retrieval: Try summaries first → drill down if needed
+- Evolution: Categories auto-update with new items via LLM
+
+#### Phase 3: Maintenance Systems
+- **Decay** (`memory-decay.ts`): Nightly/weekly/monthly cleanup
+- **Conflict Detector** (`conflict-detector.ts`): Find contradictions
+- **Context Graph** (`context-graph.ts`): Entity relationships
+- **Checkpoints** (`checkpoint-manager.ts`): Session snapshots
+
+#### Integration Layer (`memory-integration.ts`)
+- Bridges session-store ↔ tiered-memory ↔ perennial
+- Event-driven: `memory.resource_ingested`, `memory.consolidate_resource`
+- Tracks observations for reflection triggers
+
 ### Hermes Agent Pattern (Stanford Generative Agents)
 
 From `generative-agents-extension.ts`:
@@ -136,22 +166,26 @@ From `generative-agents-extension.ts`:
 - **Planning**: Hierarchical daily plans with action steps
 - **Retrieval**: Recency × Importance × Relevance scoring
 
-Key insight from Stanford paper:
+**Key insight from Stanford paper:**
 > "The memory stream is essentially a session-scoped event log with importance scoring. This overlaps with session history."
 
-### Overlap Analysis
+### Overlap Analysis (Confirmed)
 
-| Data | generative-agents | session-store | perennial-memory |
-|------|------------------|---------------|------------------|
-| Event timestamp | ✅ memory_stream | ✅ sessions | ✅ memories |
-| Importance score | ✅ | ❌ | ✅ |
-| Embeddings | ✅ | ❌ | ✅ |
-| Session linking | ✅ | ✅ | ✅ |
-| Reflection synthesis | ✅ | ❌ | ❌ |
-| Planning | ✅ | ❌ | ❌ |
-| Long-term storage | ❌ | ❌ | ✅ |
+| Feature | generative-agents | tiered-memory | perennial | session-store |
+|---------|------------------|---------------|-----------|---------------|
+| Timestamp | ✅ memory_stream | ✅ resources | ✅ memories | ✅ sessions |
+| Importance | ✅ | ❌ | ✅ | ❌ |
+| Embeddings | ✅ | ❌ | ✅ | ❌ |
+| Session link | ✅ | ✅ | ✅ | ✅ |
+| Type/category | type | category | category | ❌ |
+| Reflection | ✅ **unique** | ❌ | ❌ | ❌ |
+| Planning | ✅ **unique** | ❌ | ❌ | ❌ |
+| Tiered retrieval | ❌ | ✅ **unique** | ✅ semantic | ❌ |
 
-**Overlap Score**: `memory_stream` ≈ `sessions` + importance + embeddings
+**Consolidation Decision:**
+- `memory_stream` → merge into `session_events` (add importance + embeddings)
+- Keep `reflections` and `plans` in renamed `learning-extension`
+- Tiered memory stays independent (different concern: summarization)
 
 ---
 
