@@ -13,7 +13,39 @@ Consolidate and streamline 0xKobold's architecture following the router consolid
 
 ## 📋 Action Tasks
 
-### Phase 1: Memory Consolidation (HIGH PRIORITY)
+### ⚡ Dialectic Memory Implementation (DEADLINE: 2026-03-15 17:00 EST)
+
+**Goal**: Closed learning loop with Honcho-style dialectic reasoning.
+
+| Task | Status | Assignee | Notes |
+|------|--------|----------|-------|
+| **Phase 1: Dialectic Representations** | | | |
+| Create `src/memory/dialectic/types.ts` | ✅ DONE | Claude | Types defined |
+| Create `src/memory/dialectic/store.ts` | ✅ DONE | Claude | SQLite schema + CRUD |
+| Create `src/memory/dialectic/reasoning.ts` | ✅ DONE | Claude | Thesis-Antithesis-Synthesis |
+| Create `src/memory/dialectic/nudges.ts` | ✅ DONE | Claude | Nudge engine |
+| Create `src/memory/dialectic/index.ts` | ✅ DONE | Claude | Exports + convenience API |
+| **Phase 2: Periodic Nudges** | | | |
+| Create `src/memory/nudges/index.ts` | ⬜ TODO | Claude | Nudge engine |
+| Create `src/memory/nudges/triggers.ts` | ⬜ TODO | Claude | Time/event/threshold triggers |
+| Create `src/memory/nudges/actions.ts` | ⬜ TODO | Claude | Reflection, skill create, etc |
+| Create `src/memory/nudges/scheduler.ts` | ⬜ TODO | Claude | Background scheduling |
+| **Phase 3: Autonomous Skill Creation** | | | |
+| Create `src/skills/auto/detector.ts` | ⬜ TODO | Claude | Pattern detection |
+| Create `src/skills/auto/creator.ts` | ⬜ TODO | Claude | Skill generation |
+| Create `src/skills/auto/validator.ts` | ⬜ TODO | Claude | Skill validation |
+| **Phase 4: Integration** | | | |
+| Wire dialectic into perennial-memory-extension | ⬜ TODO | Claude | Connect to extraction |
+| Add `/represent` command | ⬜ TODO | Claude | Show user model |
+| Add `/nudge` command | ⬜ TODO | Claude | Manual nudge trigger |
+| Add `/patterns` command | ⬜ TODO | Claude | Show detected patterns |
+| **Phase 5: Testing** | | | |
+| Test extraction → representation flow | ⬜ TODO | Claude | |
+| Test nudge scheduling | ⬜ TODO | Claude | |
+| Test skill auto-creation | ⬜ TODO | Claude | |
+| Document in Obsidian vault | ⬜ TODO | Claude | |
+
+### Phase 1: Memory Consolidation (PAUSED - Dialectic is Higher Priority)
 
 | Task | Status | Assignee | Notes |
 |------|--------|----------|-------|
