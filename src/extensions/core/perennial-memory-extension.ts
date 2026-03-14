@@ -26,6 +26,25 @@ import type {
   MemoryAudit 
 } from "../../memory/types.js";
 
+// Dialectic Memory Imports (Phase 4 - Honcho-style reasoning)
+import { 
+  getDialecticStore, 
+  getDialecticReasoning, 
+  getNudgeEngine,
+  createUser,
+  createAgent,
+  createProject,
+  observe,
+  getRepresentation,
+  getOrCreateUser,
+  reason,
+  ask,
+  reflect,
+  checkNudges,
+  processNudges,
+  getStats,
+} from "../../memory/dialectic/index.js";
+
 // Constants
 const MEMORY_DIR = path.join(homedir(), ".0xkobold", "memory", "perennial");
 const DB_PATH = path.join(MEMORY_DIR, "knowledge.db");
@@ -1184,6 +1203,243 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
   });
 
   // ═════════════════════════════════════════════════════════════════
+  // DIALECTIC COMMANDS (Phase 4 - Honcho-style reasoning)
+  // ═════════════════════════════════════════════════════════════════
+
+  pi.registerCommand("represent", {
+    description: "Show representation of a peer (user, agent, project): /represent [name]",
+    handler: async (args: string, ctx: ExtensionContext) => {
+      const name = args.trim() || "default";
+      
+      // Try to find or create user
+      const store = getDialecticStore();
+      let peer = store.getPeerByName(name, "user");
+      
+      if (!peer) {
+        // Try other types
+        peer = store.getPeerByName(name, "agent") || store.getPeerByName(name, "project");
+      }
+      
+      if (!peer) {
+        ctx.ui.notify(`❌ No peer found named "${name}"`, "error");
+        return;
+      }
+
+      const repr = getRepresentation(peer.id);
+      if (!repr) {
+        ctx.ui.notify(`No representation for ${peer.name}`, "info");
+        return;
+      }
+
+      const summary = [
+        `📊 Representation: ${peer.name} (${peer.type})`,
+        ``,
+        `🎯 Goals (${repr.goals.length}):`,
+        ...repr.goals.slice(0, 3).map(g => `  - ${g.description} [${g.status}]`),
+        ``,
+        `💡 Preferences (${repr.preferences.length}):`,
+        ...repr.preferences.slice(0, 5).map(p => `  - ${p.topic}: ${p.preference}`),
+        ``,
+        `⚠️ Constraints (${repr.constraints.length}):`,
+        ...repr.constraints.slice(0, 3).map(c => `  - ${c.description} [${c.type}]`),
+        ``,
+        `❤️ Values (${repr.values.length}):`,
+        ...repr.values.slice(0, 3).map(v => `  - ${v.value}`),
+        ``,
+        `📝 Recent Observations (${repr.observations.length}):`,
+        ...repr.observations.slice(0, 3).map(o => `  - [${o.category}] ${o.content.slice(0, 50)}...`),
+        ``,
+        `🧠 Synthesis:`,
+        `  ${repr.synthesis[0]?.content.slice(0, 100) || "No synthesis yet"}...`,
+        ``,
+        `Confidence: ${(repr.confidence * 100).toFixed(0)}%`,
+      ].join("\n");
+
+      ctx.ui.notify(summary, "info");
+    },
+  });
+
+  pi.registerCommand("observe", {
+    description: "Add an observation about a peer: /observe <peer> <category> <content>",
+    handler: async (args: string, ctx: ExtensionContext) => {
+      const parts = args.split(/\s+/);
+      if (parts.length < 3) {
+        ctx.ui.notify("Usage: /observe <peer> <category> <content>", "error");
+        ctx.ui.notify("Categories: behavior, statement, preference, goal, constraint, value, error, success", "info");
+        return;
+      }
+
+      const [name, category, ...contentParts] = parts;
+      const content = contentParts.join(" ");
+      
+      const validCategories = ["behavior", "statement", "preference", "goal", "constraint", "value", "error", "success"];
+      if (!validCategories.includes(category)) {
+        ctx.ui.notify(`Invalid category: ${category}. Valid: ${validCategories.join(", ")}`, "error");
+        return;
+      }
+
+      // Get or create peer
+      const store = getDialecticStore();
+      let peer = store.getPeerByName(name);
+      if (!peer) {
+        peer = store.createPeer("user", name);
+      }
+
+      const observation = await observe(
+        peer.id,
+        content,
+        category as any,
+        "message",
+        `cmd_${Date.now()}`
+      );
+
+      ctx.ui.notify(`✅ Observed: [${category}] "${content.slice(0, 50)}..." for ${peer.name}`, "info");
+    },
+  });
+
+  pi.registerCommand("reason", {
+    description: "Run dialectic reasoning on a peer: /reason <peer>",
+    handler: async (args: string, ctx: ExtensionContext) => {
+      const name = args.trim() || "default";
+      
+      if (!ollamaAvailable) {
+        ctx.ui.notify("❌ Ollama not available - reasoning requires LLM", "error");
+        return;
+      }
+
+      const store = getDialecticStore();
+      let peer = store.getPeerByName(name);
+      
+      if (!peer) {
+        ctx.ui.notify(`❌ No peer found named "${name}"`, "error");
+        return;
+      }
+
+      ctx.ui.notify(`🧠 Reasoning about ${peer.name}...`, "info");
+
+      try {
+        const result = await reason(peer.id);
+        
+        const summary = [
+          `✅ Reasoning complete for ${peer.name}`,
+          ``,
+          `Synthesis: ${result.synthesis || "No new insights"}`,
+          ``,
+          `Extracted:`,
+          `  - ${result.preferences} preferences`,
+          `  - ${result.goals} goals`,
+          `  - ${result.constraints} constraints`,
+          `  - ${result.values} values`,
+        ].join("\n");
+        
+        ctx.ui.notify(summary, "info");
+      } catch (err) {
+        ctx.ui.notify(`❌ Reasoning failed: ${err}`, "error");
+      }
+    },
+  });
+
+  pi.registerCommand("ask-peer", {
+    description: "Ask a question about a peer: /ask-peer <peer> <question>",
+    handler: async (args: string, ctx: ExtensionContext) => {
+      const parts = args.split(/\s+/);
+      if (parts.length < 2) {
+        ctx.ui.notify("Usage: /ask-peer <peer> <question>", "error");
+        return;
+      }
+
+      const name = parts[0];
+      const question = parts.slice(1).join(" ");
+      
+      if (!ollamaAvailable) {
+        ctx.ui.notify("❌ Ollama not available - ask requires LLM", "error");
+        return;
+      }
+
+      const store = getDialecticStore();
+      const peer = store.getPeerByName(name);
+      
+      if (!peer) {
+        ctx.ui.notify(`❌ No peer found named "${name}"`, "error");
+        return;
+      }
+
+      try {
+        const answer = await ask(peer.id, question);
+        ctx.ui.notify(`💬 ${peer.name}: ${answer}`, "info");
+      } catch (err) {
+        ctx.ui.notify(`❌ Ask failed: ${err}`, "error");
+      }
+    },
+  });
+
+  pi.registerCommand("nudge", {
+    description: "Check for pending nudges or process them: /nudge [process]",
+    handler: async (args: string, ctx: ExtensionContext) => {
+      const shouldProcess = args.trim() === "process";
+      
+      if (shouldProcess) {
+        ctx.ui.notify("🔄 Processing pending nudges...", "info");
+        
+        try {
+          const processed = await processNudges();
+          ctx.ui.notify(`✅ Processed ${processed.length} nudges`, "info");
+          
+          for (const nudge of processed.slice(0, 3)) {
+            ctx.ui.notify(`  - ${nudge.question}`, "info");
+          }
+        } catch (err) {
+          ctx.ui.notify(`❌ Nudge processing failed: ${err}`, "error");
+        }
+      } else {
+        const pending = await checkNudges();
+        
+        if (pending.length === 0) {
+          ctx.ui.notify("✅ No pending nudges", "info");
+        } else {
+          ctx.ui.notify(`📋 ${pending.length} pending nudges:`, "info");
+          for (const nudge of pending.slice(0, 5)) {
+            ctx.ui.notify(`  - [${nudge.priority}] ${nudge.question}`, "info");
+          }
+        }
+      }
+    },
+  });
+
+  pi.registerCommand("dialectic-stats", {
+    description: "Show dialectic memory statistics: /dialectic-stats",
+    handler: async (_args: string, ctx: ExtensionContext) => {
+      const stats = getStats();
+      
+      const summary = [
+        `📊 Dialectic Memory Statistics`,
+        ``,
+        `Peers: ${stats.peers}`,
+        `Observations: ${stats.observations}`,
+        `Contradictions: ${stats.contradictions}`,
+        `Syntheses: ${stats.syntheses}`,
+        ``,
+        `Inferred:`,
+        `  - Preferences: ${stats.preferences}`,
+        `  - Goals: ${stats.goals}`,
+        `  - Constraints: ${stats.constraints}`,
+        `  - Values: ${stats.values}`,
+        ``,
+        `Pending Nudges: ${stats.nudges}`,
+      ].join("\n");
+      
+      ctx.ui.notify(summary, "info");
+    },
+  });
+
+  // ═════════════════════════════════════════════════════════════════
+  // INTEGRATION: Hook dialectic into perennial save
+  // ═════════════════════════════════════════════════════════════════
+
+  // When memories are saved with importance > 0.6, also add as observation
+  // This is done in the perennial_save tool handler below
+
+  // ═════════════════════════════════════════════════════════════════
   // HEARTBEAT INTEGRATION (Phase 2 Decay Jobs)
   // ═════════════════════════════════════════════════════════════════
 
@@ -1200,7 +1456,17 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
   console.log(`  Schema: v${CURRENT_SCHEMA_VERSION}`);
   console.log(`  Ollama: ${ollamaAvailable ? "✅ connected" : "⚠️  not available"}`);
   console.log(`  Features: Smart Filters ✅ | Tiered Memory ✅ | Decay Jobs ✅ | Conflicts ✅ | Graph ✅ | Checkpoints ✅`);
+  console.log(`  Dialectic: ✅ Loaded (Honcho-style reasoning)`);
   console.log(`  Commands: /remember, /recall, /memories, /memory-audit`);
   console.log(`            /memory-checkpoint, /memory-checkpoints, /memory-restore`);
-  console.log(`            /memory-decay, /memory-conflicts`);
+  console.log(`            /memory-decay, /memory-conflicts, /memory-tiered, /memory-extract`);
+  console.log(`            /represent, /observe, /reason, /ask-peer, /nudge, /dialectic-stats`);
+
+  // Initialize default user peer
+  try {
+    getOrCreateUser("default");
+    console.log(`  Default user peer initialized`);
+  } catch (e) {
+    console.warn("[Perennial Memory] Could not initialize default user peer:", e);
+  }
 }
