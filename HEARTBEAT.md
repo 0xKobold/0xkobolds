@@ -44,7 +44,8 @@ Consolidate and streamline 0xKobold's architecture following the router consolid
 | Add `/nudge` command | ✅ DONE | Claude | Check/process nudges |
 | Add `/dialectic-stats` command | ✅ DONE | Claude | Show statistics |
 | Document in Obsidian vault | ✅ DONE | Claude | Dialectic-Memory-Implementation.md |
-| **Phase 5: Testing** | ⬜ TODO | | |
+| **Phase 5: Testing** | ⬜ IN PROGRESS | | |
+| Unit tests for dialectic store | ✅ DONE | Claude | 18 tests pass |
 | Test extraction → representation flow | ⬜ TODO | Claude | Needs runtime test |
 | Test nudge scheduling | ⬜ TODO | Claude | Needs runtime test |
 | Test dialectic reasoning with LLM | ⬜ TODO | Claude | Needs Ollama running |
@@ -375,7 +376,7 @@ DO Server → Raspberry Pi:
    - Created `src/memory/dialectic/` module with types, store, reasoning, nudges, index
    - Integrated into `perennial-memory-extension` with 6 new commands
    - Added documentation to Obsidian vault
-   - Commits: `5244fb2`, `f7cc77e`, `6ca27c1`
+   - Commits: `5244fb2`, `f7cc77e`, `6ca27c1`, `3a3401d`, `5eb4bc5`
 6. **FIXED: Tiered memory extraction not running**
    - Root cause: `extractItems()` was never called after `ingestResource()`
    - Fix: Call `extractItems()` and `organizeIntoCategories()` directly
