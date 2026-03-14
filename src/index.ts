@@ -19,6 +19,7 @@ import { fileURLToPath } from 'url';
 import { resolve, dirname, join } from 'path';
 import { homedir } from 'os';
 import { existsSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { startGateway } from './gateway/index';
 import { ensureAuthProfilesFromConfig } from './agent/index';
 
@@ -88,6 +89,8 @@ function verifyExtensions(): string[] {
 
     // Ollama Provider Extension (npm package)
     '--extension', resolve(packageRoot, 'node_modules/@0xkobold/pi-ollama/dist/index.js'),
+    // 🧠 Adaptive Model Router (must load after pi-ollama)
+    '--extension', ext('routed-ollama-extension'),
 
     // Core Features
     // Agent Orchestration (Unified - v0.2.0)
@@ -158,7 +161,7 @@ function verifyExtensions(): string[] {
   ];
 
   // Check that extensions exist
-  const testExt = ext('ollama-extension');
+  const testExt = ext('fileops-extension');
   if (!existsSync(testExt)) {
     console.error(`⚠️  Warning: Extensions not found at ${extensionDir}`);
     console.error(`   Expected: ${testExt}`);
@@ -250,6 +253,10 @@ async function main(): Promise<void> {
   } catch (err) {
     // Silent fail - not critical
   }
+
+  // Initialize Adaptive Model Router (deferred until after Ollama extension loads)
+  // We'll initialize it lazily on first use via the extension
+  console.log('💡 Model router will initialize after Ollama extension loads');
 
   // Build argv for pi-coding-agent: [node, script, ...extensions]
   // We must modify process.argv because pi-coding-agent reads it directly

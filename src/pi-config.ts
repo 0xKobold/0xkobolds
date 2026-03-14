@@ -24,6 +24,7 @@ export const config: Config = {
     './src/config/unified-config.ts',                    // UNIFIED: Config system (no-op, just types)
     './src/extensions/core/config-extension.ts',           // UNIFIED: /config commands
     '../../node_modules/@0xkobold/pi-ollama/dist/index.js',  // 🦙 Ollama (npm)
+    './src/extensions/core/routed-ollama-extension.ts',  // 🧠 Adaptive model routing (wraps Ollama)
     './src/sessions/UnifiedSessionBridge.ts',              // UNIFIED: Session management
     
     // Core Features

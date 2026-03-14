@@ -29,7 +29,15 @@ export class OllamaProvider implements LLMProvider {
   private cloudOnly: boolean = false;
 
   constructor() {
-    const config = loadConfigFromEnv();
+    let config = loadConfigFromEnv();
+    // Fallback if config is incomplete (before extension loads)
+    if (!config || !config.baseUrl) {
+      config = {
+        baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+        cloudUrl: process.env.OLLAMA_CLOUD_URL || 'https://ollama.com',
+        apiKey: process.env.OLLAMA_API_KEY,
+      };
+    }
     this.clients = createClients(config);
     this.detectMode();
   }
@@ -132,6 +140,17 @@ export async function listOllamaModels(): Promise<string[]> {
  */
 export function createOllamaProvider(): OllamaProvider {
   return new OllamaProvider();
+}
+
+/**
+ * Get singleton Ollama provider instance
+ */
+let ollamaProviderInstance: OllamaProvider | null = null;
+export function getOllamaProvider(): OllamaProvider {
+  if (!ollamaProviderInstance) {
+    ollamaProviderInstance = new OllamaProvider();
+  }
+  return ollamaProviderInstance;
 }
 
 export default createOllamaProvider;

@@ -702,11 +702,36 @@ export default function taskManagerExtension(pi: ExtensionAPI) {
       },
       required: ["request", "subtasks"],
     },
-    async execute(args: any) {
-      const { request, subtasks } = args as {
+    async execute(_toolCallId: string, params: unknown, _signal: AbortSignal | undefined, _onUpdate: any, _ctx: any) {
+      const { request, subtasks } = params as {
         request: string;
         subtasks: Array<{ title: string; description?: string; priority?: string }>;
       };
+
+      // Validate subtasks have required title field
+      const invalidSubtasks = subtasks.filter((st, i) => {
+        if (!st.title || typeof st.title !== 'string' || st.title.trim() === '') {
+          console.error(`[TaskBreakdown] Subtask ${i} missing required 'title':`, JSON.stringify(st));
+          return true;
+        }
+        return false;
+      });
+
+      if (invalidSubtasks.length > 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `❌ Error: ${invalidSubtasks.length} subtask(s) missing required 'title' field.\n\n` +
+                `Each subtask must have: { "title": "string", "description?": "string", "priority?": "low|medium|high|critical" }\n\n` +
+                `❌ WRONG: { "task": "do something", "assignee": "worker" }\n` +
+                `✅ CORRECT: { "title": "do something", "description": "...", "priority": "high" }\n\n` +
+                `Note: task_breakdown creates kanban tasks, NOT agent assignments. Use agent_orchestrate to spawn agents.`,
+            },
+          ],
+          details: { error: "Missing title field", invalidCount: invalidSubtasks.length },
+        };
+      }
 
       const parentTask = createTask(request, "Auto-generated from breakdown", {
         status: "in-progress",

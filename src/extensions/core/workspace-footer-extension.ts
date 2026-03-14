@@ -1,24 +1,54 @@
 /**
  * Workspace Footer Extension
  *
- * Displays current workspace mode in the TUI footer:
- * - 🏠 Global: ~/.0xkobold
- * - 📁 Local: current directory path
- *
- * Shows different icons and paths based on --local flag
+ * Displays workspace and router status in footer.
+ * Uses unified-router.ts as single source of truth.
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { homedir } from "os";
 import { resolve } from "path";
-import { existsSync } from "fs";
 import { getDraconicLairSystem } from "../../lair/DraconicLairSystem";
+import { getFooterStatus, getRouter } from "../../llm/unified-router";
 
 interface WorkspaceState {
   isLocal: boolean;
   workspacePath: string;
   displayPath: string;
+}
+
+function getWorkspaceState(): WorkspaceState {
+  const globalWorkspace = resolve(homedir(), ".0xkobold");
+  const explicitMode = process.env.KOBOLD_LOCAL_MODE;
+  
+  if (explicitMode === 'true') {
+    const workingDir = process.env.KOBOLD_WORKING_DIR || process.cwd();
+    return {
+      isLocal: true,
+      workspacePath: workingDir,
+      displayPath: formatPath(workingDir),
+    };
+  }
+  
+  if (explicitMode === 'false') {
+    return {
+      isLocal: false,
+      workspacePath: globalWorkspace,
+      displayPath: "~/.0xkobold",
+    };
+  }
+  
+  const workingDir = process.env.KOBOLD_WORKING_DIR || process.cwd();
+  const resolvedWorkingDir = resolve(workingDir);
+  const isLocal = resolvedWorkingDir !== globalWorkspace && 
+                  !resolvedWorkingDir.startsWith(globalWorkspace + "/");
+  
+  return {
+    isLocal,
+    workspacePath: isLocal ? workingDir : globalWorkspace,
+    displayPath: isLocal ? formatPath(workingDir) : "~/.0xkobold",
+  };
 }
 
 function formatPath(p: string): string {
@@ -28,122 +58,65 @@ function formatPath(p: string): string {
   return p;
 }
 
-function getWorkspaceState(): WorkspaceState {
-  const globalWorkspace = resolve(homedir(), ".0xkobold");
-  
-  // Priority 1: Explicit KOBOLD_LOCAL_MODE flag ('true' or 'false')
-  const explicitMode = process.env.KOBOLD_LOCAL_MODE;
-  if (explicitMode === 'true') {
-    const workingDir = process.env.KOBOLD_WORKING_DIR || process.cwd();
-    return {
-      isLocal: true,
-      workspacePath: workingDir,
-      displayPath: formatPath(workingDir),
-    };
-  }
-  if (explicitMode === 'false') {
-    return {
-      isLocal: false,
-      workspacePath: globalWorkspace,
-      displayPath: "~/.0xkobold",
-    };
-  }
-  
-  // Fallback: Legacy path comparison (shouldn't reach here with v0.6.4+)
-  const workingDir = process.env.KOBOLD_WORKING_DIR || process.cwd();
-  const resolvedWorkingDir = resolve(workingDir);
-  const isLocal = resolvedWorkingDir !== globalWorkspace && 
-                  !resolvedWorkingDir.startsWith(globalWorkspace + "/");
-
-  const workspacePath = isLocal ? workingDir : globalWorkspace;
-  
-  // Format display path
-  let displayPath: string;
-  if (isLocal) {
-    // Show relative path from home, or just the path
-    if (workspacePath.startsWith(homedir())) {
-      displayPath = "~" + workspacePath.slice(homedir().length);
-    } else {
-      displayPath = workspacePath;
-    }
-  } else {
-    displayPath = "~/.0xkobold";
-  }
-
-  return { isLocal, workspacePath, displayPath };
-}
-
 export default async function register(pi: ExtensionAPI) {
   console.log("[WorkspaceFooter] Extension registered");
 
   pi.on("session_start", async (_event, ctx: ExtensionContext) => {
     const state = getWorkspaceState();
     
-    console.log(`[WorkspaceFooter] Mode: ${state.isLocal ? 'local' : 'global'}`);
-    console.log(`[WorkspaceFooter] Path: ${state.workspacePath}`);
-    console.log(`[WorkspaceFooter] CWD: ${process.cwd()}`);
-
-    // Set footer status (cwd already set at entry point)
+    // Set workspace status
     const emoji = state.isLocal ? "📁" : "🏠";
-    const text = `${emoji} ${state.displayPath}`;
-    ctx.ui.setStatus("workspace", text);
+    ctx.ui.setStatus("workspace", `${emoji} ${state.displayPath}`);
 
-    // In local mode, check if this directory has a lair and create/notify
+    // Initialize router (no footer status - pi-coding-agent already shows (auto))
+    setTimeout(async () => {
+      try {
+        // Trigger router initialization
+        await getRouter();
+        console.log("[Footer] Router initialized");
+      } catch (err: any) {
+        console.log("[Footer] Router not ready:", err?.message);
+      }
+    }, 100);
+
+    // Lair notification
     if (state.isLocal) {
       const lairSystem = getDraconicLairSystem();
       const cwd = process.cwd();
-      
-      // getLair() creates one if it doesn't exist
       const lair = lairSystem.getLair(cwd);
       const isNew = lairSystem.listLairs().filter(l => l.path === cwd).length === 1;
       
       if (isNew) {
         ctx.ui.notify(
-          `🏰 New Lair Detected\n\n` +
-          `Created: ${lair.name}\n` +
-          `Type: ${lair.type} | Framework: ${lair.framework}\n` +
-          `\nThis project now has persistent context.`,
-          "info"
-        );
-      } else {
-        ctx.ui.notify(
-          `🏰 Lair: ${lair.name}\n` +
-          `Type: ${lair.type} | Framework: ${lair.framework}`,
+          `🏰 New Lair: ${lair.name}\nType: ${lair.type} | Framework: ${lair.framework}`,
           "info"
         );
       }
     }
 
-    // Cleanup on shutdown
+    // Cleanup
     pi.on("session_shutdown", async () => {
       ctx.ui.setStatus("workspace", undefined);
+      ctx.ui.setStatus("router", undefined);
     });
+
+
   });
 
-  // Register /workspace command to show current workspace
+  // Register workspace info tool
   pi.registerTool({
     name: "workspace_info",
     label: "📁 Workspace",
     description: "Show current workspace information",
     parameters: Type.Object({}),
-    async execute(): Promise<{ content: any[]; details: WorkspaceState }> {
+    async execute(_toolCallId: string, _params: {}, _signal: AbortSignal, _onUpdate: any, _ctx: any): Promise<{ content: any[]; details: {} }> {
       const state = getWorkspaceState();
-
-      const lines = [
-        `📁 Workspace Info`,
-        `─`.repeat(40),
-        `Mode: ${state.isLocal ? 'Local (project)' : 'Global'}`,
-        `Path: ${state.workspacePath}`,
-        `Display: ${state.displayPath}`,
-        ``,
-        `Change mode:`,
-        `  0xkobold --local    # Current directory`,
-        `  0xkobold            # Global (~/.0xkobold)`,
-      ];
-
       return {
-        content: [{ type: "text", text: lines.join("\n") }],
-        details: state,
+        content: [{
+          type: "text",
+          text: `Workspace: ${state.displayPath}\nMode: ${state.isLocal ? 'local' : 'global'}`,
+        }],
+        details: {},
       };
     },
   });
