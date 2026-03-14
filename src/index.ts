@@ -84,8 +84,11 @@ function ext(name: string): string {
 function verifyExtensions(): string[] {
   const extensions: string[] = [
     // Infrastructure
-    // Note: ollama-extension loaded via pi-config.ts
-    
+    // '--extension', ext('ollama-extension'),
+
+    // Ollama Provider Extension (npm package)
+    '--extension', resolve(packageRoot, 'node_modules/@0xkobold/pi-ollama/dist/index.js'),
+
     // Core Features
     // Agent Orchestration (Unified - v0.2.0)
     // Replaces: agent-registry, subagent-extension, agent-lifecycle, agent-workspace
@@ -104,10 +107,7 @@ function verifyExtensions(): string[] {
     '--extension', ext('persona-loader-extension'),
     '--extension', ext('context-aware-extension'),
     '--extension', ext('onboarding-extension'),
-    '--extension', ext('questionnaire-extension'),
     '--extension', ext('session-name-extension'),
-    '--extension', ext('handoff-extension'),
-    '--extension', ext('pi-notify-extension'),
     '--extension', ext('env-loader-extension'),
     '--extension', ext('heartbeat-extension'),
     '--extension', ext('discord-channel-extension'),
@@ -158,7 +158,7 @@ function verifyExtensions(): string[] {
   ];
 
   // Check that extensions exist
-  const testExt = ext('config-extension');
+  const testExt = ext('ollama-extension');
   if (!existsSync(testExt)) {
     console.error(`⚠️  Warning: Extensions not found at ${extensionDir}`);
     console.error(`   Expected: ${testExt}`);
