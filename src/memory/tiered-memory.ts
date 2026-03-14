@@ -143,11 +143,12 @@ export class TieredMemory {
     // Indexes
     this.db.run(`CREATE INDEX IF NOT EXISTS idx_resources_session ON memory_resources(session_id)`);
     this.db.run(`CREATE INDEX IF NOT EXISTS idx_items_category ON memory_items(category_id)`);
-    // Archived column may be added by migration, handle gracefully
-    try {
+    
+    // Check if archived column exists before creating index
+    const tableInfo = this.db.query(`PRAGMA table_info(memory_items)`).all() as Array<{name: string}>;
+    const hasArchivedColumn = tableInfo.some(col => col.name === 'archived');
+    if (hasArchivedColumn) {
       this.db.run(`CREATE INDEX IF NOT EXISTS idx_items_archived ON memory_items(archived)`);
-    } catch (e) {
-      // Index will be created after migration adds the column
     }
 
     console.log("[TieredMemory] Schema initialized");
