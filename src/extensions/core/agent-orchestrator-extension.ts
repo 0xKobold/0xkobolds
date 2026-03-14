@@ -28,6 +28,8 @@
 
 import type { ExtensionAPI, ExtensionContext, AgentToolResult } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AGENT_TYPES } from "../../agent/types/definitions";
+import { runEmbeddedAgent } from "../../agent/embedded-runner";
 import { spawn, ChildProcess } from "node:child_process";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
@@ -366,9 +368,18 @@ async function stopMainAgent(name: string): Promise<{ success: boolean; error?: 
 /**
  * Internal Subagent Spawning - Direct Execution
  * 
- * Spawns subagents without CLI dependency. Uses direct function calls
- * to execute tasks with the subagent's tools and system prompt.
+ * Uses runEmbeddedAgent from embedded-runner for ephemeral subagent execution.
+ * Subagents run in same process, sharing context and tools.
  */
+
+// Map subagent types to agent types
+const SUBAGENT_TO_AGENT_TYPE: Record<string, keyof typeof AGENT_TYPES> = {
+  scout: "researcher",    // Scout = fast information gathering
+  planner: "coordinator", // Planner = coordination/planning
+  worker: "worker",        // Worker = implementation
+  reviewer: "reviewer",    // Reviewer = validation
+};
+
 async function spawnSubagentInternal(
   agentName: string,
   task: string,
@@ -389,30 +400,54 @@ async function spawnSubagentInternal(
     };
   }
   
-  console.log(`[Orchestrator] 🚀 Internal spawn: '${agentConfig.name}' for: ${task.slice(0, 100)}...`);
-  
-  // Try gateway first (if available), fall back to simulated execution
-  const gatewayPort = parseInt(process.env.KOBOLD_GATEWAY_PORT || "7777", 10);
+  console.log(`[Orchestrator] 🚀 Spawning subagent '${agentName}' for: ${task.slice(0, 100)}...`);
   
   try {
-    // Check if gateway is running
-    const gatewayRunning = await checkGatewayRunning(gatewayPort);
+    // Get agent type definition
+    const agentTypeName = SUBAGENT_TO_AGENT_TYPE[agentName] || "worker";
+    const agentTypeDef = AGENT_TYPES[agentTypeName];
     
-    if (gatewayRunning) {
-      console.log(`[Orchestrator] Using gateway at port ${gatewayPort}`);
-      try {
-        return await spawnViaGateway(agentConfig, task, ctx, gatewayPort);
-      } catch (gatewayErr: any) {
-        // Gateway doesn't support /spawn endpoint - fallback to simulation
-        console.log(`[Orchestrator] Gateway missing /spawn endpoint, using simulation`);
-        return await simulateSubagentExecution(agentConfig, task, ctx);
-      }
-    } else {
-      console.log(`[Orchestrator] Gateway not running, using simulated execution`);
-      return await simulateSubagentExecution(agentConfig, task, ctx);
+    if (!agentTypeDef) {
+      console.error(`[Orchestrator] ❌ Agent type '${agentTypeName}' not found`);
+      return {
+        agent: agentName,
+        task,
+        exitCode: 1,
+        output: "",
+        error: `Agent type '${agentTypeName}' not found`,
+        duration: Date.now() - startTime,
+      };
     }
+    
+    // Build system prompt (subagent config has the prompt, agent type has capabilities)
+    const systemPrompt = `${agentTypeDef.systemPrompt}\n\n${agentConfig.systemPrompt}`;
+    
+    // Use runEmbeddedAgent for ephemeral execution
+    console.log(`[Orchestrator] 🏃 Running ${agentName} as ${agentTypeName}...`);
+    
+    const result = await runEmbeddedAgent({
+      prompt: task,
+      cwd: process.cwd(),
+      extraSystemPrompt: systemPrompt,
+      model: agentConfig.model,
+      extensions: [], // Filtered extensions for subagent
+      useTuiSettings: false, // Don't load TUI settings
+    });
+    
+    const duration = Date.now() - startTime;
+    console.log(`[Orchestrator] ✅ ${agentName} completed in ${duration}ms`);
+    
+    return {
+      agent: agentName,
+      task,
+      exitCode: result.text ? 0 : 1,
+      output: result.text || "",
+      error: result.text ? undefined : "No output from subagent",
+      duration,
+    };
+    
   } catch (err: any) {
-    console.error(`[Orchestrator] Subagent execution error:`, err?.message);
+    console.error(`[Orchestrator] ❌ Subagent execution error:`, err?.message);
     return {
       agent: agentName,
       task,
@@ -425,7 +460,7 @@ async function spawnSubagentInternal(
 }
 
 /**
- * Check if gateway is running
+ * Check if gateway is running (kept for reference)
  */
 async function checkGatewayRunning(port: number): Promise<boolean> {
   try {
@@ -440,7 +475,7 @@ async function checkGatewayRunning(port: number): Promise<boolean> {
 }
 
 /**
- * Spawn subagent via gateway HTTP API
+ * Spawn subagent via gateway HTTP API (kept for reference, not used)
  */
 async function spawnViaGateway(
   agentConfig: SubagentConfig,
@@ -451,151 +486,34 @@ async function spawnViaGateway(
   const startTime = Date.now();
   
   try {
-    const response = await fetch(`http://localhost:${port}/spawn`, {
+    const response = await fetch(`http://localhost:${port}/agent.run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        agentType: agentConfig.name,
-        task,
-        tools: agentConfig.tools,
-        model: agentConfig.model,
-        systemPrompt: agentConfig.systemPrompt,
+        message: task,
+        agentId: agentConfig.name,
+        thinking: "medium",
       }),
-      signal: AbortSignal.timeout(120000), // 2 minute timeout
+      signal: AbortSignal.timeout(120000),
     });
     
     if (!response.ok) {
       throw new Error(`Gateway returned ${response.status}`);
     }
     
-    const result = await response.json() as { success: boolean; output: string; error?: string };
+    const result = await response.json() as { status: string; result?: { payloads?: Array<{ content?: string }>; }; error?: string };
     
     return {
       agent: agentConfig.name,
       task,
-      exitCode: result.success ? 0 : 1,
-      output: result.output,
+      exitCode: result.status === "ok" ? 0 : 1,
+      output: result.result?.payloads?.[0]?.content || "",
       error: result.error,
       duration: Date.now() - startTime,
     };
   } catch (err: any) {
     throw new Error(`Gateway spawn failed: ${err?.message}`);
   }
-}
-
-/**
- * Simulate subagent execution (when gateway not available)
- * 
- * Returns a pre-defined response based on subagent type.
- * In a full implementation, this would call the LLM directly.
- */
-async function simulateSubagentExecution(
-  agentConfig: SubagentConfig,
-  task: string,
-  ctx: ExtensionContext
-): Promise<SubagentResult> {
-  const startTime = Date.now();
-  
-  // Simulate processing time
-  await new Promise(resolve => setTimeout(resolve, 100));
-  
-  // Generate simulated response based on agent type
-  let output = "";
-  
-  switch (agentConfig.name) {
-    case "scout":
-      output = await simulateScout(task, agentConfig);
-      break;
-    case "planner":
-      output = await simulatePlanner(task, agentConfig);
-      break;
-    case "worker":
-      output = await simulateWorker(task, agentConfig);
-      break;
-    case "reviewer":
-      output = await simulateReviewer(task, agentConfig);
-      break;
-    default:
-      output = `[${agentConfig.name}] Task received: "${task}"\n\nNote: Full execution requires gateway or direct LLM integration.`;
-  }
-  
-  return {
-    agent: agentConfig.name,
-    task,
-    exitCode: 0,
-    output,
-    duration: Date.now() - startTime,
-  };
-}
-
-/**
- * Scout simulation - finds relevant files/patterns
- */
-async function simulateScout(task: string, config: SubagentConfig): Promise<string> {
-  const keywords = task.toLowerCase().match(/\b\w{4,}\b/g)?.slice(0, 5) || ["relevant"];
-  return `🔍 Scout Results for: "${task.slice(0, 50)}..."
-
-**Findings:**
-- Found ${Math.floor(Math.random() * 10) + 3} relevant files
-- Key patterns: ${keywords.join(", ")}
-- Suggested focus: Check src/ directory for ${keywords[0]}
-
-Note: For full search capabilities, ensure gateway is running at localhost:7777`;
-}
-
-/**
- * Planner simulation - creates implementation plans
- */
-async function simulatePlanner(task: string, config: SubagentConfig): Promise<string> {
-  return `📋 Implementation Plan for: "${task.slice(0, 50)}..."
-
-**Phase 1: Analysis**
-1. Identify affected components
-2. Review existing patterns
-3. Document requirements
-
-**Phase 2: Design**
-1. Create component structure
-2. Define interfaces
-3. Plan data flow
-
-**Phase 3: Implementation**
-1. Core functionality
-2. Error handling
-3. Tests
-
-Note: For full planning capabilities, ensure gateway is running at localhost:7777`;
-}
-
-/**
- * Worker simulation - executes implementation
- */
-async function simulateWorker(task: string, config: SubagentConfig): Promise<string> {
-  return `🔧 Worker Execute: "${task.slice(0, 50)}..."
-
-**Status:** Ready to implement
-
-The worker agent can write code, edit files, and run commands.
-For full write capabilities, ensure gateway is running at localhost:7777
-
-**Available tools:** ${config.tools.join(", ")}`;
-}
-
-/**
- * Reviewer simulation - analyzes code quality
- */
-async function simulateReviewer(task: string, config: SubagentConfig): Promise<string> {
-  return `👀 Review Results for: "${task.slice(0, 50)}..."
-
-**Checklist:**
-✅ Code follows project patterns
-✅ No obvious security issues
-⚠️  Consider adding error handling
-⚠️  Tests may be needed
-
-**Recommendation:** Looks good with minor improvements needed.
-
-Note: For full review capabilities, ensure gateway is running at localhost:7777`;
 }
 
 /**

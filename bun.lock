@@ -5,7 +5,9 @@
     "": {
       "name": "@0xkobold/core",
       "dependencies": {
-        "@0xkobold/pi-ollama": "0.1.7",
+        "@0xkobold/pi-cloudflare-browser": "0.1.0",
+        "@0xkobold/pi-obsidian-bridge": "0.1.0",
+        "@0xkobold/pi-ollama": "0.2.0",
         "@aliou/pi-processes": "^0.6.2",
         "@mariozechner/pi-agent-core": "0.57.1",
         "@mariozechner/pi-coding-agent": "0.57.1",
@@ -41,7 +43,11 @@
     },
   },
   "packages": {
-    "@0xkobold/pi-ollama": ["@0xkobold/pi-ollama@0.1.7", "", { "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.6.0", "@sinclair/typebox": ">=0.32.0" } }, "sha512-nyPDKnK6WWke3UlO4wtZTTYuMI7IyQqDW9pW760+7L+KwyxuBmD6fg67mKwI6qx9oGJhWs6FdSygSiOQErm6FA=="],
+    "@0xkobold/pi-cloudflare-browser": ["@0xkobold/pi-cloudflare-browser@0.1.0", "", { "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.57.0", "@sinclair/typebox": ">=0.32.0" } }, "sha512-KwpuurJ5luCb/m1p3Q9SFTypEJ29aAaNJvWjC9wSVvC2ZZWFN62umAPD5byudpE91MjhABNCflsBmSJCEwYAXw=="],
+
+    "@0xkobold/pi-obsidian-bridge": ["@0xkobold/pi-obsidian-bridge@0.1.0", "", { "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.57.0", "@sinclair/typebox": ">=0.32.0" } }, "sha512-oopXdQdfm0O9th9JfD+CxomOefQ+FYnrgLU/pyDzoOsGiPPAvNe+PXgH9jb3bPAiusDAhDte1vmjQc88V0Y00Q=="],
+
+    "@0xkobold/pi-ollama": ["@0xkobold/pi-ollama@0.2.0", "", { "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.6.0", "@sinclair/typebox": ">=0.32.0" } }, "sha512-RgqDy+zPe5X9wNpaqOzgMo4D/KmoAW0Ld1XPvIZcI979n8NifWlzNOjcP0xYmd2ql9qlcFl3jwAud1M9IN3eyw=="],
 
     "@aliou/pi-processes": ["@aliou/pi-processes@0.6.2", "", { "dependencies": { "@aliou/pi-utils-settings": "^0.10.0", "@aliou/pi-utils-ui": "^0.1.0", "@aliou/sh": "^0.1.0", "@sinclair/typebox": "^0.34.41" }, "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.51.0", "@mariozechner/pi-tui": ">=0.51.0" }, "optionalPeers": ["@mariozechner/pi-coding-agent", "@mariozechner/pi-tui"] }, "sha512-FjG90EXoR+dJR9XhyCnvvw8mdXDFb3O+5NYBV5osu8p39I0RGNFlB2EqtdPzqD9Bt8u62WU5SIlnCWBN0klvGA=="],
 

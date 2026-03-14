@@ -45,7 +45,7 @@
   "dependencies": {
     "@0xkobold/pi-cloudflare-browser": "0.1.0",
     "@0xkobold/pi-obsidian-bridge": "0.1.0",
-    "@0xkobold/pi-ollama": "0.1.7",
+    "@0xkobold/pi-ollama": "0.2.0",
     "@aliou/pi-processes": "^0.6.2",
     "@mariozechner/pi-agent-core": "0.57.1",
     "@mariozechner/pi-coding-agent": "0.57.1",

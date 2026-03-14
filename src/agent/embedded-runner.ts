@@ -23,6 +23,7 @@ export interface EmbeddedRunConfig {
   extensions?: string[]; // Extension paths (defaults to pi-config)
   useTuiSettings?: boolean; // Load model/persona from TUI config
   model?: string; // Override model
+  extraSystemPrompt?: string; // Additional system prompt for subagents
   onUpdate?: (update: any) => void;
   onBlockReply?: (reply: string) => void;
   task?: string; // Alias for prompt (compatibility)
@@ -112,13 +113,18 @@ export async function runEmbeddedAgent(
   console.log(`[Embedded] Loaded ${bootstrapFiles.filter(f => f.exists).length} bootstrap files`);
 
   // 3. Build custom system prompt with persona context
-  const systemPrompt = buildSystemPrompt({
+  const baseSystemPrompt = buildSystemPrompt({
     basePrompt: undefined,
     bootstrapFiles,
     workspace: workspaceDir,
     mode: config.mode,
     tools: [],
   });
+  
+  // Append extra system prompt for subagents
+  const systemPrompt = config.extraSystemPrompt 
+    ? `${baseSystemPrompt}\n\n<!-- Subagent Context -->\n${config.extraSystemPrompt}`
+    : baseSystemPrompt;
 
   console.log(`[Embedded] System prompt: ${systemPrompt.length} chars`);
 
