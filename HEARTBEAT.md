@@ -128,6 +128,39 @@ Consolidate and streamline 0xKobold's architecture following the router consolid
 
 ## 🔍 Research Notes
 
+### Memory Architecture: Future Implementation
+
+**Goal**: Closed learning loop with agent-curated memory, periodic nudges, autonomous skill creation, skill self-improvement, FTS5 cross-session recall, and Honcho dialectic user modeling.
+
+**Documented in**: `~/.0xkobold/obsidian_vault/Research/Memory-Architecture-Future.md`
+
+**Key Components**:
+
+1. **Dialectic Representations** (Phase 1)
+   - Honcho-style reasoning about observations
+   - Thesis-Antithesis-Synthesis pattern
+   - User/Agent/Project models
+
+2. **Periodic Nudges** (Phase 2)
+   - Time-based: Daily, weekly, monthly
+   - Event-based: Skill used, error occurred
+   - Threshold-based: 100 observations, 10 skill uses
+
+3. **Autonomous Skill Creation** (Phase 3)
+   - Detect patterns in tool usage
+   - Generate skills via LLM
+   - Hot-reload immediately
+
+4. **Skill Self-Improvement** (Phase 4)
+   - Track success/failure rates
+   - Analyze error patterns
+   - Refine skill code
+
+5. **Cross-Session Recall** (Phase 5)
+   - FTS5 + embedding search
+   - Enrich with representations
+   - LLM summarization
+
 ### Memory Architecture Implementation (Documented)
 
 **Three-Phase Implementation based on [Rohit's article](https://rohit.chat/memory):**
