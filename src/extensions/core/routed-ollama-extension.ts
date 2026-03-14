@@ -6,8 +6,7 @@
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { getRouter, handleRouterCommand, handleModelsCommand, handleRateCommand } from "../../llm/unified-router";
-import { setCurrentModel } from "../../llm/model-status";
+import { getRouter, handleRouterCommand, handleModelsCommand, handleRateCommand, setCurrentModel } from "../../llm";
 
 export default async function routedOllamaExtension(pi: ExtensionAPI) {
   console.log("[RoutedOllama] Extension loading...");

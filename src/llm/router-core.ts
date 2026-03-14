@@ -1,0 +1,655 @@
+/**
+ * Router Core - Adaptive Model Router
+ *
+ * The brains: scoring, task inference, complexity assessment, and performance learning.
+ * This is the single source of truth for model selection logic.
+ *
+ * Consolidated from:
+ * - router.ts (DynamicModelRouter)
+ * - adaptive-router.ts (performance learning)
+ */
+
+import type { LLMProvider, ChatResponse } from './types';
+import { getModelDiscoveryService, type DiscoveredModel } from './model-discovery';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface TaskRequirements {
+  type?: 'chat' | 'code' | 'vision' | 'reasoning' | 'embedding';
+  complexity?: 'low' | 'medium' | 'high';
+  preferSpeed?: boolean;
+  preferQuality?: boolean;
+  requiredCapabilities?: string[];
+}
+
+export interface ModelPerformance {
+  modelName: string;
+  taskType: string;
+  complexity: string;
+  latencyMs: number;
+  inputTokens: number;
+  outputTokens: number;
+  timestamp: number;
+  userRating?: number;
+  success: boolean;
+}
+
+export interface ModelScore {
+  modelName: string;
+  avgLatency: number;
+  avgQuality: number;
+  usageCount: number;
+  successRate: number;
+  score: number;
+}
+
+// ============================================================================
+// Adaptive Model Router
+// ============================================================================
+
+export class AdaptiveModelRouter {
+  private discovery = getModelDiscoveryService();
+  private provider: LLMProvider;
+  private defaultModel: string;
+  private initialized = false;
+
+  // Performance learning
+  private performanceHistory: ModelPerformance[] = [];
+  private modelScores: Map<string, ModelScore> = new Map();
+  private readonly maxHistory = 1000;
+  private learningEnabled = true;
+  private favoriteModels: string[] = [];
+
+  // Tuned weights for scoring
+  private weights = {
+    complexityMatch: 15,
+    specialization: 12,
+    quality: 8,
+    speed: 6,
+    performance: 10,
+    recency: 5,
+    favorite: 8,
+  };
+
+  constructor(provider: LLMProvider, defaultModel?: string) {
+    this.provider = provider;
+    this.defaultModel = defaultModel ?? 'kimi-k2.5:cloud';
+    this.loadPerformanceData();
+  }
+
+  // ============================================================================
+  // Initialization
+  // ============================================================================
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    const models = await this.discovery.discoverModels();
+    console.log(`[Router] Discovered ${models.length} models:`);
+    for (const m of models) {
+      const caps = Object.entries(m.capabilities)
+        .filter(([, v]) => v)
+        .map(([k]) => k[0].toUpperCase())
+        .join('');
+      console.log(`  • ${m.name} (${m.speedTier}, ${m.qualityTier}, caps:${caps})`);
+    }
+
+    this.initialized = true;
+  }
+
+  async refreshModels(): Promise<DiscoveredModel[]> {
+    this.initialized = false;
+    const models = await this.discovery.discoverModels(true);
+    this.initialized = true;
+    return models;
+  }
+
+  // ============================================================================
+  // Model Selection
+  // ============================================================================
+
+  async selectModel(
+    message: string,
+    options: TaskRequirements & { trackPerformance?: boolean; sessionId?: string } = {}
+  ): Promise<string> {
+    await this.ensureInitialized();
+
+    const requirements = this.inferRequirements(message, options);
+    const models = await this.discovery.discoverModels();
+
+    // Filter by required capabilities
+    let candidates = models.filter(m => {
+      if (requirements.type && !m.capabilities[requirements.type]) return false;
+      if (requirements.requiredCapabilities) {
+        for (const cap of requirements.requiredCapabilities) {
+          if (!m.capabilities[cap as keyof typeof m.capabilities]) return false;
+        }
+      }
+      return true;
+    });
+
+    // Fallback logic
+    if (candidates.length === 0) {
+      candidates = this.getFallbackModels(models, requirements.type);
+    }
+
+    // Score and rank
+    const scored = candidates.map(m => ({
+      model: m,
+      score: this.scoreModelAdaptive(m, requirements, message),
+    }));
+
+    scored.sort((a, b) => b.score - a.score);
+
+    const best = scored[0];
+    if (best) {
+      const reason = this.getSelectionReason(best.model, requirements);
+      console.log(`[Router] Selected ${best.model.name} (score: ${best.score.toFixed(1)}) - ${reason}`);
+      return best.model.name;
+    }
+
+    return this.defaultModel;
+  }
+
+  async getModelInfo(name: string): Promise<DiscoveredModel | undefined> {
+    return this.discovery.getModel(name);
+  }
+
+  async listModels(): Promise<DiscoveredModel[]> {
+    await this.ensureInitialized();
+    return this.discovery.discoverModels();
+  }
+
+  async findModels(criteria: {
+    capability?: keyof DiscoveredModel['capabilities'];
+    speedTier?: DiscoveredModel['speedTier'];
+    qualityTier?: DiscoveredModel['qualityTier'];
+    specialization?: string;
+  }): Promise<DiscoveredModel[]> {
+    await this.ensureInitialized();
+    return this.discovery.findModels(criteria);
+  }
+
+  getProvider(): LLMProvider {
+    return this.provider;
+  }
+
+  getDefaultModel(): string {
+    return this.defaultModel;
+  }
+
+  // ============================================================================
+  // Performance Tracking
+  // ============================================================================
+
+  trackResponse(
+    modelName: string,
+    response: ChatResponse,
+    latencyMs: number,
+    taskType: string,
+    complexity: string
+  ): void {
+    const perf: ModelPerformance = {
+      modelName,
+      taskType,
+      complexity,
+      latencyMs,
+      inputTokens: response.usage?.inputTokens || 0,
+      outputTokens: response.usage?.outputTokens || 0,
+      timestamp: Date.now(),
+      success: true,
+    };
+
+    this.performanceHistory.push(perf);
+
+    if (this.performanceHistory.length > this.maxHistory) {
+      this.performanceHistory = this.performanceHistory.slice(-this.maxHistory);
+    }
+
+    this.updateModelScores();
+    this.savePerformanceData();
+  }
+
+  addFeedback(modelName: string, taskType: string, rating: number): void {
+    const perf: ModelPerformance = {
+      modelName,
+      taskType,
+      complexity: 'unknown',
+      latencyMs: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      timestamp: Date.now(),
+      userRating: rating,
+      success: rating >= 3,
+    };
+
+    this.performanceHistory.push(perf);
+    this.updateModelScores();
+    this.savePerformanceData();
+
+    console.log(`[Router] Feedback recorded: ${modelName} rated ${rating}/5`);
+  }
+
+  getModelStats(modelName: string): ModelScore | undefined {
+    return this.modelScores.get(modelName);
+  }
+
+  getModelRankings(): ModelScore[] {
+    return Array.from(this.modelScores.values()).sort((a, b) => b.score - a.score);
+  }
+
+  getBestModelForTask(taskType: string): string | undefined {
+    const relevantHistory = this.performanceHistory.filter(
+      p => p.taskType === taskType && p.userRating && p.userRating >= 4
+    );
+
+    if (relevantHistory.length === 0) return undefined;
+
+    const modelCounts = new Map<string, number>();
+    for (const perf of relevantHistory) {
+      const count = modelCounts.get(perf.modelName) || 0;
+      modelCounts.set(perf.modelName, count + 1);
+    }
+
+    let bestModel: string | undefined;
+    let bestCount = 0;
+    for (const [model, count] of modelCounts) {
+      if (count > bestCount) {
+        bestCount = count;
+        bestModel = model;
+      }
+    }
+
+    return bestModel;
+  }
+
+  // ============================================================================
+  // Learning Control
+  // ============================================================================
+
+  setLearningEnabled(enabled: boolean): void {
+    this.learningEnabled = enabled;
+    console.log(`[Router] Learning ${enabled ? 'enabled' : 'disabled'}`);
+  }
+
+  isLearningEnabled(): boolean {
+    return this.learningEnabled;
+  }
+
+  resetPerformanceData(): void {
+    this.performanceHistory = [];
+    this.modelScores.clear();
+    this.savePerformanceData();
+    console.log('[Router] Performance data reset');
+  }
+
+  // ============================================================================
+  // Favorites
+  // ============================================================================
+
+  setFavoriteModels(modelNames: string[]): void {
+    this.favoriteModels = modelNames;
+    console.log(`[Router] Favorites: ${modelNames.join(', ')}`);
+  }
+
+  addFavoriteModel(modelName: string): void {
+    if (!this.favoriteModels.includes(modelName)) {
+      this.favoriteModels.push(modelName);
+      console.log(`[Router] Added favorite: ${modelName}`);
+    }
+  }
+
+  removeFavoriteModel(modelName: string): void {
+    this.favoriteModels = this.favoriteModels.filter(m => m !== modelName);
+    console.log(`[Router] Removed favorite: ${modelName}`);
+  }
+
+  getFavoriteModels(): string[] {
+    return [...this.favoriteModels];
+  }
+
+  // ============================================================================
+  // Import/Export
+  // ============================================================================
+
+  exportPerformanceData(): object {
+    return {
+      history: this.performanceHistory,
+      scores: Object.fromEntries(this.modelScores),
+      weights: this.weights,
+      favorites: this.favoriteModels,
+      exportedAt: new Date().toISOString(),
+    };
+  }
+
+  importPerformanceData(data: {
+    history?: ModelPerformance[];
+    scores?: Record<string, ModelScore>;
+    weights?: Partial<typeof this.weights>;
+    favorites?: string[];
+  }): void {
+    if (data.history) this.performanceHistory = data.history;
+    if (data.scores) this.modelScores = new Map(Object.entries(data.scores));
+    if (data.weights) this.weights = { ...this.weights, ...data.weights };
+    if (data.favorites) this.favoriteModels = data.favorites;
+    console.log('[Router] Performance data imported');
+  }
+
+  // ============================================================================
+  // Private Methods
+  // ============================================================================
+
+  private async ensureInitialized(): Promise<void> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+  }
+
+  private inferRequirements(
+    message: string,
+    options: TaskRequirements
+  ): Required<TaskRequirements> {
+    const lower = message.toLowerCase();
+
+    // Determine task type
+    let type = options.type;
+    if (!type) {
+      if (lower.includes('```') || /\b(function|class|const|let|var|import|export)\b/.test(message)) {
+        type = 'code';
+      } else if (/\b(image|picture|photo|look at|describe)\b/.test(lower)) {
+        type = 'vision';
+      } else if (/\b(analyze|reason|think|step by step|explain why)\b/.test(lower)) {
+        type = 'reasoning';
+      } else if (/\b(embed|embedding|vector|similarity)\b/.test(lower)) {
+        type = 'embedding';
+      } else {
+        type = 'chat';
+      }
+    }
+
+    // Determine complexity
+    let complexity = options.complexity;
+    if (!complexity) {
+      const score = this.assessComplexity(message);
+      if (score < 3) complexity = 'low';
+      else if (score < 6) complexity = 'medium';
+      else complexity = 'high';
+    }
+
+    return {
+      type,
+      complexity,
+      preferSpeed: options.preferSpeed ?? false,
+      preferQuality: options.preferQuality ?? false,
+      requiredCapabilities: options.requiredCapabilities ?? [],
+    };
+  }
+
+  private assessComplexity(message: string): number {
+    let score = 0;
+
+    if (message.length > 500) score += 1;
+    if (message.length > 1000) score += 2;
+    if (message.length > 2000) score += 2;
+
+    const complexKeywords = [
+      'analyze', 'compare', 'evaluate', 'synthesize', 'critique',
+      'explain in detail', 'step by step', 'reasoning', 'complex',
+      'architecture', 'design pattern', 'implement', 'refactor',
+      'debug', 'optimize', 'performance', 'scalability',
+      'trade-off', 'advantages and disadvantages', 'pros and cons',
+    ];
+
+    for (const keyword of complexKeywords) {
+      if (message.toLowerCase().includes(keyword)) {
+        score += 1;
+      }
+    }
+
+    const codeBlocks = message.match(/```[\s\S]*?```/g);
+    if (codeBlocks) {
+      score += Math.min(codeBlocks.length, 2);
+      const totalCodeLength = codeBlocks.reduce((sum, block) => sum + block.length, 0);
+      if (totalCodeLength > 500) score += 1;
+    }
+
+    const questions = message.match(/\?/g);
+    if (questions && questions.length > 2) score += 1;
+
+    return Math.min(score, 10);
+  }
+
+  private scoreModelAdaptive(
+    model: DiscoveredModel,
+    requirements: Required<TaskRequirements>,
+    message: string
+  ): number {
+    let score = 0;
+    const paramCount = model.parameterCount || 0;
+
+    // 1. Complexity Matching
+    const complexity = requirements.complexity;
+    if (complexity === 'low') {
+      if (paramCount <= 8) score += this.weights.complexityMatch;
+      else if (paramCount <= 24) score += this.weights.complexityMatch * 0.5;
+      else if (paramCount > 70) score -= this.weights.complexityMatch * 0.5;
+    } else if (complexity === 'medium') {
+      if (paramCount >= 7 && paramCount <= 32) score += this.weights.complexityMatch;
+      else if (paramCount > 32) score += this.weights.complexityMatch * 0.3;
+    } else if (complexity === 'high') {
+      if (paramCount >= 30) score += this.weights.complexityMatch;
+      else if (paramCount >= 8) score += this.weights.complexityMatch * 0.5;
+    }
+
+    // 2. Specialization bonus
+    if (requirements.type === 'code' && model.specializations.includes('coding')) {
+      score += this.weights.specialization;
+    }
+    if (requirements.type === 'vision' && model.specializations.includes('vision')) {
+      score += this.weights.specialization;
+    }
+    if (requirements.type === 'reasoning' && model.capabilities.reasoning) {
+      score += this.weights.specialization;
+    }
+
+    // 3. Base quality
+    const qualityScores = { basic: 1, good: 2, excellent: 3 };
+    score += qualityScores[model.qualityTier] * this.weights.quality;
+
+    // 4. Speed preference
+    if (requirements.preferSpeed) {
+      const speedScores = { fast: 1, medium: 0.5, slow: 0 };
+      score += speedScores[model.speedTier] * this.weights.speed;
+    }
+
+    // 5. Historical performance
+    if (this.learningEnabled) {
+      const perfScore = this.getPerformanceScore(model.name, requirements.type);
+      score += perfScore * this.weights.performance;
+    }
+
+    // 6. Favorite model bonus
+    if (this.favoriteModels.includes(model.name)) {
+      score += this.weights.favorite;
+    }
+
+    // 7. Context window adequacy
+    const estimatedTokens = message.length / 4;
+    if (model.contextWindow > estimatedTokens * 3) {
+      score += 3;
+    } else if (model.contextWindow > estimatedTokens) {
+      score += 1;
+    } else {
+      score -= 5;
+    }
+
+    // 8. Prefer local over cloud
+    if (!model.isCloud) {
+      score += 2;
+    }
+
+    return score;
+  }
+
+  private getFallbackModels(
+    models: DiscoveredModel[],
+    type?: string
+  ): DiscoveredModel[] {
+    let candidates: DiscoveredModel[];
+
+    if (type === 'vision') {
+      candidates = models.filter(m => m.capabilities.chat && !m.capabilities.embedding);
+      if (candidates.length > 0) {
+        console.warn('[Router] No vision models, falling back to chat');
+      }
+    } else if (type === 'embedding') {
+      candidates = models.filter(m => m.capabilities.embedding);
+    } else {
+      candidates = models.filter(m => m.capabilities.chat);
+    }
+
+    if (candidates.length === 0) {
+      candidates = models;
+    }
+
+    if (candidates.length > 0) {
+      console.warn('[Router] No exact match, using fallback');
+    }
+
+    return candidates;
+  }
+
+  private getSelectionReason(
+    model: DiscoveredModel,
+    requirements: Required<TaskRequirements>
+  ): string {
+    const reasons: string[] = [];
+
+    if (requirements.type === 'code' && model.specializations.includes('coding')) {
+      reasons.push('coding specialist');
+    }
+    if (requirements.complexity === 'low' && model.speedTier === 'fast') {
+      reasons.push('fast for simple task');
+    }
+    if (requirements.complexity === 'high' && model.qualityTier === 'excellent') {
+      reasons.push('high quality for complex task');
+    }
+    if (this.learningEnabled && this.getPerformanceScore(model.name, requirements.type) > 0.7) {
+      reasons.push('good historical performance');
+    }
+
+    return reasons.length > 0 ? reasons.join(', ') : 'balanced choice';
+  }
+
+  private getPerformanceScore(modelName: string, taskType: string): number {
+    const relevantHistory = this.performanceHistory.filter(
+      p => p.modelName === modelName && (p.taskType === taskType || taskType === 'chat')
+    );
+
+    if (relevantHistory.length === 0) return 0.5;
+
+    let totalScore = 0;
+    let count = 0;
+
+    for (const perf of relevantHistory.slice(-20)) {
+      if (perf.userRating) {
+        totalScore += perf.userRating / 5;
+        count++;
+      } else if (perf.success) {
+        totalScore += 0.7;
+        count++;
+      }
+    }
+
+    return count > 0 ? totalScore / count : 0.5;
+  }
+
+  private updateModelScores(): void {
+    const modelStats = new Map<
+      string,
+      { latencies: number[]; ratings: number[]; successes: number; total: number }
+    >();
+
+    for (const perf of this.performanceHistory) {
+      const stats = modelStats.get(perf.modelName) || {
+        latencies: [],
+        ratings: [],
+        successes: 0,
+        total: 0,
+      };
+
+      if (perf.latencyMs > 0) stats.latencies.push(perf.latencyMs);
+      if (perf.userRating) stats.ratings.push(perf.userRating);
+      if (perf.success) stats.successes++;
+      stats.total++;
+
+      modelStats.set(perf.modelName, stats);
+    }
+
+    for (const [modelName, stats] of modelStats) {
+      const avgLatency =
+        stats.latencies.length > 0
+          ? stats.latencies.reduce((a, b) => a + b, 0) / stats.latencies.length
+          : 0;
+
+      const avgQuality =
+        stats.ratings.length > 0
+          ? stats.ratings.reduce((a, b) => a + b, 0) / stats.ratings.length
+          : 3;
+
+      const successRate = stats.total > 0 ? stats.successes / stats.total : 0.5;
+
+      const score =
+        (1 / (1 + avgLatency / 1000)) * 0.3 +
+        (avgQuality / 5) * 0.4 +
+        successRate * 0.3;
+
+      this.modelScores.set(modelName, {
+        modelName,
+        avgLatency,
+        avgQuality,
+        usageCount: stats.total,
+        successRate,
+        score,
+      });
+    }
+  }
+
+  private savePerformanceData(): void {
+    try {
+      const data = JSON.stringify({
+        history: this.performanceHistory,
+        scores: Array.from(this.modelScores.entries()),
+        favorites: this.favoriteModels,
+      });
+      // TODO: Persist to ~/.0xkobold/router-performance.json
+      // For now, in-memory only
+    } catch (err) {
+      console.error('[Router] Failed to save performance data:', err);
+    }
+  }
+
+  private loadPerformanceData(): void {
+    // TODO: Load from ~/.0xkobold/router-performance.json
+    // For now, start fresh
+    this.performanceHistory = [];
+    this.modelScores = new Map();
+  }
+}
+
+// ============================================================================
+// Factory
+// ============================================================================
+
+export async function createRouter(
+  provider: LLMProvider,
+  defaultModel?: string
+): Promise<AdaptiveModelRouter> {
+  const router = new AdaptiveModelRouter(provider, defaultModel);
+  await router.initialize();
+  return router;
+}
+
+export default AdaptiveModelRouter;

@@ -1,11 +1,17 @@
 /**
  * LLM Module - Unified Model Router
- * 
- * Single source of truth for model routing.
- * All routing functionality exported from unified-router.ts
+ *
+ * Two-layer architecture:
+ * - router-core.ts: The brains (scoring, learning, selection)
+ * - router-commands.ts: The plumbing (singleton, commands, status)
+ * - model-discovery.ts: Data source (API fetching, caching)
  */
 
-// Unified router (single source of truth)
+// Router core (brains)
+export { AdaptiveModelRouter, createRouter } from './router-core';
+export type { TaskRequirements, ModelPerformance, ModelScore } from './router-core';
+
+// Router commands (plumbing)
 export {
   getRouter,
   isRouterReady,
@@ -15,19 +21,23 @@ export {
   handleModelsCommand,
   handleRateCommand,
   getFooterStatus,
-} from './unified-router';
-
-// Model status (shared state)
-export {
+  // Status state
   setCurrentModel,
   getCurrentModel,
   clearCurrentModel,
-  type ModelStatus,
-} from './model-status';
+} from './router-commands';
+export type { ModelStatus } from './router-commands';
+
+// Model discovery
+export {
+  getModelDiscoveryService,
+  ModelDiscoveryService,
+} from './model-discovery';
+export type { DiscoveredModel, OllamaModelInfo } from './model-discovery';
 
 // Types
 export * from './types';
 
-// Legacy exports (for backward compatibility)
+// Providers (legacy exports)
 export { OllamaProvider, createOllamaProvider, getOllamaProvider } from './ollama';
 export { AnthropicProvider } from './anthropic';

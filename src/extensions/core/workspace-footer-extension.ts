@@ -10,7 +10,7 @@ import { Type } from "@sinclair/typebox";
 import { homedir } from "os";
 import { resolve } from "path";
 import { getDraconicLairSystem } from "../../lair/DraconicLairSystem";
-import { getFooterStatus, getRouter } from "../../llm/unified-router";
+import { getFooterStatus, getRouter } from "../../llm";
 
 interface WorkspaceState {
   isLocal: boolean;
