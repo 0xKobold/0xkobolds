@@ -304,10 +304,17 @@ DO Server → Raspberry Pi:
 4. Identified memory consolidation as top priority
 5. User will be AFK for several hours
 6. Target: Raspberry Pi deployment tomorrow
+7. **FIXED: Tiered memory extraction not running**
+   - Root cause: `extractItems()` was never called after `ingestResource()`
+   - Event `memory.resource_ingested` was emitted with no listener
+   - Fix: Call `extractItems()` and `organizeIntoCategories()` directly in `perennial-memory-extension.ts`
+   - Added commands: `/memory-tiered` (status) and `/memory-extract` (manual extraction)
+   - Installed `llama3.2` model for local extraction
+   - 15 unprocessed resources ready for extraction
 
 ### Questions for Next Session
 
-1. Should learning-extension also handle planning OR keep plans separate?
+1. ~~Should learning-extension also handle planning OR keep plans separate?~~ (discussed - keep architecture as is)
 2. What's the retention policy for memory_stream vs sessions?
 3. Do we need bidirectional sync between DO and Pi?
 

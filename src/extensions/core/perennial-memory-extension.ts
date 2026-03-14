@@ -398,12 +398,25 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
         };
       }
 
-      // Phase 2: Tiered Memory - Ingest resource
+      // Phase 2: Tiered Memory - Ingest resource and extract items
       const sessionId = entry.sessionId || "orphan";
       try {
-        await tieredMemory.ingestResource(entry.content, sessionId);
+        const resource = await tieredMemory.ingestResource(entry.content, sessionId);
+
+        // IMMEDIATE EXTRACTION: Extract atomic facts from the resource
+        // This was missing - the event was emitted but never processed
+        if (ollamaAvailable) {
+          const items = await tieredMemory.extractItems(resource.id);
+          console.log(`[Perennial Memory] Extracted ${items.length} items from resource ${resource.id.slice(0, 8)}`);
+
+          // Organize extracted items into categories
+          if (items.length > 0) {
+            await tieredMemory.organizeIntoCategories(items);
+            console.log(`[Perennial Memory] Organized ${items.length} items into categories`);
+          }
+        }
       } catch (err) {
-        console.warn("[Perennial Memory] Tiered ingest failed:", err);
+        console.warn("[Perennial Memory] Tiered ingest/extract failed:", err);
       }
 
       // Get embedding
@@ -1092,6 +1105,81 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
 
       const text = rows.map((r, i) => `${i + 1}. ${r.conflict_type}: "${r.item_a_content?.slice(0, 40)}..." vs "${r.item_b_content?.slice(0, 40)}..."`).join("\n\n");
       ctx.ui.notify(`⚡ ${rows.length} Conflicts:\n\n${text}`, "warning");
+    },
+  });
+
+  // ═════════════════════════════════════════════════════════════════
+  // TIERED MEMORY STATUS & EXTRACTION
+  // ═════════════════════════════════════════════════════════════════
+
+  pi.registerCommand("memory-tiered", {
+    description: "Show tiered memory status: /memory-tiered",
+    handler: async (_args: string, ctx: ExtensionContext) => {
+      const resources = db.query(`SELECT COUNT(*) as n FROM memory_resources`).get() as { n: number } | undefined;
+      const processed = db.query(`SELECT COUNT(*) as n FROM memory_resources WHERE processed = 1`).get() as { n: number } | undefined;
+      const items = db.query(`SELECT COUNT(*) as n FROM memory_items`).get() as { n: number } | undefined;
+      const categories = db.query(`SELECT COUNT(*) as n FROM memory_categories`).get() as { n: number } | undefined;
+
+      const status = [
+        `📊 TIERED MEMORY STATUS`,
+        ``,
+        `Layer 1: Resources (Raw Content)`,
+        `  Total: ${resources?.n || 0}`,
+        `  Processed: ${processed?.n || 0}`,
+        `  Pending: ${(resources?.n || 0) - (processed?.n || 0)}`,
+        ``,
+        `Layer 2: Items (Atomic Facts)`,
+        `  Total: ${items?.n || 0}`,
+        ``,
+        `Layer 3: Categories (Summaries)`,
+        `  Total: ${categories?.n || 0}`,
+        ``,
+        `Use: /memory-extract to process pending resources`,
+      ].join("\n");
+
+      ctx.ui.notify(status, "info");
+    },
+  });
+
+  pi.registerCommand("memory-extract", {
+    description: "Extract items from unprocessed resources: /memory-extract",
+    handler: async (_args: string, ctx: ExtensionContext) => {
+      if (!ollamaAvailable) {
+        ctx.ui.notify("❌ Ollama not available - extraction requires LLM", "error");
+        return;
+      }
+
+      // Get unprocessed resources
+      const unprocessed = db.query(`SELECT id, raw_content FROM memory_resources WHERE processed = 0`).all() as any[];
+      
+      if (unprocessed.length === 0) {
+        ctx.ui.notify("✅ All resources processed", "info");
+        return;
+      }
+
+      ctx.ui.notify(`🔄 Processing ${unprocessed.length} resources...`, "info");
+
+      let totalItems = 0;
+      let errors = 0;
+
+      for (const resource of unprocessed) {
+        try {
+          const items = await tieredMemory.extractItems(resource.id);
+          totalItems += items.length;
+
+          if (items.length > 0) {
+            await tieredMemory.organizeIntoCategories(items);
+          }
+        } catch (err) {
+          errors++;
+          console.warn(`[memory-extract] Failed to process ${resource.id}:`, err);
+        }
+      }
+
+      ctx.ui.notify(
+        `✅ Extracted ${totalItems} items from ${unprocessed.length - errors} resources${errors ? ` (${errors} errors)` : ""}`,
+        "info"
+      );
     },
   });
 
