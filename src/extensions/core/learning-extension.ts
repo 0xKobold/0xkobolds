@@ -6,6 +6,8 @@
  * 
  * Renamed from generative-agents-extension to reflect reflection + planning focus.
  * 
+ * Phase 6 Update: Now uses session_events from session-store for memory stream.
+ * 
  * Requires: perennial-memory-extension (provides semantic storage)
  */
 
@@ -15,8 +17,10 @@ import { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
 import * as path from "node:path";
 import { homedir } from "node:os";
+import { getSessionStore } from "../../memory/session-store";
+import type { SessionEvent } from "../../memory/session-store";
 
-// Keep original database path for backward compatibility
+// Keep original database path for reflections and plans (agent-scoped)
 const LEARNING_DIR = path.join(homedir(), ".0xkobold", "generative");
 const DB_PATH = path.join(LEARNING_DIR, "agents.db");
 const EMBEDDING_DIM = 768;
@@ -25,6 +29,10 @@ const EMBEDDING_DIM = 768;
 // Types
 // ============================================================================
 
+/**
+ * Memory entry (now stored in session_events)
+ * @deprecated Use SessionEvent from session-store
+ */
 interface MemoryStreamEntry {
   id: string;
   timestamp: string;
@@ -83,6 +91,9 @@ function initLearningDB(): Database {
   const db = new Database(DB_PATH);
   db.exec("PRAGMA journal_mode = WAL;");
   
+  // Note: memory_stream table moved to session_events (Phase 6)
+  // This database now only stores agent state, reflections, and plans
+  
   db.exec(`
     CREATE TABLE IF NOT EXISTS agents (
       id TEXT PRIMARY KEY,
@@ -94,21 +105,6 @@ function initLearningDB(): Database {
       last_reflection_at TEXT,
       memory_count INTEGER DEFAULT 0,
       created_at TEXT NOT NULL
-    );
-    
-    CREATE TABLE IF NOT EXISTS memory_stream (
-      id TEXT PRIMARY KEY,
-      timestamp TEXT NOT NULL,
-      content TEXT NOT NULL,
-      type TEXT NOT NULL, -- observation, thought, action, reflection
-      importance REAL NOT NULL,
-      agent_id TEXT NOT NULL,
-      session_id TEXT,
-      location TEXT,
-      people TEXT, -- JSON array
-      embedding BLOB, -- 768 floats
-      metadata TEXT, -- JSON
-      FOREIGN KEY (agent_id) REFERENCES agents(id)
     );
     
     CREATE TABLE IF NOT EXISTS reflections (
@@ -139,9 +135,6 @@ function initLearningDB(): Database {
       FOREIGN KEY (parent_plan_id) REFERENCES plans(id)
     );
     
-    CREATE INDEX IF NOT EXISTS idx_memory_agent ON memory_stream(agent_id);
-    CREATE INDEX IF NOT EXISTS idx_memory_timestamp ON memory_stream(timestamp);
-    CREATE INDEX IF NOT EXISTS idx_memory_type ON memory_stream(type);
     CREATE INDEX IF NOT EXISTS idx_reflections_agent ON reflections(agent_id);
     CREATE INDEX IF NOT EXISTS idx_plans_agent ON plans(agent_id);
     CREATE INDEX IF NOT EXISTS idx_plans_status ON plans(status);
@@ -188,6 +181,8 @@ function calculateImportance(content: string): number {
 // ============================================================================
 
 class LearningAgent {
+  private sessionStore = getSessionStore();
+  
   constructor(
     public id: string,
     public name: string,
@@ -196,43 +191,27 @@ class LearningAgent {
     private llm: LLMInterface
   ) {}
   
-  // Add observation to memory stream
-  async observe(content: string, metadata?: { location?: string; people?: string[]; sessionId?: string }): Promise<MemoryStreamEntry> {
+  // Add observation to session events
+  async observe(content: string, metadata?: { location?: string; people?: string[]; sessionId?: string }): Promise<SessionEvent> {
     const importance = calculateImportance(content);
-    const entry: MemoryStreamEntry = {
-      id: randomUUID(),
-      timestamp: new Date().toISOString(),
-      content,
+    
+    // Add to session events (Phase 6: consolidated storage)
+    const event = this.sessionStore.events.addEvent({
+      sessionId: metadata?.sessionId || `agent-${this.id}`,
       type: "observation",
+      content,
       importance,
       agentId: this.id,
       location: metadata?.location,
       people: metadata?.people,
-      sessionId: metadata?.sessionId,
-    };
+    });
     
-    // Try to get embedding from perennial memory (via Ollama)
+    // Try to get embedding for semantic search
     try {
       const embedding = await this.llm.getEmbedding(content);
-      entry.embedding = embedding;
+      // Note: SessionEventStore doesn't store embedding in addEvent
+      // For now, embeddings are computed on-demand during search
     } catch {}
-    
-    this.db.query(`
-      INSERT INTO memory_stream (id, timestamp, content, type, importance, agent_id, session_id, location, people, embedding, metadata)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      entry.id,
-      entry.timestamp,
-      entry.content,
-      entry.type,
-      entry.importance,
-      entry.agentId,
-      entry.sessionId || null,
-      entry.location || null,
-      entry.people ? JSON.stringify(entry.people) : null,
-      entry.embedding ? Buffer.from(new Float32Array(entry.embedding).buffer) : null,
-      metadata ? JSON.stringify(metadata) : null
-    );
     
     // Update observation count
     this.db.query(`UPDATE agents SET observation_count = observation_count + 1 WHERE id = ?`).run(this.id);
@@ -243,87 +222,63 @@ class LearningAgent {
       await this.generateReflections();
     }
     
-    return entry;
+    return event;
   }
   
   // Add thought (internal)
-  async think(content: string): Promise<MemoryStreamEntry> {
+  async think(content: string, sessionId?: string): Promise<SessionEvent> {
     const importance = calculateImportance(content);
-    const entry: MemoryStreamEntry = {
-      id: randomUUID(),
-      timestamp: new Date().toISOString(),
-      content,
+    
+    const event = this.sessionStore.events.addEvent({
+      sessionId: sessionId || `agent-${this.id}`,
       type: "thought",
-      importance,
-      agentId: this.id,
-    };
-    
-    this.db.query(`
-      INSERT INTO memory_stream (id, timestamp, content, type, importance, agent_id)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(entry.id, entry.timestamp, entry.content, entry.type, entry.importance, entry.agentId);
-    
-    return entry;
-  }
-  
-  // Add action to memory stream
-  async act(content: string): Promise<MemoryStreamEntry> {
-    const importance = calculateImportance(content);
-    const entry: MemoryStreamEntry = {
-      id: randomUUID(),
-      timestamp: new Date().toISOString(),
       content,
-      type: "action",
       importance,
       agentId: this.id,
-    };
+    });
     
-    this.db.query(`
-      INSERT INTO memory_stream (id, timestamp, content, type, importance, agent_id)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(entry.id, entry.timestamp, entry.content, entry.type, entry.importance, entry.agentId);
-    
-    return entry;
+    return event;
   }
   
-  // Retrieve relevant memories
-  async retrieveMemories(context: string, k: number = 10): Promise<MemoryStreamEntry[]> {
-    const now = Date.now();
+  // Add action to session events
+  async act(content: string, sessionId?: string): Promise<SessionEvent> {
+    const importance = calculateImportance(content);
     
-    // Get recent memories with importance weighting
-    const rows = this.db.query(`
-      SELECT id, timestamp, content, type, importance, location, people
-      FROM memory_stream
-      WHERE agent_id = ?
-      ORDER BY timestamp DESC
-      LIMIT 200
-    `).all(this.id) as any[];
+    const event = this.sessionStore.events.addEvent({
+      sessionId: sessionId || `agent-${this.id}`,
+      type: "action",
+      content,
+      importance,
+      agentId: this.id,
+    });
+    
+    return event;
+  }
+  
+  // Retrieve relevant memories from session events
+  async retrieveMemories(context: string, k: number = 10, sessionId?: string): Promise<SessionEvent[]> {
+    const now = Date.now();
+    const currentSession = sessionId || `agent-${this.id}`;
+    
+    // Get recent events from session store
+    const events = this.sessionStore.events.getRecentEvents(currentSession, 200);
     
     // Calculate scores (recency + importance + relevance)
-    const scored = rows.map(row => {
-      const hoursAgo = (now - new Date(row.timestamp).getTime()) / (1000 * 60 * 60);
+    const scored = events.map(event => {
+      const hoursAgo = (now - event.timestamp) / (1000 * 60 * 60);
       const recency = Math.exp(-0.005 * hoursAgo); // Decay
-      const relevance = this.calculateRelevance(row.content, context);
+      const relevance = this.calculateRelevance(event.content, context);
       
       return {
-        memory: {
-          id: row.id,
-          timestamp: row.timestamp,
-          content: row.content,
-          type: row.type,
-          importance: row.importance,
-          agentId: this.id,
-          location: row.location,
-          people: row.people ? JSON.parse(row.people) : undefined,
-        } as MemoryStreamEntry,
-        score: (recency * 0.3) + (row.importance / 10 * 0.3) + (relevance * 0.4),
+        event,
+        score: (recency * 0.3) + (event.importance / 10 * 0.3) + (relevance * 0.4),
       };
     });
     
     return scored
       .sort((a, b) => b.score - a.score)
       .slice(0, k)
-      .map(s => s.memory);
+      .map(s => s.event);
   }
   
   private calculateRelevance(memoryContent: string, context: string): number {
@@ -334,21 +289,20 @@ class LearningAgent {
   }
   
   // Generate reflections from recent memories
-  async generateReflections(): Promise<Reflection[]> {
-    const recentMemories = this.db.query(`
-      SELECT id, content, timestamp, type FROM memory_stream
-      WHERE agent_id = ? AND type IN ('observation', 'thought', 'action')
-      ORDER BY timestamp DESC
-      LIMIT 100
-    `).all(this.id) as any[];
+  async generateReflections(sessionId?: string): Promise<Reflection[]> {
+    const currentSession = sessionId || `agent-${this.id}`;
     
-    if (recentMemories.length < 10) return []; // Need enough context
+    // Get recent events from session store
+    const events = this.sessionStore.events.getRecentEvents(currentSession, 100)
+      .filter(e => e.type === 'observation' || e.type === 'thought' || e.type === 'action');
+    
+    if (events.length < 10) return []; // Need enough context
     
     const prompt = `
 You are analyzing memories of an AI agent named "${this.name}" with traits: ${this.traits.join(', ')}.
 
 Recent memories:
-${recentMemories.slice(0, 50).map(m => `- ${m.type}: ${m.content}`).join('\n')}
+${events.slice(0, 50).map(e => `- ${e.type}: ${e.content}`).join('\n')}
 
 Generate 3-5 high-level insights or patterns about this agent's behavior, work patterns, or learning.
 For each insight:
@@ -361,7 +315,7 @@ Evidence: [comma-separated memory IDs]
 ---`;
     
     const response = await this.llm.generate(prompt);
-    const insights = this.parseReflections(response, recentMemories.map(m => m.id));
+    const insights = this.parseReflections(response, events.map(e => e.id));
     
     const reflections: Reflection[] = [];
     for (const insight of insights) {
@@ -781,16 +735,15 @@ export default async function learningExtension(pi: ExtensionAPI) {
   
   // COMMANDS
   pi.registerCommand("agent-memories", {
-    description: "Show recent memory stream",
+    description: "Show recent session events",
     handler: async (_args: string, ctx: ExtensionContext) => {
       const agent = getShalomAgent(ctx);
-      const memories = db.query(`
-        SELECT timestamp, content, type, importance FROM memory_stream
-        WHERE agent_id = ? ORDER BY timestamp DESC LIMIT 10
-      `).all(agent.id) as any[];
+      const sessionId = ctx.sessionManager?.getSessionId?.() || `agent-${agent.id}`;
+      const sessionStore = getSessionStore();
+      const events = sessionStore.events.getRecentEvents(sessionId, 10);
       
-      ctx.ui.notify(memories.map((m, i) => 
-        `${i + 1}. [${m.type}] ${m.content.slice(0, 40)}... (${m.importance}/10)`
+      ctx.ui.notify(events.map((e, i) => 
+        `${i + 1}. [${e.type}] ${e.content.slice(0, 40)}... (${e.importance}/10)`
       ).join("\n") || "No memories yet", "info");
     },
   });
@@ -833,14 +786,16 @@ export default async function learningExtension(pi: ExtensionAPI) {
         SELECT observation_count, last_reflection_at FROM agents WHERE id = ?
       `).get(agent.id) as any;
       
-      const memoryCount = db.query(`SELECT COUNT(*) as count FROM memory_stream WHERE agent_id = ?`).get(agent.id) as { count: number };
+      const sessionId = `agent-${agent.id}`;
+      const sessionStore = getSessionStore();
+      const events = sessionStore.events.getRecentEvents(sessionId, 1000);
       const reflectionCount = db.query(`SELECT COUNT(*) as count FROM reflections WHERE agent_id = ?`).get(agent.id) as { count: number };
       
       ctx.ui.notify(
         `📚 Agent: ${agent.name}\n` +
         `   Traits: ${agent.traits.join(', ')}\n` +
         `   Observations: ${stats?.observation_count || 0}\n` +
-        `   Memories: ${memoryCount.count}\n` +
+        `   Memory events: ${events.length}\n` +
         `   Reflections: ${reflectionCount.count}\n` +
         `   Last reflection: ${stats?.last_reflection_at ? new Date(stats.last_reflection_at).toLocaleDateString() : 'Never'}`,
         "info"

@@ -52,7 +52,7 @@ Consolidate and streamline 0xKobold's architecture following the router consolid
 | Test nudge scheduling | ✅ DONE | Claude | 3 nudges created |
 | Test dialectic reasoning with LLM | ✅ DONE | Claude | Works with Ollama/llama3.2 |
 
-### Phase 1: Memory Consolidation (IN PROGRESS)
+### Phase 1: Memory Consolidation (NEAR COMPLETE)
 
 | Task | Status | Assignee | Notes |
 |------|--------|----------|-------|
@@ -66,9 +66,9 @@ Consolidate and streamline 0xKobold's architecture following the router consolid
 | Add session-events tests | ✅ DONE | Claude | 9 tests pass |
 | Analyze memory_stream + session-store overlap | ✅ DONE | Claude | Analysis doc created |
 | Design unified session schema | ✅ DONE | Claude | session_events table |
-| Update learning-extension to use session_events | ⬜ TODO | - | Phase D |
-| Remove memory_stream from learning-extension | ⬜ TODO | - | After migration |
-| Test unified memory system | ⬌ PENDING | - | Build passes, 2 test cleanup issues |
+| Update learning-extension to use session_events | ✅ DONE | Claude | Uses SessionEventStore |
+| Remove memory_stream from learning-extension | ✅ DONE | Claude | Schema updated, no memory_stream |
+| Test unified memory system | ✅ DONE | - | 27 tests pass, build passes |
 
 ### Phase 2: Safety Extension Consolidation
 
