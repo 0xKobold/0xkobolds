@@ -59,10 +59,15 @@ Consolidate and streamline 0xKobold's architecture following the router consolid
 | Rename generative-agents to learning-extension | ✅ DONE | Claude | Completed |
 | Update imports and references | ✅ DONE | Claude | pi-config, event-bus, docs |
 | Rename test files | ✅ DONE | Claude | Unit, integration, e2e |
-| Analyze memory_stream + session-store overlap | ⬜ TODO | - | |
-| Design unified session schema | ⬜ TODO | - | Merge conversation + memory_stream |
-| Create migration script for tables | ⬜ TODO | - | Preserve existing data |
-| Update references to new extension | ✅ DONE | Claude | All refs updated |
+| Add session_events table to session-store | ✅ DONE | Claude | Phase 6 schema |
+| Create SessionEventStore interface | ✅ DONE | Claude | addEvent, getEvents, etc. |
+| Create migration script | ✅ DONE | Claude | migrate-memory-stream.ts |
+| Create verification script | ✅ DONE | Claude | verify-migration.ts |
+| Add session-events tests | ✅ DONE | Claude | 9 tests pass |
+| Analyze memory_stream + session-store overlap | ✅ DONE | Claude | Analysis doc created |
+| Design unified session schema | ✅ DONE | Claude | session_events table |
+| Update learning-extension to use session_events | ⬜ TODO | - | Phase D |
+| Remove memory_stream from learning-extension | ⬜ TODO | - | After migration |
 | Test unified memory system | ⬌ PENDING | - | Build passes, 2 test cleanup issues |
 
 ### Phase 2: Safety Extension Consolidation
