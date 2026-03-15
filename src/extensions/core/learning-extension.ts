@@ -1,8 +1,10 @@
 /**
- * 🧠 Generative Agents Extension
+ * 📚 Learning Extension
  * 
  * Implements Stanford HCI research: "Generative Agents: Interactive Simulacra of Human Behavior"
  * Adds memory stream, reflection, and planning to 0xKobold agents.
+ * 
+ * Renamed from generative-agents-extension to reflect reflection + planning focus.
  * 
  * Requires: perennial-memory-extension (provides semantic storage)
  */
@@ -14,8 +16,9 @@ import { randomUUID } from "node:crypto";
 import * as path from "node:path";
 import { homedir } from "node:os";
 
-const GENERATIVE_DIR = path.join(homedir(), ".0xkobold", "generative");
-const DB_PATH = path.join(GENERATIVE_DIR, "agents.db");
+// Keep original database path for backward compatibility
+const LEARNING_DIR = path.join(homedir(), ".0xkobold", "generative");
+const DB_PATH = path.join(LEARNING_DIR, "agents.db");
 const EMBEDDING_DIM = 768;
 
 // ============================================================================
@@ -76,7 +79,7 @@ interface AgentState {
 // Database
 // ============================================================================
 
-function initGenerativeDB(): Database {
+function initLearningDB(): Database {
   const db = new Database(DB_PATH);
   db.exec("PRAGMA journal_mode = WAL;");
   
@@ -181,10 +184,10 @@ function calculateImportance(content: string): number {
 }
 
 // ============================================================================
-// Generative Agent Implementation
+// Learning Agent Implementation
 // ============================================================================
 
-class GenerativeAgent {
+class LearningAgent {
   constructor(
     public id: string,
     public name: string,
@@ -597,19 +600,19 @@ function createLLMInterface(ollamaUrl: string): LLMInterface {
 // Extension Export
 // ============================================================================
 
-export default async function generativeAgentsExtension(pi: ExtensionAPI) {
-  console.log("[🧠 Generative Agents] Loading...");
+export default async function learningExtension(pi: ExtensionAPI) {
+  console.log("[📚 Learning] Loading...");
   
-  const db = initGenerativeDB();
+  const db = initLearningDB();
   const config = (pi as any).config || {};
   const ollamaUrl = config.ollama?.url || "http://localhost:11434";
   const llm = createLLMInterface(ollamaUrl);
   
-  // Track active generative agents
-  const agents = new Map<string, GenerativeAgent>();
+  // Track active learning agents
+  const agents = new Map<string, LearningAgent>();
   
   // Get or create Shalom agent
-  function getShalomAgent(ctx: ExtensionContext): GenerativeAgent {
+  function getShalomAgent(ctx: ExtensionContext): LearningAgent {
     const existing = agents.get("shalom");
     if (existing) return existing;
     
@@ -630,15 +633,15 @@ export default async function generativeAgentsExtension(pi: ExtensionAPI) {
       `).run(agentId, JSON.stringify(traits), new Date().toISOString());
     }
     
-    const agent = new GenerativeAgent(agentId, "Shalom", traits, db, llm);
+    const agent = new LearningAgent(agentId, "Shalom", traits, db, llm);
     agents.set("shalom", agent);
     return agent;
   }
   
   // TOOL: Observe
   pi.registerTool({
-    name: "generative_observe",
-    label: "🧠 Observe (Memory Stream)",
+    name: "learning_observe",
+    label: "📚 Observe (Memory Stream)",
     description: "Add observation to agent's memory stream. Triggers reflection every 20 observations.",
     parameters: Type.Object({
       content: Type.String({ description: "What the agent observed" }),
@@ -649,7 +652,7 @@ export default async function generativeAgentsExtension(pi: ExtensionAPI) {
       const entry = await agent.observe(params.content as string, { sessionId: ctx.sessionManager?.getSessionId?.() });
       
       return {
-        content: [{ type: "text" as const, text: `🧠 Observed: "${entry.content.slice(0, 60)}..." (${entry.importance}/10 importance)` }],
+        content: [{ type: "text" as const, text: `📚 Observed: "${entry.content.slice(0, 60)}..." (${entry.importance}/10 importance)` }],
         details: entry,
       };
     },
@@ -657,8 +660,8 @@ export default async function generativeAgentsExtension(pi: ExtensionAPI) {
   
   // TOOL: Think
   pi.registerTool({
-    name: "generative_think",
-    label: "🧠 Think (Internal)",
+    name: "learning_think",
+    label: "📚 Think (Internal)",
     description: "Add internal thought to memory stream.",
     parameters: Type.Object({
       content: Type.String({ description: "Agent's thought" }),
@@ -676,8 +679,8 @@ export default async function generativeAgentsExtension(pi: ExtensionAPI) {
   
   // TOOL: Retrieve Memories
   pi.registerTool({
-    name: "generative_recall",
-    label: "🧠 Recall Memories",
+    name: "learning_recall",
+    label: "📚 Recall Memories",
     description: "Retrieve relevant memories based on context. Combines recency, importance, and relevance.",
     parameters: Type.Object({
       context: Type.String({ description: "Current context to find relevant memories" }),
@@ -700,8 +703,8 @@ export default async function generativeAgentsExtension(pi: ExtensionAPI) {
   
   // TOOL: Reflect
   pi.registerTool({
-    name: "generative_reflect",
-    label: "🧠 Generate Reflections",
+    name: "learning_reflect",
+    label: "📚 Generate Reflections",
     description: "Synthesize memories into higher-level insights. Run periodically or after significant events.",
     parameters: Type.Object({}),
     async execute(_id: string, _params: Record<string, unknown>, _signal: any, _onUpdate: any, ctx: ExtensionContext): Promise<AgentToolResult<unknown>> {
@@ -721,8 +724,8 @@ export default async function generativeAgentsExtension(pi: ExtensionAPI) {
   
   // TOOL: Plan
   pi.registerTool({
-    name: "generative_plan",
-    label: "🧠 Create Plan",
+    name: "learning_plan",
+    label: "📚 Create Plan",
     description: "Create daily plan based on memories and traits.",
     parameters: Type.Object({
       type: Type.String({ description: "Plan type: daily, action, project" }),
@@ -759,8 +762,8 @@ export default async function generativeAgentsExtension(pi: ExtensionAPI) {
   
   // TOOL: Decide
   pi.registerTool({
-    name: "generative_decide",
-    label: "🧠 Decide Action",
+    name: "learning_decide",
+    label: "📚 Decide Action",
     description: "Use memories and reflections to decide next action. Returns action + reasoning.",
     parameters: Type.Object({
       context: Type.String({ description: "Current situation context" }),
@@ -834,7 +837,7 @@ export default async function generativeAgentsExtension(pi: ExtensionAPI) {
       const reflectionCount = db.query(`SELECT COUNT(*) as count FROM reflections WHERE agent_id = ?`).get(agent.id) as { count: number };
       
       ctx.ui.notify(
-        `🧠 Agent: ${agent.name}\n` +
+        `📚 Agent: ${agent.name}\n` +
         `   Traits: ${agent.traits.join(', ')}\n` +
         `   Observations: ${stats?.observation_count || 0}\n` +
         `   Memories: ${memoryCount.count}\n` +
@@ -882,9 +885,9 @@ export default async function generativeAgentsExtension(pi: ExtensionAPI) {
     }
   });
 
-  console.log("[🧠 Generative Agents] Ready");
-  console.log("  Tools: generative_observe, generative_think, generative_recall");
-  console.log("         generative_reflect, generative_plan, generative_decide");
+  console.log("[📚 Learning] Ready");
+  console.log("  Tools: learning_observe, learning_think, learning_recall");
+  console.log("         learning_reflect, learning_plan, learning_decide");
   console.log("  Commands: /agent-memories, /agent-reflections, /agent-plans, /agent-status");
   console.log("  Auto-observation: input, tool_execution_end, agent_end");
 }

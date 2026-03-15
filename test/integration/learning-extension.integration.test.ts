@@ -1,5 +1,5 @@
 /**
- * 🧠 Generative Agents Extension - Integration Tests
+ * 🧠 Learning Extension Extension - Integration Tests
  *
  * Tests database persistence, memory operations, and reflection triggers
  */
@@ -22,7 +22,7 @@ interface TestContext {
   sessionId: string;
 }
 
-describe("🧠 Generative Agents Integration Tests", () => {
+describe("🧠 Learning Extension Integration Tests", () => {
   const ctx: TestContext = { db: null as any, agentId: "", sessionId: "" };
 
   beforeEach(() => {

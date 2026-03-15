@@ -179,8 +179,7 @@ const SCHEMA_V1 = `
     created_at TEXT NOT NULL,
     run_at TEXT,
     completed_at TEXT,
-    result TEXT,
-    FOREIGN KEY (peer_id) REFERENCES peers(id)
+    result TEXT
   );
   CREATE INDEX IF NOT EXISTS idx_nudges_pending ON nudges(completed_at) WHERE completed_at IS NULL;
 `;
@@ -195,9 +194,29 @@ export class DialecticStore {
   constructor(db?: Database) {
     if (db) {
       this.db = db;
+      // Initialize schema for provided databases (including :memory:)
+      this.initSchema();
     } else {
       this.db = this.initDatabase();
     }
+  }
+
+  /**
+   * Initialize schema on an existing database
+   */
+  private initSchema(): void {
+    // Check if schema exists
+    try {
+      const result = this.db.query("SELECT value FROM _metadata WHERE key = 'schema_version'").get() as { value: string } | undefined;
+      if (result?.value === "1") {
+        return; // Schema already initialized
+      }
+    } catch {
+      // Schema doesn't exist, create it
+    }
+
+    console.log("[DialecticStore] Initializing schema v1");
+    this.db.exec(SCHEMA_V1);
   }
 
   private initDatabase(): Database {

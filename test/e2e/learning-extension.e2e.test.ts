@@ -1,5 +1,5 @@
 /**
- * 🧠 Generative Agents Extension - E2E Tests
+ * 🧠 Learning Extension Extension - E2E Tests
  *
  * End-to-end testing of the full agent lifecycle:
  * observe → think → act → reflect → plan → decide
@@ -17,7 +17,7 @@ const TEST_DB_DIR = path.join(os.tmpdir(), `generative-e2e-${Date.now()}`);
 // Ensure test directory exists
 await fs.mkdir(TEST_DB_DIR, { recursive: true });
 
-describe("🧠 Generative Agents E2E Tests", () => {
+describe("🧠 Learning Extension E2E Tests", () => {
   let db: Database;
   let agentId: string;
 

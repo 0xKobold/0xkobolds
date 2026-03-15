@@ -263,7 +263,7 @@ async function dispatchAgentRunFromGateway({
       );
       
       // Add generative observation
-      eventBus.emit("generative.observe_session", {
+      eventBus.emit("learning.observe_session", {
         sessionKey: memoryContext.sessionKey,
         content: `User: "${message.slice(0, 100)}..."\nAI: "${result.slice(0, 100)}..."`,
         type: "observation",

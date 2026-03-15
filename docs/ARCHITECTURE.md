@@ -19,7 +19,7 @@
 │ gateway (WS:18789)  │ │  │ model-discovery│  │ │  │perennial-memory│  │
 │ draconic-systems    │ │  │     (API)      │  │ │  │  (long-term)   │  │
 │  • lair (workspaces)│ │  └───────┬────────┘  │ │  ├────────────────┤  │
-│  • hoard (snippets) │ │          │           │ │  │generative-agents│ │
+│  • hoard (snippets) │ │          │           │ │  │learning-extension│ │
 │  • safety           │ │  ┌───────▼────────┐  │ │  │ (stream+reflect)│  │
 │ sessions            │ │  │  router-core   │  │ │  ├────────────────┤  │
 │ (unified)           │ │  │(scoring+learn)  │  │ │  │ session-store  │  │
@@ -79,7 +79,7 @@
 | Module | Purpose |
 |--------|---------|
 | `perennial-memory` | Long-term semantic memory with embeddings |
-| `generative-agents` | Stanford-style memory stream + reflection |
+| `learning-extension` | Stanford-style memory stream + reflection |
 | `session-store` | Conversation persistence (SQLite) |
 
 ### 5. Extension System
@@ -103,7 +103,7 @@
 
 **Integrations:**
 - `perennial-memory-extension` - Long-term memory
-- `generative-agents-extension` - Memory stream
+- `learning-extension` - Memory stream
 - `obsidian-bridge` - Obsidian vault sync
 
 ## Data Flow

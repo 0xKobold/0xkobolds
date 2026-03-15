@@ -279,10 +279,21 @@ export class NudgeEngine {
   }
 
   private async executeSkillCreation(pattern: string): Promise<string> {
-    // TODO: Integrate with skill auto-creator
-    // For now, just log the suggestion
-    console.log(`[NudgeEngine] Suggested skill creation for pattern: ${pattern}`);
-    return `Suggested skill creation for pattern: ${pattern}`;
+    // Import skill creation functions
+    const { autoCreateSkills } = await import("./skill-creation");
+
+    // Get observations from store for pattern detection
+    const patterns = await autoCreateSkills(this.store, "user:default", {
+      minOccurrences: 3,
+      minConfidence: 0.7,
+      dryRun: false,
+    });
+
+    if (patterns.created.length > 0) {
+      return `Created ${patterns.created.length} skills from detected patterns:\n${patterns.created.map(p => `  - ${p}`).join("\n")}`;
+    }
+
+    return `Pattern detected: ${pattern}. No skills created (insufficient pattern data or all patterns below threshold).`;
   }
 
   private async executeSkillRefinement(skillId: string): Promise<string> {

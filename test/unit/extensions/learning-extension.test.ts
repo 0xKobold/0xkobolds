@@ -1,5 +1,5 @@
 /**
- * 🧠 Generative Agents Extension - Unit Tests
+ * 🧠 Learning Extension Extension - Unit Tests
  *
  * Tests for core logic: importance scoring, memory retrieval, reflection parsing
  */
@@ -20,7 +20,7 @@ const TEST_DB_PATH = path.join(
 // Importance Scoring Tests (Core Logic)
 // ============================================================================
 
-describe("🧠 Generative Agents - Unit Tests", () => {
+describe("🧠 Learning Extension - Unit Tests", () => {
   describe("Importance Scoring", () => {
     const calculateImportance = (content: string): number => {
       const highImportance = [
@@ -167,7 +167,7 @@ describe("🧠 Generative Agents - Unit Tests", () => {
 // Database Schema Tests
 // ============================================================================
 
-describe("🧠 Generative Agents - Database Tests", () => {
+describe("🧠 Learning Extension - Database Tests", () => {
   let db: Database;
 
   beforeEach(() => {
@@ -409,7 +409,7 @@ describe("🧠 Generative Agents - Database Tests", () => {
 // Memory Retrieval Tests
 // ============================================================================
 
-describe("🧠 Generative Agents - Memory Retrieval", () => {
+describe("🧠 Learning Extension - Memory Retrieval", () => {
   let db: Database;
   const agentId = randomUUID();
 
@@ -538,7 +538,7 @@ describe("🧠 Generative Agents - Memory Retrieval", () => {
 // Reflection Parsing Tests
 // ============================================================================
 
-describe("🧠 Generative Agents - Reflection Parsing", () => {
+describe("🧠 Learning Extension - Reflection Parsing", () => {
   const parseReflections = (response: string, validIds: string[]): Array<{ content: string; insight: string; evidence: string[] }> => {
     const reflections: Array<{ content: string; insight: string; evidence: string[] }> = [];
     const blocks = response.split('---').filter(b => b.trim());
@@ -637,4 +637,4 @@ Evidence: valid-1, invalid-id, valid-2
   });
 });
 
-console.log("🧠 Generative Agents Unit Tests loaded");
+console.log("🧠 Learning Extension Unit Tests loaded");

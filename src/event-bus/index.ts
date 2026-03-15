@@ -61,11 +61,11 @@ export type DomainEventType =
   | 'session.run.completed'
   | 'session.run.linked'
   // Generative events
-  | 'generative.observation'
-  | 'generative.recap'
-  | 'generative.trigger_reflection'
-  | 'generative.observe_session'
-  | 'generative.query_thread'
+  | 'learning.observation'
+  | 'learning.recap'
+  | 'learning.trigger_reflection'
+  | 'learning.observe_session'
+  | 'learning.query_thread'
   // Perennial events
   | 'perennial.save'
   | 'perennial.save_session'

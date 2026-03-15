@@ -33,6 +33,17 @@ export * from "./types";
 export { DialecticStore, getDialecticStore } from "./store";
 export { DialecticReasoning, getDialecticReasoning } from "./reasoning";
 export { NudgeEngine, getNudgeEngine } from "./nudges";
+export {
+  detectPatterns,
+  generateSkill,
+  writeSkill,
+  validateSkill,
+  autoCreateSkills,
+  setSkillCreationStore,
+  getSkillCreationStore,
+  type Pattern,
+  type SkillSuggestion,
+} from "./skill-creation";
 
 // ═════════════════════════════════════════════════════════════════
 // CONVENIENCE EXPORTS

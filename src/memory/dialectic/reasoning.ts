@@ -226,11 +226,13 @@ export class DialecticReasoning {
 
     try {
       const response = await this.callLLM(prompt);
-      const detected = JSON.parse(response);
+      const parsed = JSON.parse(response);
+      // Handle both array and object responses
+      const detected = Array.isArray(parsed) ? parsed : (parsed.contradictions || []);
 
       // Store contradictions
       const stored: Contradiction[] = [];
-      for (const c of (detected as any[]).slice(0, 5)) {  // Limit to 5
+      for (const c of detected.slice(0, 5)) {  // Limit to 5
         const contradiction = this.store.addContradiction(
           peerId,
           c.observation_a,
@@ -351,7 +353,9 @@ export class DialecticReasoning {
 
     try {
       const response = await this.callLLM(prompt);
-      const preferences = JSON.parse(response) as any[];
+      const parsed = JSON.parse(response);
+      // Handle both array and object responses
+      const preferences = Array.isArray(parsed) ? parsed : (parsed.preferences || []);
 
       const stored: InferredPreference[] = [];
       for (const p of preferences.slice(0, 10)) {  // Limit
@@ -385,7 +389,9 @@ export class DialecticReasoning {
 
     try {
       const response = await this.callLLM(prompt);
-      const goals = JSON.parse(response) as any[];
+      const parsed = JSON.parse(response);
+      // Handle both array and object responses
+      const goals = Array.isArray(parsed) ? parsed : (parsed.goals || []);
 
       const stored: InferredGoal[] = [];
       for (const g of goals.slice(0, 5)) {  // Limit to 5 goals
@@ -420,7 +426,9 @@ export class DialecticReasoning {
 
     try {
       const response = await this.callLLM(prompt);
-      const constraints = JSON.parse(response) as any[];
+      const parsed = JSON.parse(response);
+      // Handle both array and object responses
+      const constraints = Array.isArray(parsed) ? parsed : (parsed.constraints || []);
 
       const stored: InferredConstraint[] = [];
       for (const c of constraints.slice(0, 10)) {
@@ -454,7 +462,9 @@ export class DialecticReasoning {
 
     try {
       const response = await this.callLLM(prompt);
-      const values = JSON.parse(response) as any[];
+      const parsed = JSON.parse(response);
+      // Handle both array and object responses
+      const values = Array.isArray(parsed) ? parsed : (parsed.values || []);
 
       const stored: InferredValue[] = [];
       for (const v of values.slice(0, 10)) {

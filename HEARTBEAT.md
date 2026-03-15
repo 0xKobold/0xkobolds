@@ -17,7 +17,7 @@ Consolidate and streamline 0xKobold's architecture following the router consolid
 
 **Goal**: Closed learning loop with Honcho-style dialectic reasoning.
 
-**Status**: Implementation complete, testing needed.
+**Status**: Phase 3 (Autonomous Skill Creation) in progress.
 
 | Task | Status | Assignee | Notes |
 |------|--------|----------|-------|
@@ -31,10 +31,12 @@ Consolidate and streamline 0xKobold's architecture following the router consolid
 | Nudge engine (time/event/threshold triggers) | ✅ DONE | Claude | In nudges.ts |
 | Nudge actions (reflection, skill creation) | ✅ DONE | Claude | In nudges.ts |
 | Scheduler | ✅ DONE | Claude | In nudges.ts |
-| **Phase 3: Autonomous Skill Creation** | ⏸️ DEFERRED | | Future work |
-| Pattern detection | ⬜ TODO | Claude | Phase 3 - deferred |
-| Skill generation | ⬜ TODO | Claude | Phase 3 - deferred |
-| Skill validation | ⬜ TODO | Claude | Phase 3 - deferred |
+| **Phase 3: Autonomous Skill Creation** | 🔄 IN PROGRESS | | |
+| Create `src/memory/dialectic/skill-creation.ts` | ✅ DONE | Claude | Pattern detection + generation |
+| Pattern detection from observations | ✅ DONE | Claude | Tool sequences, commands, workflows |
+| Skill generation via LLM | ✅ DONE | Claude | JSON skill generation |
+| Skill writing and validation | ✅ DONE | Claude | Write to skills dir |
+| Wire skill creation into nudge engine | ✅ DONE | Claude | executeSkillCreation updated |
 | **Phase 4: Integration** | ✅ COMPLETE | | |
 | Wire dialectic into perennial-memory-extension | ✅ DONE | Claude | Imports + init |
 | Add `/represent` command | ✅ DONE | Claude | Show peer model |
@@ -44,22 +46,24 @@ Consolidate and streamline 0xKobold's architecture following the router consolid
 | Add `/nudge` command | ✅ DONE | Claude | Check/process nudges |
 | Add `/dialectic-stats` command | ✅ DONE | Claude | Show statistics |
 | Document in Obsidian vault | ✅ DONE | Claude | Dialectic-Memory-Implementation.md |
-| **Phase 5: Testing** | ⬜ IN PROGRESS | | |
+| **Phase 5: Testing** | ✅ COMPLETE | | |
 | Unit tests for dialectic store | ✅ DONE | Claude | 18 tests pass |
-| Test extraction → representation flow | ⬜ TODO | Claude | Needs runtime test |
-| Test nudge scheduling | ⬜ TODO | Claude | Needs runtime test |
-| Test dialectic reasoning with LLM | ⬜ TODO | Claude | Needs Ollama running |
+| Test extraction → representation flow | ✅ DONE | Claude | Runtime test passed |
+| Test nudge scheduling | ✅ DONE | Claude | 3 nudges created |
+| Test dialectic reasoning with LLM | ✅ DONE | Claude | Works with Ollama/llama3.2 |
 
-### Phase 1: Memory Consolidation (PAUSED - Dialectic is Higher Priority)
+### Phase 1: Memory Consolidation (IN PROGRESS)
 
 | Task | Status | Assignee | Notes |
 |------|--------|----------|-------|
-| Rename generative-agents to learning-extension | ⬜ TODO | - | Reflects reflection + planning |
+| Rename generative-agents to learning-extension | ✅ DONE | Claude | Completed |
+| Update imports and references | ✅ DONE | Claude | pi-config, event-bus, docs |
+| Rename test files | ✅ DONE | Claude | Unit, integration, e2e |
 | Analyze memory_stream + session-store overlap | ⬜ TODO | - | |
 | Design unified session schema | ⬜ TODO | - | Merge conversation + memory_stream |
 | Create migration script for tables | ⬜ TODO | - | Preserve existing data |
-| Update references to new extension | ⬜ TODO | - | |
-| Test unified memory system | ⬜ TODO | - | |
+| Update references to new extension | ✅ DONE | Claude | All refs updated |
+| Test unified memory system | ⬌ PENDING | - | Build passes, 2 test cleanup issues |
 
 ### Phase 2: Safety Extension Consolidation
 

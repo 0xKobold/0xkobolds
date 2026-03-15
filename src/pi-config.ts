@@ -65,7 +65,7 @@ export const config: Config = {
     './src/extensions/core/update-extension.ts',           // Framework update functionality
     './src/extensions/core/self-update-extension.ts',      // 0xKobold self-update
     './src/extensions/core/perennial-memory-extension.ts', // Long-term memory
-    './src/extensions/core/generative-agents-extension.ts', // 🧠 Memory stream, reflection, planning
+    './src/extensions/core/learning-extension.ts', // 📚 Memory stream, reflection, planning (renamed from generative-agents)
     
     // 🐉 Community Extensions (PI Ecosystem Wrappers)
     './src/extensions/community/draconic-subagents-wrapper.ts',  // pi-subagents bridge

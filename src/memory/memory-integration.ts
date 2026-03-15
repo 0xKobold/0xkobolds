@@ -55,7 +55,7 @@ class MemoryIntegration {
     });
 
     // When generative agent observes
-    eventBus.on("generative.observation", async (event) => {
+    eventBus.on("learning.observation", async (event) => {
       const { agentId, content, sessionId } = event.payload as { agentId: string; content: string; sessionId?: string };
       if (sessionId) {
         await this.trackObservation(sessionId, agentId, content);
@@ -63,7 +63,7 @@ class MemoryIntegration {
     });
 
     // When generative recap triggers
-    eventBus.on("generative.recap", async (event) => {
+    eventBus.on("learning.recap", async (event) => {
       const { agentId, summary, memories } = event.payload as { agentId: string; summary: string; memories: Array<{ content: string; type: string }> };
       await this.processGenerativeRecap(agentId, summary, memories);
     });
@@ -126,7 +126,7 @@ class MemoryIntegration {
 
       // Also add generative observation
       if (result) {
-        eventBus.emit("generative.observe_session", {
+        eventBus.emit("learning.observe_session", {
           sessionKey,
           content: `Session completed with ${result.slice(0, 100)}...
 `,          type: "action",
@@ -153,7 +153,7 @@ class MemoryIntegration {
     if (newCount >= this.config.observationReflectionThreshold && newCount % 20 === 0) {
       console.log(`[MemoryIntegration] Triggering reflection for ${sessionId.slice(0, 8)}...`);
       
-      eventBus.emit("generative.trigger_reflection", {
+      eventBus.emit("learning.trigger_reflection", {
         agentId,
         sessionId,
         observationCount: newCount,
@@ -230,7 +230,7 @@ ${memories.map(m => `- ${m.content.slice(0, 80)}...`).join("\n")}`;
   private async queryGenerativeMemories(threadId: string): Promise<Array<{ content: string; type: string }>> {
     // This would query the generative agents database
     // For now, return empty and rely on event emission
-    eventBus.emit("generative.query_thread", { threadId });
+    eventBus.emit("learning.query_thread", { threadId });
     return [];
   }
 
