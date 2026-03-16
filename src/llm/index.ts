@@ -5,6 +5,7 @@
  * - router-core.ts: The brains (scoring, learning, selection)
  * - router-commands.ts: The plumbing (singleton, commands, status)
  * - model-discovery.ts: Data source (API fetching, caching)
+ * - multi-provider.ts: Multi-provider routing (Ollama, Anthropic)
  */
 
 // Router core (brains)
@@ -20,6 +21,7 @@ export {
   handleRouterCommand,
   handleModelsCommand,
   handleRateCommand,
+  handleProvidersCommand,
   getFooterStatus,
   // Status state
   setCurrentModel,
@@ -34,6 +36,17 @@ export {
   ModelDiscoveryService,
 } from './model-discovery';
 export type { DiscoveredModel, OllamaModelInfo } from './model-discovery';
+
+// Multi-provider routing
+export {
+  MultiProviderRouter,
+  getMultiProviderRouter,
+  getProviderRegistry,
+  chat,
+  listAllModels,
+  getProviderStatuses,
+} from './multi-provider';
+export type { ProviderConfig, ProviderStatus } from './multi-provider';
 
 // Types
 export * from './types';

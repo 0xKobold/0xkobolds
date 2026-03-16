@@ -3,45 +3,15 @@
  * 
  * Executes cron jobs in isolated or main sessions.
  * Isolated = fresh context, Main = shares conversation history
+ * 
+ * Uses MultiProviderRouter for automatic provider routing.
  */
 
 import { CronJob, JobResult } from "./types.js";
-import { OllamaProvider, AnthropicProvider } from "../llm/index.js";
+import { getMultiProviderRouter, chat } from "../llm/index.js";
 import type { LLMProvider, Message } from "../llm/types.js";
 import { sendNotification } from "./notifications.js";
 import { eventBus } from "../event-bus/index.js";
-
-// Provider cache
-const providers: Map<string, LLMProvider> = new Map();
-
-/**
- * Get or create provider for a model
- */
-function getProvider(model: string): LLMProvider {
-  // Extract provider prefix (e.g., "ollama/", "claude/", "openai/")
-  const [providerName] = model.split('/');
-  
-  if (providers.has(providerName)) {
-    return providers.get(providerName)!;
-  }
-  
-  let provider: LLMProvider;
-  
-  switch (providerName) {
-    case 'ollama':
-      provider = new OllamaProvider();
-      break;
-    case 'claude':
-      provider = new AnthropicProvider();
-      break;
-    default:
-      // Default to Ollama for unknown providers
-      provider = new OllamaProvider();
-  }
-  
-  providers.set(providerName, provider);
-  return provider;
-}
 
 /**
  * Run a job based on its session type
@@ -90,15 +60,13 @@ export async function runJobRunner(job: CronJob): Promise<JobResult> {
  */
 async function runIsolatedSession(job: CronJob): Promise<JobResult> {
   const sessionId = `cron:${job.id}`;
-  const model = job.model || "kimi-k2.5:cloud";
+  const model = job.model || "ollama/kimi-k2.5:cloud";
   
   console.log(`[CronRunner] Isolated session: ${sessionId}, model: ${model}`);
   
   const startTime = Date.now();
   
   try {
-    const provider = getProvider(model);
-    
     // Build system prompt with persona context if available
     const systemPrompt = buildSystemPrompt(job);
     
@@ -112,8 +80,8 @@ async function runIsolatedSession(job: CronJob): Promise<JobResult> {
     const temperature = getTemperature(job.thinkingLevel);
     const maxTokens = getMaxTokens(job.thinkingLevel);
     
-    // Call LLM
-    const response = await provider.chat({
+    // Call LLM via multi-provider router
+    const response = await chat({
       model,
       messages,
       temperature,

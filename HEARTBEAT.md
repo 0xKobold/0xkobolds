@@ -80,14 +80,15 @@ Consolidate and streamline 0xKobold's architecture following the router consolid
 | Delete old extension files | ✅ DONE | Claude | Removed 2 files |
 | Test safety guards work together | ✅ DONE | - | Build passes, 484 tests pass |
 
-### Phase 3: Router Provider Abstraction
+### Phase 3: Router Provider Abstraction (COMPLETE)
 
 | Task | Status | Assignee | Notes |
 |------|--------|----------|-------|
-| Create provider-agnostic interface | ⬜ TODO | - | |
-| Add provider routing to router-core | ⬜ TODO | - | |
-| Wire Anthropic through router | ⬜ TODO | - | Used in cron jobs |
-| Test multi-provider routing | ⬜ TODO | - | |
+| Create provider-agnostic interface | ✅ DONE | Claude | MultiProviderRouter in multi-provider.ts |
+| Add provider routing to router-core | ✅ DONE | Claude | ProviderRegistry, prefix routing |
+| Wire Anthropic through router | ✅ DONE | Claude | cron/runner.ts uses chat() |
+| Test multi-provider routing | ✅ DONE | - | Build passes, 484 tests pass |
+| Add /providers command | ✅ DONE | Claude | handleProvidersCommand() |
 
 ### Phase 4: Event Types Cleanup
 

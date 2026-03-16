@@ -357,18 +357,47 @@ export async function getFooterStatus(): Promise<{ text: string; tooltip: string
 
     if (!modelInfo) {
       return {
-        text: '🧠 auto',
-        tooltip: `Model: ${currentModel}\nAdaptive routing active`,
+        text: `🧠 ${currentModel}`,
+        tooltip: 'Model selected (no info available)',
       };
     }
 
+    const speedEmoji = modelInfo.speedTier === 'fast' ? '⚡' : modelInfo.speedTier === 'medium' ? '🔄' : '🐢';
+    const qualityEmoji = modelInfo.qualityTier === 'excellent' ? '⭐' : modelInfo.qualityTier === 'good' ? '✅' : '·';
+
     return {
-      text: '🧠 auto',
-      tooltip: `Model: ${modelInfo.name}\nSpeed: ${modelInfo.speedTier} | Quality: ${modelInfo.qualityTier}\n🧠 Adaptive routing with learning`,
+      text: `🧠 ${currentModel}`,
+      tooltip: `${speedEmoji} ${modelInfo.speedTier} | ${qualityEmoji} ${modelInfo.qualityTier}`,
     };
   } catch {
     return null;
   }
+}
+
+// ============================================================================
+// Multi-Provider Commands
+// ============================================================================
+
+/**
+ * Handle /providers command - show all provider statuses
+ */
+export async function handleProvidersCommand(): Promise<string> {
+  const { getProviderStatuses } = await import('./multi-provider');
+  const statuses = await getProviderStatuses();
+
+  const lines = ['🔌 Provider Status:\n'];
+
+  for (const status of statuses) {
+    const emoji = status.available ? '✅' : '❌';
+    lines.push(`${emoji} ${status.name}: ${status.available ? `${status.modelCount} models` : 'unavailable'}`);
+  }
+
+  lines.push('\n📌 Model prefixes:');
+  lines.push('  • ollama/<model> - Ollama (local or cloud)');
+  lines.push('  • claude/<model> - Anthropic Claude');
+  lines.push('  • anthropic/<model> - Anthropic Claude (alias)');
+
+  return lines.join('\n');
 }
 
 // ============================================================================
