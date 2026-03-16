@@ -90,13 +90,13 @@ Consolidate and streamline 0xKobold's architecture following the router consolid
 | Test multi-provider routing | ✅ DONE | - | Build passes, 484 tests pass |
 | Add /providers command | ✅ DONE | Claude | handleProvidersCommand() |
 
-### Phase 4: Event Types Cleanup
+### Phase 4: Event Types Cleanup (COMPLETE)
 
 | Task | Status | Assignee | Notes |
 |------|--------|----------|-------|
-| Audit unused event types (43 found) | ⬜ TODO | - | |
-| Remove dead events from event-bus | ⬜ TODO | - | |
-| Document remaining events | ⬜ TODO | - | |
+| Audit unused event types (43 found) | ✅ DONE | Claude | Identified used vs unused |
+| Remove dead events from event-bus | ✅ DONE | Claude | 18 events removed (64→46) |
+| Document remaining events | ✅ DONE | Claude | Comments added per category |
 
 ### Phase 5: Migration & Deployment
 

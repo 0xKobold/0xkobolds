@@ -8,94 +8,67 @@ import { EventEmitter } from 'events';
 
 // Domain Event Types
 export type DomainEventType =
-  // Agent events
+  // Agent events (used)
   | 'agent.spawned'
   | 'agent.completed'
   | 'agent.error'
-  | 'agent.status_changed'
-  | 'agent.message'
-  | 'agent.run'
   | 'agent.stopped'
+  | 'agent.run'
+  | 'agent.message'
   | 'agent.tool.started'
   | 'agent.tool.completed'
-  | 'agent.parent.notification'
-  | 'agent.expired'
-  // Discord events
-  | 'discord.message.received'
-  | 'discord.message.sent'
-  | 'discord.channel.joined'
-  | 'discord.channel.left'
+  // Discord events (used)
   | 'discord.notify'
-  // Gateway events
-  | 'gateway.client.connected'
-  | 'gateway.client.disconnected'
-  // Config events
-  | 'config.loaded'
-  | 'config.changed'
-  // Hook events
-  | 'hook.triggered'
-  // Media events
-  | 'media.processed'
-  | 'media.understood'
-  // System events
-  | 'system.error'
-  | 'system.shutdown'
-  | 'system.notification'
-  // Cron events
-  | 'cron.job.started'
-  | 'cron.job.completed'
-  | 'cron.job.failed'
-  | 'cron.job.injected'
-  // Skill events
-  | 'skill.registered'
-  | 'skill.unregistered'
-  // File events
-  | 'file.written'
-  | 'file.read'
-  // Security events
-  | 'security.issues_found'
-  | 'security.scan_completed'
-  // Session events
+  // Gateway events (used)
   | 'gateway.session_connected'
   | 'gateway.session_disconnected'
+  // Extension events (used)
+  | 'extension.loaded'
+  | 'extension.error'
+  | 'extension.unloaded'
+  // File events (used)
+  | 'file.written'
+  | 'file.read'
+  // Security events (used)
+  | 'security.issues_found'
+  | 'security.scan_completed'
+  // Session events (used)
   | 'session.run.completed'
   | 'session.run.linked'
-  // Generative events
+  // Learning events (used)
   | 'learning.observation'
   | 'learning.recap'
   | 'learning.trigger_reflection'
   | 'learning.observe_session'
   | 'learning.query_thread'
-  // Perennial events
+  // Perennial events (used)
   | 'perennial.save'
   | 'perennial.save_session'
   | 'perennial.query_for_session'
-  // Memory integration events
-  | 'memory.session_saved'
-  | 'memory.session.resumed'
-  // Memory architecture events (Phase 2-3)
+  // Memory integration events (used)
   | 'memory.resource_ingested'
   | 'memory.consolidate_resource'
   | 'memory.summarize_category'
   | 'memory.reindex'
   | 'memory.needs_resolution'
-  // Auth profile events
+  // Auth profile events (used)
   | 'auth-profile:added'
   | 'auth-profile:removed'
   | 'auth-profile:used'
   | 'auth-profile:failed'
   | 'auth-profile:recovered'
-  // Fallback events
+  // Fallback events (used)
   | 'fallback.attempt'
   | 'fallback.success'
   | 'fallback.failed'
-  // Session events
-  | 'session.save'
-  | 'session.load'
-  // Notification channels
-  | 'whatsapp.notify'
-  | 'telegram.notify'
-  | 'discord.notify';
+  // System events (used)
+  | 'system.error'
+  | 'system.notification'
+  | 'system.shutdown'
+  // Cron events (used)
+  | 'cron.job.injected'
+  // Notification channels (used)
+  | 'whatsapp.notify';
 
 // Domain Event Interface
 export interface DomainEvent {
