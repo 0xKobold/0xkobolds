@@ -70,14 +70,15 @@ Consolidate and streamline 0xKobold's architecture following the router consolid
 | Remove memory_stream from learning-extension | ✅ DONE | Claude | Schema updated, no memory_stream |
 | Test unified memory system | ✅ DONE | - | 27 tests pass, build passes |
 
-### Phase 2: Safety Extension Consolidation
+### Phase 2: Safety Extension Consolidation (IN PROGRESS)
 
 | Task | Status | Assignee | Notes |
 |------|--------|----------|-------|
-| Merge auto-security-scan into draconic-safety | ⬜ TODO | - | |
-| Merge compaction-safeguard into draconic-safety | ⬜ TODO | - | |
-| Update extension loading order | ⬜ TODO | - | |
-| Test safety guards work together | ⬜ TODO | - | |
+| Merge auto-security-scan into draconic-safety | ✅ DONE | Claude | file.written event handler |
+| Merge compaction-safeguard into draconic-safety | ✅ DONE | Claude | context monitoring + commands |
+| Update extension loading order | ✅ DONE | Claude | Removed from pi-config.ts |
+| Delete old extension files | ✅ DONE | Claude | Removed 2 files |
+| Test safety guards work together | ⬌ PENDING | - | Build passes, test suite runs |
 
 ### Phase 3: Router Provider Abstraction
 

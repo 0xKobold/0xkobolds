@@ -33,7 +33,6 @@ export const config: Config = {
     './src/extensions/core/onboarding-extension.ts',     // First-run setup
     './src/extensions/core/task-manager-extension.ts',   // Task board and workflow
     './src/extensions/core/heartbeat-extension.ts',      // Koclaw-style heartbeat monitoring
-    './src/extensions/core/compaction-safeguard-v2.ts', // FIXED: Uses session_before_compact event
     
     // Multi-Channel
     './src/extensions/core/multi-channel-extension.ts', // Unified channel management
@@ -48,8 +47,7 @@ export const config: Config = {
     './src/extensions/core/draconic-hoard-extension.ts',     // Code snippets
 
     // Safety Extensions (CONSOLIDATED into draconic-safety)
-    './src/extensions/core/draconic-safety-extension.ts',  // 🛡️ Replaces: protected-paths, confirm-destructive, dirty-repo-guard, git-checkpoint
-    './src/extensions/core/auto-security-scan-extension.ts', // 🔍 Auto-scan files on write for vulnerabilities
+    './src/extensions/core/draconic-safety-extension.ts',  // 🛡️ Replaces: protected-paths, confirm-destructive, dirty-repo-guard, git-checkpoint, auto-security-scan, compaction-safeguard
 
     // Developer Tools
     './src/extensions/core/extension-scaffold-extension.ts', // Scaffold new extensions
