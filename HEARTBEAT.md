@@ -70,7 +70,7 @@ Consolidate and streamline 0xKobold's architecture following the router consolid
 | Remove memory_stream from learning-extension | ✅ DONE | Claude | Schema updated, no memory_stream |
 | Test unified memory system | ✅ DONE | - | 27 tests pass, build passes |
 
-### Phase 2: Safety Extension Consolidation (IN PROGRESS)
+### Phase 2: Safety Extension Consolidation (COMPLETE)
 
 | Task | Status | Assignee | Notes |
 |------|--------|----------|-------|
@@ -78,7 +78,7 @@ Consolidate and streamline 0xKobold's architecture following the router consolid
 | Merge compaction-safeguard into draconic-safety | ✅ DONE | Claude | context monitoring + commands |
 | Update extension loading order | ✅ DONE | Claude | Removed from pi-config.ts |
 | Delete old extension files | ✅ DONE | Claude | Removed 2 files |
-| Test safety guards work together | ⬌ PENDING | - | Build passes, test suite runs |
+| Test safety guards work together | ✅ DONE | - | Build passes, 484 tests pass |
 
 ### Phase 3: Router Provider Abstraction
 
@@ -294,14 +294,14 @@ src/pi-config.ts
 
 ```
 src/extensions/core/draconic-safety-extension.ts
-  → Merge auto-security-scan logic
-  → Merge compaction-safeguard logic
+  ✅ MERGED: auto-security-scan logic
+  ✅ MERGED: compaction-safeguard logic
 
 src/extensions/core/auto-security-scan-extension.ts
-  → DELETE (merged)
+  ✅ DELETED (merged into draconic-safety)
 
-src/extensions/core/compaction-safeguard-v2.ts
-  → DELETE (merged)
+src/extensions/core/compaction-safeguard.ts
+  ✅ DELETED (merged into draconic-safety)
 ```
 
 ---
