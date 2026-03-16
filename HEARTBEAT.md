@@ -99,6 +99,8 @@ Consolidate and streamline 0xKobold's architecture following the router consolid
 
 ### Phase 5: Migration & Deployment
 
+**Note:** Tailscale is available on the Raspberry Pi for easy SSH access.
+
 | Task | Status | Assignee | Notes |
 |------|--------|----------|-------|
 | Create migration checklist | ⬜ TODO | - | Raspberry Pi + Digital Ocean |
