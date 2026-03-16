@@ -5,7 +5,7 @@
  */
 
 import { Command } from "commander";
-import { getRealGateway, resetRealGateway } from "../../gateway/index.js";
+import { startGateway, getRealGateway, resetRealGateway } from "../../gateway/index.js";
 import { getDiscordBot, resetDiscordBot } from "../../gateway/discord-bot.js";
 
 export function createGatewayCommand(): Command {
@@ -27,14 +27,13 @@ export function createGatewayCommand(): Command {
       console.log("🌐 Starting 0xKobold Gateway Server...\n");
 
       try {
-        // Start main gateway
-        const gateway = getRealGateway();
-        (gateway as unknown as { config: { port: number; host: string; cors: boolean; heartbeatInterval: number } }).config = { 
+        // Start main gateway with config (creates instance if needed)
+        const gateway = startGateway({ 
           port, 
           host, 
           cors: true, 
           heartbeatInterval: 30000 
-        };
+        });
         
         await gateway.start();
 
