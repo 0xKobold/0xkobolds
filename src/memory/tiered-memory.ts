@@ -215,7 +215,15 @@ export class TieredMemory {
         const data = await response.json() as { response: string };
         const parsed = JSON.parse(data.response);
         
-        items = parsed.map((item: any, idx: number) => ({
+        // Handle both array and object formats from LLM
+        const itemsArray = Array.isArray(parsed) ? parsed : (parsed.items || []);
+        
+        if (!Array.isArray(itemsArray) || itemsArray.length === 0) {
+          console.log("[TieredMemory] No items extracted from response");
+          return [];
+        }
+        
+        items = itemsArray.map((item: any, idx: number) => ({
           id: `item_${Date.now()}_${idx}`,
           resourceId: resourceId,
           content: item.content,
