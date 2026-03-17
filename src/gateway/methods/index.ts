@@ -20,6 +20,16 @@ export {
   sessionMemoryHandler, // Phase 5
 } from "./agent";
 
+export {
+  nodeRegistry,
+  nodeHandlers,
+  type NodeInfo,
+  type NodeCommand,
+  type NodeEvent,
+  type NodeInvokeParams,
+  type NodeRegisterParams,
+} from "./node";
+
 // Import handlers
 import { 
   agentHandler, 
@@ -27,6 +37,8 @@ import {
   agentWaitHandler,
   sessionMemoryHandler, // Phase 5
 } from "./agent";
+
+import { nodeHandlers } from "./node";
 
 // Build the handler registry
 export const gatewayHandlers: import("./types").GatewayRequestHandlers = {
@@ -37,6 +49,9 @@ export const gatewayHandlers: import("./types").GatewayRequestHandlers = {
 
   // Phase 5: Session memory methods
   "session.memory": sessionMemoryHandler,
+
+  // Node methods (OpenClaw-style nodes)
+  ...nodeHandlers,
 
   // Future methods
   // "chat.send": chatHandler,

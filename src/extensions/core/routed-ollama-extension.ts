@@ -1,12 +1,25 @@
 /**
  * Routed Ollama Extension
- * 
+ *
  * Unified integration point for adaptive model routing.
  * Uses native pi-coding-agent APIs for model switching.
+ * Tracks performance for learning and rankings.
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { getRouter, handleRouterCommand, handleModelsCommand, handleRateCommand, setCurrentModel } from "../../llm";
+import {
+  getRouter,
+  handleRouterCommand,
+  handleModelsCommand,
+  handleRateCommand,
+  handleModelRankingsCommand,
+  handleTierListCommand,
+  handlePopularityCommand,
+  handleRefreshPopularity,
+  setCurrentModel,
+  getCurrentModel,
+} from "../../llm";
+import { getModelPopularityService } from "../../llm/model-popularity";
 
 export default async function routedOllamaExtension(pi: ExtensionAPI) {
   console.log("[RoutedOllama] Extension loading...");
@@ -14,11 +27,31 @@ export default async function routedOllamaExtension(pi: ExtensionAPI) {
   // Track if adaptive routing is enabled
   let adaptiveRoutingEnabled = true;
   let lastRoutedModel: string | null = null;
+  let lastRequestStartTime: number | null = null;
+  let lastTaskType: string = 'chat';
 
   try {
     // Initialize router
     const router = await getRouter();
+    const popularity = getModelPopularityService();
     console.log("[RoutedOllama] Router initialized with", (await router.listModels()).length, "models");
+
+    /**
+     * Infer task type from message content
+     */
+    function inferTaskType(message: string): string {
+      const lower = message.toLowerCase();
+      if (/\b(function|class|const|let|var|import|export|code|implement|debug)\b/.test(lower)) {
+        return 'code';
+      }
+      if (/\b(image|picture|photo|look at|describe|see|visual)\b/.test(lower)) {
+        return 'vision';
+      }
+      if (/\b(analyze|reason|think|step by step|explain why|compare)\b/.test(lower)) {
+        return 'reasoning';
+      }
+      return 'chat';
+    }
 
     /**
      * Switch to the best model for the given task
@@ -30,22 +63,25 @@ export default async function routedOllamaExtension(pi: ExtensionAPI) {
         return null;
       }
 
+      // Store task type for tracking
+      lastTaskType = inferTaskType(userMessage);
+
       // Select best model using our router
       const selectedModel = await router.selectModel(userMessage);
-      
+
       // Avoid redundant switches
       if (selectedModel === lastRoutedModel) {
         return selectedModel;
       }
 
       // Parse model ID (format: "provider/model" or just "model")
-      const [provider, modelId] = selectedModel.includes('/') 
-        ? selectedModel.split('/', 2) 
+      const [provider, modelId] = selectedModel.includes('/')
+        ? selectedModel.split('/', 2)
         : ['ollama', selectedModel];
 
       // Find the model in registry via context
       const model = ctx.modelRegistry.find(provider, modelId);
-      
+
       if (!model) {
         console.log(`[RoutedOllama] Model ${selectedModel} not in registry, using event override`);
         return selectedModel; // Will use event override fallback
@@ -54,7 +90,7 @@ export default async function routedOllamaExtension(pi: ExtensionAPI) {
       // Check if model is available (has auth)
       const available = ctx.modelRegistry.getAvailable();
       const isAvailable = available.some(m => m.provider === provider && m.id === modelId);
-      
+
       if (!isAvailable) {
         console.log(`[RoutedOllama] Model ${selectedModel} not available (no auth), skipping switch`);
         return null;
@@ -63,7 +99,7 @@ export default async function routedOllamaExtension(pi: ExtensionAPI) {
       // Use native API to switch model
       console.log(`[RoutedOllama] Switching to ${selectedModel}...`);
       const success = await pi.setModel(model);
-      
+
       if (success) {
         lastRoutedModel = selectedModel;
         setCurrentModel(selectedModel, "adaptive routing");
@@ -75,23 +111,88 @@ export default async function routedOllamaExtension(pi: ExtensionAPI) {
       }
     }
 
-    // Hook into provider requests to route to best model
+    // Hook into provider requests to route to best model and inject num_ctx for Ollama
     pi.on("before_provider_request", async (event: any, ctx: ExtensionContext) => {
       try {
-        const messages = event.messages || [];
+        const payload = event.payload || event;
+        const messages = payload.messages || [];
         const lastUserMsg = messages.findLast((m: any) => m.role === "user")?.content || "";
-        
+
+        // Track start time for latency measurement
+        lastRequestStartTime = Date.now();
+
         // Try to switch model natively
         const routedModel = await routeToBestModel(lastUserMsg, ctx);
-        
+
         // Fallback: override event.model if native switch didn't work
         if (!routedModel && event.model) {
           const selectedModel = await router.selectModel(lastUserMsg);
           event.model = selectedModel;
           setCurrentModel(selectedModel, "event override");
         }
+
+        // Inject num_ctx for Ollama models to use full context window
+        // Ollama's OpenAI-compatible API accepts num_ctx as a top-level field
+        const currentModel = getCurrentModel();
+        if (currentModel?.name) {
+          // Get context window from model discovery service
+          const modelInfo = await router.getModelInfo(currentModel.name);
+
+          // Check if this is an Ollama provider (local or cloud)
+          const isOllama = event.provider === 'ollama' ||
+                           event.provider === 'ollama-cloud' ||
+                           currentModel.name.includes(':cloud') ||
+                           !currentModel.name.includes('/');  // Ollama models don't have / in name
+
+          if (isOllama && modelInfo?.contextWindow && modelInfo.contextWindow > 4096) {
+            // Ollama accepts num_ctx as a top-level field in the OpenAI-compatible request
+            // This tells Ollama to use the full context capacity
+            payload.num_ctx = modelInfo.contextWindow;
+            console.log(`[RoutedOllama] Injected num_ctx=${modelInfo.contextWindow} for ${currentModel.name}`);
+          }
+        }
+
+        // Return the modified payload
+        return payload;
       } catch (err: any) {
         console.error("[RoutedOllama] Routing error:", err?.message);
+        return event.payload || event;
+      }
+    });
+
+    // Track response completion for performance scoring
+    pi.on("turn_end", async (event: any, ctx: ExtensionContext) => {
+      try {
+        const currentModelStatus = getCurrentModel();
+        if (!currentModelStatus || !lastRequestStartTime) return;
+
+        const latencyMs = Date.now() - lastRequestStartTime;
+        const model = currentModelStatus.name;
+
+        // Track in popularity service (local usage)
+        popularity.incrementLocalUsage(model);
+
+        // Track in router for performance history
+        // Note: This stores model name, latency, tokens - NOT prompts/responses
+        router.trackResponse(
+          model,
+          {
+            usage: {
+              inputTokens: event.tokenUsage?.sent || 0,
+              outputTokens: event.tokenUsage?.received || 0,
+            },
+          } as any,
+          latencyMs,
+          lastTaskType,
+          'medium', // Could be inferred from message complexity
+          ctx.sessionManager?.getSessionId?.()
+        );
+
+        console.log(`[RoutedOllama] Tracked response: ${model} (${latencyMs}ms, ${lastTaskType})`);
+      } catch (err: any) {
+        console.error("[RoutedOllama] Tracking error:", err?.message);
+      } finally {
+        lastRequestStartTime = null;
       }
     });
 
@@ -99,36 +200,36 @@ export default async function routedOllamaExtension(pi: ExtensionAPI) {
     pi.on("model_select", (event: any) => {
       console.log(`[RoutedOllama] Model changed: ${event.previousModel?.id} -> ${event.model?.id} (${event.source})`);
     });
-    
+
     console.log("[RoutedOllama] Routing hooks installed");
 
     // Register commands
     pi.registerCommand("router", {
-      description: "Adaptive model routing. Usage: /router [auto|manual|info|favorites|fav|unfav|MODEL]",
+      description: "Adaptive model routing. Usage: /router [auto|manual|info|favorites|stats|history|fav|unfav|MODEL]",
       handler: async (args: string, ctx: ExtensionContext) => {
         try {
           const subcommand = args.trim().toLowerCase();
-          
+
           // Handle auto/manual toggle
           if (subcommand === 'auto') {
             adaptiveRoutingEnabled = true;
             ctx.ui.notify("🧠 Adaptive routing enabled", "info");
             return;
           }
-          
+
           if (subcommand === 'manual' || subcommand === 'static') {
             adaptiveRoutingEnabled = false;
             ctx.ui.notify("🎯 Static model selection (adaptive routing disabled)", "info");
             return;
           }
-          
+
           // Handle direct model switch
-          if (subcommand && !['info', 'favorites', 'favs', 'fav', 'unfav'].includes(subcommand.split(' ')[0])) {
+          if (subcommand && !['info', 'favorites', 'favs', 'fav', 'unfav', 'stats', 'history'].includes(subcommand.split(' ')[0])) {
             // Try to switch to specified model
-            const [provider, modelId] = subcommand.includes('/') 
-              ? subcommand.split('/', 2) 
+            const [provider, modelId] = subcommand.includes('/')
+              ? subcommand.split('/', 2)
               : ['ollama', subcommand];
-            
+
             const model = ctx.modelRegistry.find(provider, modelId);
             if (model) {
               const success = await pi.setModel(model);
@@ -143,7 +244,7 @@ export default async function routedOllamaExtension(pi: ExtensionAPI) {
             }
             return;
           }
-          
+
           // Default: show router info
           const result = await handleRouterCommand(args);
           ctx.ui.notify(result, "info");
@@ -161,10 +262,10 @@ export default async function routedOllamaExtension(pi: ExtensionAPI) {
           // Show native available models
           const available = ctx.modelRegistry.getAvailable();
           const all = ctx.modelRegistry.getAll();
-          
+
           let result = await handleModelsCommand(args);
           result += `\n\n📊 Registry: ${available.length}/${all.length} models available`;
-          
+
           ctx.ui.notify(result, "info");
         } catch (err: any) {
           ctx.ui.notify(`Error: ${err?.message}`, "error");
@@ -185,7 +286,90 @@ export default async function routedOllamaExtension(pi: ExtensionAPI) {
       },
     });
     console.log("[RoutedOllama] Registered /rate command");
-    
+
+    pi.registerCommand("model-rankings", {
+      description: "Show model performance rankings. Usage: /model-rankings [day|week|month|all]",
+      handler: async (args: string, ctx: ExtensionContext) => {
+        try {
+          const result = await handleModelRankingsCommand(args);
+          ctx.ui.notify(result, "info");
+        } catch (err: any) {
+          ctx.ui.notify(`Error: ${err?.message}`, "error");
+        }
+      },
+    });
+    console.log("[RoutedOllama] Registered /model-rankings command");
+
+    pi.registerCommand("tier-list", {
+      description: "Show AI-generated model tier list. Usage: /tier-list [day|week|month|all]",
+      handler: async (args: string, ctx: ExtensionContext) => {
+        try {
+          const result = await handleTierListCommand(args);
+          ctx.ui.notify(result, "info");
+        } catch (err: any) {
+          ctx.ui.notify(`Error: ${err?.message}`, "error");
+        }
+      },
+    });
+    console.log("[RoutedOllama] Registered /tier-list command");
+
+    pi.registerCommand("popularity", {
+      description: "Show model popularity from Ollama library. Usage: /popularity [--refresh]",
+      handler: async (args: string, ctx: ExtensionContext) => {
+        try {
+          let result: string;
+          if (args.includes('--refresh')) {
+            result = await handleRefreshPopularity();
+          } else {
+            result = await handlePopularityCommand(args);
+          }
+          ctx.ui.notify(result, "info");
+        } catch (err: any) {
+          ctx.ui.notify(`Error: ${err?.message}`, "error");
+        }
+      },
+    });
+    console.log("[RoutedOllama] Registered /popularity command");
+
+    pi.registerCommand("community", {
+      description: "Share anonymous model stats with the community. Usage: /community [status|enable|disable|export|fetch|merge|tier-list]",
+      handler: async (args: string, ctx: ExtensionContext) => {
+        try {
+          const { handleCommunityCommand } = await import("../../llm/router-commands");
+          const result = await handleCommunityCommand(args);
+          ctx.ui.notify(result, "info");
+        } catch (err: any) {
+          ctx.ui.notify(`Error: ${err?.message}`, "error");
+        }
+      },
+    });
+    console.log("[RoutedOllama] Registered /community command");
+
+    pi.registerCommand("best-for", {
+      description: "Show best models for specific tasks. Usage: /best-for [code|chat|vision|reasoning|all]",
+      handler: async (args: string, ctx: ExtensionContext) => {
+        try {
+          const { handleBestForCommand } = await import("../../llm/router-commands");
+          const result = await handleBestForCommand(args);
+          ctx.ui.notify(result, "info");
+        } catch (err: any) {
+          ctx.ui.notify(`Error: ${err?.message}`, "error");
+        }
+      },
+    });
+    console.log("[RoutedOllama] Registered /best-for command");
+
+    // Refresh popularity data in background on startup (if cache stale)
+    if (popularity.needsRefresh()) {
+      popularity.refreshFromOllama().then(count => {
+        if (count > 0) {
+          console.log(`[RoutedOllama] Cached ${count} models from Ollama library`);
+        }
+      }).catch(err => {
+        // Silently fail - uses cached data
+      });
+    }
+
   } catch (err: any) {
     console.error("[RoutedOllama] Failed to initialize:", err?.message);
     console.error("[RoutedOllama] Stack:", err?.stack);

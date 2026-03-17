@@ -3,11 +3,14 @@
  *
  * Dynamically discovers and caches Ollama model information.
  * Fetches from both local Ollama and cloud endpoints.
+ *
+ * Uses @0xkobold/pi-ollama/shared for context window detection (DRY).
  */
 
 import { existsSync } from 'fs';
 import { homedir } from 'os';
 import { resolve } from 'path';
+import { getContextLength } from '@0xkobold/pi-ollama/shared';
 
 export interface OllamaModelInfo {
   name: string;
@@ -237,8 +240,11 @@ class ModelDiscoveryService {
     // Extract specializations
     const specializations = this.extractSpecializations(name);
 
-    // Determine context window
-    const contextWindow = this.inferContextWindow(name, details);
+    // Determine context window using shared utility (DRY)
+    // Pass details.model_info if available, otherwise pass the whole details object
+    const contextWindow = details?.model_info
+      ? getContextLength(details.model_info, name)
+      : getContextLength(null, name);
 
     return {
       name: info.name,
@@ -379,40 +385,8 @@ class ModelDiscoveryService {
     return specs;
   }
 
-  /**
-   * Infer context window from model metadata
-   */
-  private inferContextWindow(name: string, details?: OllamaModelInfo['details']): number {
-    // Check model_info from Ollama
-    if (details?.model_info) {
-      const info = details.model_info;
-      // Common context length keys
-      const keys = ['context_length', 'max_position_embeddings', 'max_sequence_length', 'n_ctx'];
-      for (const key of keys) {
-        if (info[key] && typeof info[key] === 'number') {
-          return info[key] as number;
-        }
-      }
-    }
-
-    // Default by model family
-    if (name.includes('llama3.2')) return 128000;
-    if (name.includes('llama3.3')) return 128000;
-    if (name.includes('llama3.1')) return 128000;
-    if (name.includes('llama3')) return 8192;
-    if (name.includes('mistral')) return 32768;
-    if (name.includes('mixtral')) return 32768;
-    // qwen3.5 and qwen3 have larger context windows
-    if (name.includes('qwen3')) return 32768;
-    if (name.includes('qwen2.5')) return 32768;
-    if (name.includes('qwen')) return 32768;
-    if (name.includes('kimi')) return 128000;
-    if (name.includes('minimax')) return 128000;
-    if (name.includes('gpt-oss')) return 128000;
-
-    // Conservative default
-    return 4096;
-  }
+  // Note: Context window inference moved to @0xkobold/pi-ollama/shared (getContextLength)
+  // This keeps the logic DRY and consistent across all consumers
 
   /**
    * Format a display name for the model

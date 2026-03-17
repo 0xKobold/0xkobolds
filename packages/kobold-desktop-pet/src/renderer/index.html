@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🐢 Kobold Desktop Pet</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: transparent;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: 'Courier New', monospace;
+    }
+
+    #dragon-container {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      cursor: grab;
+      transition: transform 0.1s ease;
+    }
+
+    #dragon-container:active {
+      cursor: grabbing;
+    }
+
+    #dragon-container:hover {
+      transform: scale(1.02);
+    }
+
+    #sprite-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      display: block;
+    }
+
+    #3d-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: block;
+    }
+
+    #thought-bubble {
+      position: absolute;
+      top: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px solid #10b981;
+      border-radius: 12px;
+      padding: 8px 12px;
+      font-size: 11px;
+      color: #1a1a2e;
+      max-width: 180px;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    #thought-bubble.visible {
+      opacity: 1;
+    }
+
+    #thought-bubble:after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 8px solid rgba(255, 255, 255, 0.95);
+    }
+
+    #status-indicator {
+      position: absolute;
+      bottom: 5px;
+      right: 5px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid white;
+      z-index: 50;
+      box-shadow: 0 0 4px rgba(0,0,0,0.3);
+    }
+
+    #status-indicator.idle { background: #6b7280; }
+    #status-indicator.working { background: #10b981; animation: pulse 1s infinite; }
+    #status-indicator.thinking { background: #fbbf24; animation: pulse 0.5s infinite; }
+    #status-indicator.sleeping { background: #8b5cf6; }
+    #status-indicator.walking { background: #3b82f6; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.2); }
+    }
+
+    /* Context menu (right-click) */
+    #context-menu {
+      position: absolute;
+      background: rgba(26, 26, 46, 0.98);
+      border: 1px solid #10b981;
+      border-radius: 8px;
+      padding: 8px 0;
+      min-width: 150px;
+      display: none;
+      z-index: 200;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    #context-menu.visible {
+      display: block;
+    }
+
+    #context-menu button {
+      display: block;
+      width: 100%;
+      background: none;
+      border: none;
+      color: #e5e7eb;
+      padding: 8px 16px;
+      text-align: left;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+    }
+
+    #context-menu button:hover {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+
+    #context-menu button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #context-menu hr {
+      border: none;
+      border-top: 1px solid #374151;
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="dragon-container">
+    <!-- 3D Canvas (primary) -->
+    <canvas id="3d-canvas" width="200" height="200"></canvas>
+    <!-- Pixel Canvas (fallback) -->
+    <canvas id="sprite-canvas" width="200" height="200" style="display: none;"></canvas>
+
+    <!-- Thought bubble for status messages -->
+    <div id="thought-bubble"></div>
+
+    <!-- Status indicator (color dot) -->
+    <div id="status-indicator" class="idle"></div>
+  </div>
+
+  <!-- Right-click context menu -->
+  <div id="context-menu">
+    <button onclick="setAnimation('idle')">🧍 Idle</button>
+    <button onclick="setAnimation('working')">💼 Working</button>
+    <button onclick="setAnimation('thinking')">🤔 Thinking</button>
+    <button onclick="setAnimation('sleeping')">😴 Sleeping</button>
+    <hr>
+    <button onclick="setAnimation('walking')">🚶 Walking</button>
+    <button onclick="setAnimation('cheering')">🎉 Cheering</button>
+    <hr>
+    <button onclick="resetPosition()">📍 Reset Position</button>
+    <button onclick="toggleStayOnTop()">📌 Stay on Top</button>
+    <hr>
+    <button onclick="quit()">❌ Quit</button>
+  </div>
+
+  <!-- Load Three.js -->
+  <script>
+    // Set up module aliases for Three.js
+    const moduleAlias = require('module');
+    const path = require('path');
+
+    // Configure require for Three.js modules
+    if (typeof window !== 'undefined') {
+      window.__dirname = __dirname;
+    }
+  </script>
+
+  <!-- Dragon sprites (pixel fallback) -->
+  <script src="./dragon-sprites.js"></script>
+  <!-- Three.js renderer (3D primary) -->
+  <script src="./turtle-renderer.js"></script>
+
+  <script>
+    // Context menu handling
+    const contextMenu = document.getElementById('context-menu');
+    const container = document.getElementById('dragon-container');
+
+    // Right-click to show menu
+    container.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      contextMenu.style.left = e.pageX + 'px';
+      contextMenu.style.top = e.pageY + 'px';
+      contextMenu.classList.add('visible');
+    });
+
+    // Click anywhere to hide
+    document.addEventListener('click', () => {
+      contextMenu.classList.remove('visible');
+    });
+
+    // Menu actions
+    function setAnimation(state) {
+      if (typeof window !== 'undefined' && window.playAnimation) {
+        window.playAnimation(state);
+      }
+      contextMenu.classList.remove('visible');
+    }
+
+    function resetPosition() {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.send('reset-position');
+      contextMenu.classList.remove('visible');
+    }
+
+    function toggleStayOnTop() {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.send('toggle-stay-on-top');
+      contextMenu.classList.remove('visible');
+    }
+
+    function quit() {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.send('quit');
+    }
+  </script>
+</body>
+</html>

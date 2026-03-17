@@ -1,12 +1,20 @@
 /**
- * Spawn Agent Tool - v0.2.0
+ * Spawn Agent Tool - v0.3.0
  *
  * Spawns a subagent of a specific type with appropriate configuration.
  * Part of the Unified Agent Orchestration system.
+ * 
+ * HERMES-STYLE: Subagents share instance-level identity from KOBOLD_HOME.
+ * No per-agent SOUL/IDENTITY - personality overlays via /personality command.
  */
 
 import { getAgentType, AgentType } from "../types/index.js";
 import { routeTask, TaskRequest, TaskRouterResult } from "../task-router.js";
+import { 
+  loadInstanceFiles,
+  formatBootstrapForPrompt,
+  BootstrapFile 
+} from "../bootstrap-loader.js";
 
 export interface SpawnAgentParams {
   task: string;
@@ -78,8 +86,16 @@ export async function spawnAgent(params: SpawnAgentParams): Promise<SpawnAgentRe
 
   const agentId = generateAgentId(agentType.id);
 
-  // Build system prompt
-  const systemPrompt = buildAgentSystemPrompt(agentType, params);
+  // Build system prompt with per-agent bootstrap
+  let systemPrompt: string;
+  try {
+    const { prompt } = await buildAgentSystemPrompt(agentType, params);
+    systemPrompt = prompt;
+  } catch (error) {
+    // Fallback to sync version if bootstrap loading fails
+    console.warn(`[SpawnAgent] Bootstrap load failed, using fallback: ${error}`);
+    systemPrompt = buildAgentSystemPromptSync(agentType, params);
+  }
 
   // Override maxIterations if specified
   const maxIterations = params.maxIterations || agentType.maxIterations;
@@ -96,9 +112,75 @@ export async function spawnAgent(params: SpawnAgentParams): Promise<SpawnAgentRe
 }
 
 /**
- * Build system prompt for the agent
+ * Build system prompt for the agent (Hermes-style)
+ * Loads instance-level identity (shared by all agents)
+ * Plus agent-type-specific system prompt
  */
-function buildAgentSystemPrompt(agentType: AgentType, params: SpawnAgentParams): string {
+async function buildAgentSystemPrompt(
+  agentType: AgentType, 
+  params: SpawnAgentParams,
+  workspaceDir?: string
+): Promise<{ prompt: string; instanceFiles: BootstrapFile[] }> {
+  const parts: string[] = [];
+  const instanceFiles: BootstrapFile[] = [];
+  
+  // 1. Load instance-level identity (Hermes-style: shared by ALL agents)
+  // This is SOUL.md, IDENTITY.md from KOBOLD_HOME - follows you everywhere
+  try {
+    const files = await loadInstanceFiles({
+      homeDir: workspaceDir || process.env.KOBOLD_HOME,
+    });
+    instanceFiles.push(...files.filter(f => f.exists && !f.blocked));
+  } catch (error) {
+    console.warn(`[SpawnAgent] Could not load instance files: ${error}`);
+  }
+  
+  // 2. Agent type definition (specific to this agent type)
+  parts.push(`<!-- Agent Type Definition -->`);
+  parts.push(`${agentType.systemPrompt}`);
+  
+  // 3. Instance-level identity (format directly, Hermes style)
+  if (instanceFiles.length > 0) {
+    parts.push("");
+    for (const file of instanceFiles) {
+      parts.push(file.content);
+    }
+  }
+
+  // 4. Task context
+  if (params.context) {
+    parts.push("");
+    parts.push(`<!-- Task Context -->`);
+    parts.push(`Additional context: ${params.context}`);
+  }
+
+  // 5. Priority
+  if (params.priority) {
+    parts.push("");
+    parts.push(`<!-- Priority -->`);
+    parts.push(`Priority: ${params.priority.toUpperCase()}`);
+  }
+
+  // 6. Capabilities
+  parts.push("");
+  parts.push(`<!-- Your Capabilities -->`);
+  parts.push(agentType.capabilities.map(c => `- ${c}`).join("\n"));
+
+  // 7. Available tools
+  parts.push("");
+  parts.push(`<!-- Available Tools -->`);
+  parts.push(agentType.tools.map(t => `- ${t}`).join("\n"));
+
+  return {
+    prompt: parts.join("\n\n"),
+    instanceFiles,
+  };
+}
+
+/**
+ * Build system prompt synchronously (for backwards compatibility)
+ */
+function buildAgentSystemPromptSync(agentType: AgentType, params: SpawnAgentParams): string {
   const parts: string[] = [];
 
   // Agent identity

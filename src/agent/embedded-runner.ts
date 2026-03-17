@@ -1,12 +1,14 @@
 /**
- * Embedded Agent Runner - v0.3.0
+ * Embedded Agent Runner - v0.4.0
  * 
  * Wraps pi-coding-agent with full TUI settings sharing.
  * Shares: extensions, model config, persona from IDENTITY.md/SOUL.md
+ * 
+ * HERMES-STYLE: Loads instance identity from KOBOLD_HOME only
  */
 
-import { loadBootstrapFiles, ensureDefaultBootstrap } from "./bootstrap-loader.js";
-import { buildSystemPrompt, createSystemPromptOverride } from "./system-prompt.js";
+import { loadBootstrap, ensureDefaultFiles, loadInstanceFiles } from "./bootstrap-loader.js";
+import { buildSystemPromptAsync, createSystemPromptOverride } from "./system-prompt.js";
 import { config as piConfig } from "../pi-config.js";
 import { loadConfig, getConfigValue } from "../config/loader.js";
 import * as path from "node:path";
@@ -105,26 +107,27 @@ export async function runEmbeddedAgent(
     model = config.model || process.env.KOBOLD_MODEL || "ollama/kimi-k2.5:cloud";
   }
 
-  // 1. Ensure bootstrap files exist (checks global ~/.0xkobold/ first)
-  await ensureDefaultBootstrap(workspaceDir);
+  // 1. Ensure default files exist (creates SOUL.md if missing)
+  const homeDir = process.env.KOBOLD_HOME || path.join(homedir(), ".0xkobold");
+  await ensureDefaultFiles({ homeDir });
 
-  // 2. Load bootstrap files (SOUL.md, IDENTITY.md, etc.)
-  const bootstrapFiles = await loadBootstrapFiles(workspaceDir);
-  console.log(`[Embedded] Loaded ${bootstrapFiles.filter(f => f.exists).length} bootstrap files`);
+  // 2. Load instance identity (Hermes-style: from KOBOLD_HOME only)
+  const { instanceFiles, projectFiles } = await loadBootstrap({
+    homeDir,
+    workingDir: workspaceDir,
+  });
+  console.log(`[Embedded] Loaded ${instanceFiles.filter(f => f.exists).length} instance files`);
+  console.log(`[Embedded] Loaded ${projectFiles.filter(f => f.exists).length} project files`);
 
   // 3. Build custom system prompt with persona context
-  const baseSystemPrompt = buildSystemPrompt({
-    basePrompt: undefined,
-    bootstrapFiles,
+  const systemPrompt = await buildSystemPromptAsync({
+    instanceFiles,
+    projectFiles,
     workspace: workspaceDir,
     mode: config.mode,
     tools: [],
+    extraSystemPrompt: config.extraSystemPrompt,
   });
-  
-  // Append extra system prompt for subagents
-  const systemPrompt = config.extraSystemPrompt 
-    ? `${baseSystemPrompt}\n\n<!-- Subagent Context -->\n${config.extraSystemPrompt}`
-    : baseSystemPrompt;
 
   console.log(`[Embedded] System prompt: ${systemPrompt.length} chars`);
 
@@ -173,11 +176,14 @@ export async function runEmbeddedAgent(
   console.log('[Embedded] Running in simulation mode (SDK not available)');
   const simulatedResult: EmbeddedRunResult = {
     text: `[Embedded mode simulation]\n\n` +
-          `Bootstrap files loaded:\n` +
-          bootstrapFiles
+          `Instance identity loaded:\n` +
+          instanceFiles
             .filter(f => f.exists)
             .map(f => `- ${f.name} (${f.size} chars)`)
             .join("\n") +
+          (projectFiles.length > 0 
+            ? `\n\nProject context:\n` + projectFiles.filter(f => f.exists).map(f => `- ${f.name}`).join("\n")
+            : '') +
           (model ? `\n\nModel: ${model}` : '') +
           (extensions.length > 0 ? `\nExtensions: ${extensions.length}` : ''),
     toolCalls: [],
@@ -226,6 +232,7 @@ export async function isEmbeddedModeAvailable(): Promise<boolean> {
  * Sets up directories and default files
  */
 export async function initEmbeddedMode(workspaceDir: string): Promise<void> {
-  await ensureDefaultBootstrap(workspaceDir);
-  console.log("[Embedded] Initialized workspace with bootstrap files");
+  const homeDir = process.env.KOBOLD_HOME || path.join(homedir(), ".0xkobold");
+  await ensureDefaultFiles({ homeDir });
+  console.log("[Embedded] Initialized with default identity files");
 }

@@ -10,6 +10,28 @@ export {
   type SkillHandler
 } from "./framework.js";
 
+// Skill Management (Phase 4.5 - Hermes-style)
+export { 
+  skillManage,
+  executeSkillManage,
+  skillManageToolDefinition,
+  type SkillManageAction,
+  type SkillManageParams,
+  type SkillManageResult
+} from "./skill-manage.js";
+
+// Conditional Skills (Phase 4.6 - agentskills.io spec)
+export {
+  getConditionalSkillRegistry,
+  loadSkillsHub,
+  type SkillFrontmatter,
+  type HermesMetadata,
+  type ParsedSkill,
+  type SkillFilterOptions,
+  type SkillRegistryOptions,
+} from "./conditional-skills.js";
+export { ConditionalSkillRegistry } from "./conditional-skills.js";
+
 // Real Worker Skills (Phase 3.3 - NOW ACTUAL IMPLEMENTATIONS)
 export {
   nextjsWorkerSkill,

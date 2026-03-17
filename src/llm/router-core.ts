@@ -11,6 +11,8 @@
 
 import type { LLMProvider, ChatResponse } from './types';
 import { getModelDiscoveryService, type DiscoveredModel } from './model-discovery';
+import { getModelScoringDB, type ModelTier } from './model-scoring-db';
+import { getModelPopularityService } from './model-popularity';
 
 // ============================================================================
 // Types
@@ -34,6 +36,7 @@ export interface ModelPerformance {
   timestamp: number;
   userRating?: number;
   success: boolean;
+  sessionId?: string;
 }
 
 export interface ModelScore {
@@ -43,7 +46,10 @@ export interface ModelScore {
   usageCount: number;
   successRate: number;
   score: number;
+  lastUsed?: number;
 }
+
+export { ModelTier };
 
 // ============================================================================
 // Adaptive Model Router
@@ -51,11 +57,13 @@ export interface ModelScore {
 
 export class AdaptiveModelRouter {
   private discovery = getModelDiscoveryService();
+  private scoringDB = getModelScoringDB();
+  private popularity = getModelPopularityService();
   private provider: LLMProvider;
   private defaultModel: string;
   private initialized = false;
 
-  // Performance learning
+  // Performance learning (in-memory cache, backed by DB)
   private performanceHistory: ModelPerformance[] = [];
   private modelScores: Map<string, ModelScore> = new Map();
   private readonly maxHistory = 1000;
@@ -71,12 +79,15 @@ export class AdaptiveModelRouter {
     performance: 10,
     recency: 5,
     favorite: 8,
+    popularity: 7,       // Weight for community popularity (Ollama pulls + Nostr)
+    communityScore: 5,   // Weight for Nostr community ratings
   };
 
   constructor(provider: LLMProvider, defaultModel?: string) {
     this.provider = provider;
     this.defaultModel = defaultModel ?? 'kimi-k2.5:cloud';
     this.loadPerformanceData();
+    this.loadScoresFromDB();
   }
 
   // ============================================================================
@@ -189,7 +200,8 @@ export class AdaptiveModelRouter {
     response: ChatResponse,
     latencyMs: number,
     taskType: string,
-    complexity: string
+    complexity: string,
+    sessionId?: string
   ): void {
     const perf: ModelPerformance = {
       modelName,
@@ -200,19 +212,37 @@ export class AdaptiveModelRouter {
       outputTokens: response.usage?.outputTokens || 0,
       timestamp: Date.now(),
       success: true,
+      sessionId,
     };
 
+    // Add to in-memory history
     this.performanceHistory.push(perf);
 
     if (this.performanceHistory.length > this.maxHistory) {
       this.performanceHistory = this.performanceHistory.slice(-this.maxHistory);
     }
 
+    // Persist to database
+    this.scoringDB.recordPerformance({
+      modelName: perf.modelName,
+      taskType: perf.taskType,
+      complexity: perf.complexity,
+      latencyMs: perf.latencyMs,
+      inputTokens: perf.inputTokens,
+      outputTokens: perf.outputTokens,
+      timestamp: perf.timestamp,
+      success: perf.success,
+      sessionId: perf.sessionId,
+    });
+
+    // Update task-specific performance
+    this.scoringDB.updateTaskPerformance(modelName, taskType);
+
     this.updateModelScores();
-    this.savePerformanceData();
   }
 
-  addFeedback(modelName: string, taskType: string, rating: number): void {
+  addFeedback(modelName: string, taskType: string, rating: number, context?: string): void {
+    // Add to in-memory history
     const perf: ModelPerformance = {
       modelName,
       taskType,
@@ -226,21 +256,34 @@ export class AdaptiveModelRouter {
     };
 
     this.performanceHistory.push(perf);
+
+    // Persist to database
+    this.scoringDB.addFeedback(modelName, rating, taskType, context);
     this.updateModelScores();
-    this.savePerformanceData();
 
     console.log(`[Router] Feedback recorded: ${modelName} rated ${rating}/5`);
   }
 
   getModelStats(modelName: string): ModelScore | undefined {
-    return this.modelScores.get(modelName);
+    // First check in-memory cache
+    const cached = this.modelScores.get(modelName);
+    if (cached) return cached;
+
+    // Fall back to database
+    return this.scoringDB.getModelScore(modelName) ?? undefined;
   }
 
   getModelRankings(): ModelScore[] {
-    return Array.from(this.modelScores.values()).sort((a, b) => b.score - a.score);
+    // Get all scores from database
+    return this.scoringDB.getAllScores();
   }
 
   getBestModelForTask(taskType: string): string | undefined {
+    // Check database for best model for task
+    const best = this.scoringDB.getBestForTask(taskType, 3);
+    if (best) return best.modelName;
+
+    // Fall back to in-memory history
     const relevantHistory = this.performanceHistory.filter(
       p => p.taskType === taskType && p.userRating && p.userRating >= 4
     );
@@ -281,7 +324,7 @@ export class AdaptiveModelRouter {
   resetPerformanceData(): void {
     this.performanceHistory = [];
     this.modelScores.clear();
-    this.savePerformanceData();
+    this.scoringDB.clearHistory();
     console.log('[Router] Performance data reset');
   }
 
@@ -315,13 +358,7 @@ export class AdaptiveModelRouter {
   // ============================================================================
 
   exportPerformanceData(): object {
-    return {
-      history: this.performanceHistory,
-      scores: Object.fromEntries(this.modelScores),
-      weights: this.weights,
-      favorites: this.favoriteModels,
-      exportedAt: new Date().toISOString(),
-    };
+    return this.scoringDB.exportData();
   }
 
   importPerformanceData(data: {
@@ -330,11 +367,48 @@ export class AdaptiveModelRouter {
     weights?: Partial<typeof this.weights>;
     favorites?: string[];
   }): void {
-    if (data.history) this.performanceHistory = data.history;
-    if (data.scores) this.modelScores = new Map(Object.entries(data.scores));
+    if (data.history) {
+      this.scoringDB.importData({ history: data.history });
+    }
+    if (data.scores) {
+      this.modelScores = new Map(Object.entries(data.scores));
+    }
     if (data.weights) this.weights = { ...this.weights, ...data.weights };
     if (data.favorites) this.favoriteModels = data.favorites;
     console.log('[Router] Performance data imported');
+  }
+
+  // ============================================================================
+  // Tier List Generation
+  // ============================================================================
+
+  generateTierList(period: 'day' | 'week' | 'month' | 'all' = 'all'): ModelTier[] {
+    return this.scoringDB.generateTierList(period);
+  }
+
+  getLatestTierList(): { tiers: ModelTier[]; generatedAt: number; period: string } | null {
+    return this.scoringDB.getLatestTierList();
+  }
+
+  getPerformanceHistory(limit: number = 100): ModelPerformance[] {
+    return this.scoringDB.getPerformanceHistory(limit);
+  }
+
+  getRecentFeedback(limit: number = 50): Array<{
+    modelName: string;
+    rating: number;
+    taskType?: string;
+    timestamp: number;
+  }> {
+    return this.scoringDB.getRecentFeedback(limit);
+  }
+
+  private loadScoresFromDB(): void {
+    const scores = this.scoringDB.getAllScores();
+    for (const score of scores) {
+      this.modelScores.set(score.modelName, score);
+    }
+    console.log(`[Router] Loaded ${scores.length} model scores from database`);
   }
 
   // ============================================================================
@@ -490,6 +564,16 @@ export class AdaptiveModelRouter {
       score += 2;
     }
 
+    // 9. Community popularity (Ollama pulls + Nostr community ratings)
+    const popularityScore = this.popularity.calculatePopularityScore(model.name);
+    score += popularityScore * this.weights.popularity;
+
+    // 10. Community ratings (if available from Nostr)
+    const pop = this.popularity.getPopularity(model.name);
+    if (pop && pop.communitySampleSize > 0) {
+      score += pop.communityScore * this.weights.communityScore;
+    }
+
     return score;
   }
 
@@ -618,22 +702,14 @@ export class AdaptiveModelRouter {
   }
 
   private savePerformanceData(): void {
-    try {
-      const data = JSON.stringify({
-        history: this.performanceHistory,
-        scores: Array.from(this.modelScores.entries()),
-        favorites: this.favoriteModels,
-      });
-      // TODO: Persist to ~/.0xkobold/router-performance.json
-      // For now, in-memory only
-    } catch (err) {
-      console.error('[Router] Failed to save performance data:', err);
-    }
+    // Performance data is now persisted in real-time via scoringDB
+    // This is kept for compatibility but operates as no-op
   }
 
   private loadPerformanceData(): void {
-    // TODO: Load from ~/.0xkobold/router-performance.json
-    // For now, start fresh
+    // Performance data is now loaded from database via loadScoresFromDB()
+    // This is kept for compatibility but operates as no-op
+    // In-memory history starts fresh each session
     this.performanceHistory = [];
     this.modelScores = new Map();
   }

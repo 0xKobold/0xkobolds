@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🐉 Kobold Dragon Sprites</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      font-family: 'Courier New', monospace;
+      color: #10b981;
+    }
+    
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 28px;
+      text-shadow: 0 0 20px #10b981;
+    }
+    
+    .subtitle {
+      text-align: center;
+      color: #6ee7b7;
+      margin-bottom: 30px;
+    }
+    
+    .sprites-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .sprite-card {
+      background: rgba(0, 0, 0, 0.5);
+      border: 2px solid #10b981;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    
+    .sprite-card h3 {
+      color: #34d399;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+    
+    .sprite-card canvas {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    
+    .sprite-info {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #6ee7b7;
+    }
+    
+    .palette {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 30px;
+      flex-wrap: wrap;
+    }
+    
+    .color-swatch {
+      text-align: center;
+    }
+    
+    .color-swatch div {
+      width: 40px;
+      height: 40px;
+      border-radius: 4px;
+      border: 2px solid white;
+      margin-bottom: 5px;
+    }
+    
+    .color-swatch span {
+      font-size: 10px;
+      color: #9ca3af;
+    }
+    
+    .controls {
+      margin-top: 30px;
+      text-align: center;
+    }
+    
+    button {
+      background: #10b981;
+      color: #1a1a2e;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: bold;
+      margin: 5px;
+      transition: all 0.2s;
+    }
+    
+    button:hover {
+      background: #34d399;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+    
+    .live-section {
+      margin-top: 40px;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.5);
+      border: 2px dashed #10b981;
+      border-radius: 12px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    .live-section h2 {
+      color: #fbbf24;
+      margin-bottom: 15px;
+    }
+    
+    #status {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #34d399;
+    }
+    
+    .pixel-info {
+      margin-top: 30px;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    
+    .pixel-info h4 {
+      color: #fbbf24;
+      margin-bottom: 10px;
+    }
+    
+    .pixel-info ul {
+      margin-left: 20px;
+    }
+    
+    .pixel-info li {
+      color: #6ee7b7;
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🐉 Kobold Dragon Sprites</h1>
+  <p class="subtitle">32×32 pixel art sprites • 4× render scale • Pokemon-style limited palette</p>
+  
+  <div class="palette">
+    <div class="color-swatch">
+      <div style="background: transparent; border: 2px dashed #333;"></div>
+      <span>Transparent</span>
+    </div>
+    <div class="color-swatch">
+      <div style="background: #065f46;"></div>
+      <span>Dark Green</span>
+    </div>
+    <div class="color-swatch">
+      <div style="background: #10b981;"></div>
+      <span>Primary</span>
+    </div>
+    <div class="color-swatch">
+      <div style="background: #34d399;"></div>
+      <span>Light</span>
+    </div>
+    <div class="color-swatch">
+      <div style="background: #6ee7b7;"></div>
+      <span>Highlight</span>
+    </div>
+    <div class="color-swatch">
+      <div style="background: #fbbf24;"></div>
+      <span>Yellow</span>
+    </div>
+    <div class="color-swatch">
+      <div style="background: #1a1a2e;"></div>
+      <span>Black</span>
+    </div>
+  </div>
+  
+  <div class="sprites-grid" style="margin-top: 30px;">
+    <div class="sprite-card">
+      <h3>🧍 Idle</h3>
+      <canvas id="idle-canvas" width="128" height="128"></canvas>
+      <p class="sprite-info">Standing still, looking around</p>
+    </div>
+    
+    <div class="sprite-card">
+      <h3>😴 Sleeping</h3>
+      <canvas id="sleeping-canvas" width="128" height="128"></canvas>
+      <p class="sprite-info">Curled up with floating Zs</p>
+    </div>
+  </div>
+  
+  <div class="live-section">
+    <h2>🎮 Animation Preview</h2>
+    <canvas id="live-canvas" width="128" height="128"></canvas>
+    <p id="status">State: idle | Breathing...</p>
+    <div class="controls">
+      <button onclick="setState('idle')">Idle</button>
+      <button onclick="setState('working')">Working</button>
+      <button onclick="setState('thinking')">Thinking</button>
+      <button onclick="setState('sleeping')">Sleeping</button>
+    </div>
+  </div>
+  
+  <div class="pixel-info">
+    <h4>🎨 Pixel Art Principles Applied</h4>
+    <ul>
+      <li><strong>Limited Palette:</strong> 7 colors max (NES-style constraint)</li>
+      <li><strong>Clear Silhouette:</strong> Dragon shape visible at 1× scale</li>
+      <li><strong>No Anti-Aliasing:</strong> Crisp pixel edges, no blur</li>
+      <li><strong>No Pillow Shading:</strong> Light source from top-right</li>
+      <li><strong>Subpixel Animation:</strong> Color cycling for effects</li>
+    </ul>
+  </div>
+
+  <script src="./dragon-sprites.js"></script>
+  <script>
+    // Canvas and context
+    const SCALE = 4;
+    
+    // Draw sprite to canvas
+    function drawSprite(canvasId, spriteData) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      spriteData.forEach((row, y) => {
+        row.forEach((colorIndex, x) => {
+          if (colorIndex === 0) return; // Skip transparent
+          const color = PALETTE[colorIndex];
+          if (color && color !== 'transparent') {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE);
+          }
+        });
+      });
+    }
+    
+    // Animation state
+    let currentState = 'idle';
+    let frameIndex = 0;
+    let breatheOffset = 0;
+    
+    function animate(timestamp) {
+      // Breathing animation
+      breatheOffset = Math.sin(timestamp / 500) * 2;
+      
+      const canvas = document.getElementById('live-canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      const sprite = SPRITES[currentState];
+      
+      sprite.forEach((row, y) => {
+        row.forEach((colorIndex, x) => {
+          if (colorIndex === 0) return;
+          const color = PALETTE[colorIndex];
+          if (color && color !== 'transparent') {
+            ctx.fillStyle = color;
+            // Add breathing offset to y position
+            const yOffset = currentState === 'sleeping' ? 0 : breatheOffset;
+            ctx.fillRect(x * SCALE, (y * SCALE) + yOffset, SCALE, SCALE);
+          }
+        });
+      });
+      
+      // Update status
+      const statuses = {
+        idle: `State: idle | Breathing... ${Math.round(breatheOffset)}px`,
+        working: 'State: working | Typing...',
+        thinking: 'State: thinking | Hmm...',
+        sleeping: 'State: sleeping | Zzz...'
+      };
+      document.getElementById('status').textContent = statuses[currentState] || 'Unknown';
+      
+      requestAnimationFrame(animate);
+    }
+    
+    function setState(state) {
+      currentState = state;
+    }
+    
+    // Initialize
+    function init() {
+      // Draw static sprites
+      drawSprite('idle-canvas', SPRITES.idle);
+      drawSprite('sleeping-canvas', SPRITES.sleeping);
+      
+      // Start animation
+      requestAnimationFrame(animate);
+    }
+    
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

@@ -191,16 +191,62 @@ class SessionMemoryBridge {
   private async loadRecentMemories(threadId: string | undefined): Promise<MemoryEnrichedSession["recentMemories"]> {
     if (!threadId) return [];
 
-    // TODO: Query generative agents memory_stream table
-    // For now, return empty
-    return [];
+    // Query generative agents memory_stream table (now session_events from Phase 6)
+    // Get session by memory thread first, then get recent events for that session
+    try {
+      const sessionEntry = this.store.getByMemoryThread(threadId);
+      if (!sessionEntry) return [];
+      
+      const events = this.store.events.getRecentEvents(sessionEntry.sessionId, 10);
+      
+      return events.map(event => ({
+        content: event.content,
+        type: event.type as "observation" | "thought" | "action",
+        timestamp: event.timestamp, // Already Unix epoch ms
+      }));
+    } catch (err) {
+      console.warn('[SessionMemoryBridge] Failed to load recent memories:', err);
+      return [];
+    }
   }
 
   private async loadUserPreferences(userProfileId: string | undefined): Promise<Record<string, unknown>> {
     if (!userProfileId) return {};
 
-    // TODO: Load from user-profile.ts
-    return {};
+    // Load from user-profile.ts
+    try {
+      const userProfile = await import('../agent/user-profile.js');
+      
+      // Try to load user profile - in a real implementation, we'd map userProfileId to a workspace
+      // For now, we'll load the default/current user profile
+      if (userProfile.loadUserProfile) {
+        const profile = await userProfile.loadUserProfile(process.cwd());
+        if (profile) {
+          // Convert UserProfile to plain object for memory storage
+          return {
+            preferences: profile.preferences,
+            learned: profile.learned,
+            name: profile.name,
+            email: profile.email,
+            timezone: profile.timezone,
+          };
+        }
+      }
+      
+      // Alternative: get preferences for prompt
+      if (userProfile.getUserPreferencesForPrompt) {
+        const prefsStr = await userProfile.getUserPreferencesForPrompt(process.cwd());
+        if (prefsStr) {
+          return { promptPreferences: prefsStr };
+        }
+      }
+      
+      // Return empty if we can't load
+      return {};
+    } catch (err) {
+      console.warn('[SessionMemoryBridge] Failed to load user profile:', err);
+      return {};
+    }
   }
 
   private async generateContext(

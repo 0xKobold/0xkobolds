@@ -383,25 +383,79 @@ async function searchDuckDuckGo(query: string, limit: number): Promise<WebSearch
   const results: WebSearchResult[] = [];
   
   try {
-    // Use Lite/DuckDuckGo HTML version
-    const searchUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-    const html = await $`curl -s -A "Mozilla/5.0 (compatible; SearchBot/1.0)" --max-time 10 ${searchUrl}`.text();
+    // DuckDuckGo Lite - simpler HTML, fewer restrictions
+    const liteUrl = `https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(query)}`;
+    const response = await fetch(liteUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
     
-    // Parse results
-    const resultRegex = /<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi;
-    let match;
-    
-    while ((match = resultRegex.exec(html)) && results.length < limit) {
-      const url = match[1].replace(/^\/l\/\?kh=-\d+&u=/, ''); // DuckDuckGo redirect
-      const decodedUrl = decodeURIComponent(url);
-      const title = match[2].replace(/<[^>]*>/g, '');
+    if (response.ok) {
+      const html = await response.text();
       
-      if (decodedUrl && title && !decodedUrl.includes('duckduckgo.com')) {
-        results.push({ title, url: decodedUrl, snippet: "" });
+      // DuckDuckGo Lite uses uddg redirect URLs
+      // Pattern: href="//duckduckgo.com/l/?uddg=ENCODED_URL&..."
+      const linkRegex = /href="\/\/duckduckgo\.com\/l\/\?uddg=([^"&]+)/gi;
+      let match;
+      
+      // Also find titles - they appear as link text before the URL
+      const titleRegex = /<a[^>]*class="[^"]*result[^"]*"[^>]*>([^<]+)<\/a>/gi;
+      
+      // Extract URLs
+      const urls: string[] = [];
+      while ((match = linkRegex.exec(html)) && urls.length < limit * 2) {
+        try {
+          const decoded = decodeURIComponent(match[1]);
+          // Clean up DDG tracking params
+          const cleanUrl = decoded.split('&')[0].split('?rut=')[0];
+          if (cleanUrl.startsWith('http') && !urls.includes(cleanUrl)) {
+            urls.push(cleanUrl);
+          }
+        } catch {}
       }
+      
+      // Try to find titles from the text around links
+      // DDG Lite format: <a href="...">Title</a>
+      const anchorRegex = /<a[^>]*href="[^"]*uddg=[^"]*"[^>]*>([^<]+)<\/a>/gi;
+      const titles: string[] = [];
+      while ((match = anchorRegex.exec(html)) && titles.length < urls.length) {
+        const title = match[1].replace(/<[^>]*>/g, '').trim();
+        if (title && title.length > 2 && title.length < 200) {
+          titles.push(title);
+        }
+      }
+      
+      // Combine URLs with titles
+      for (let i = 0; i < Math.min(urls.length, titles.length, limit); i++) {
+        results.push({
+          title: titles[i] || new URL(urls[i]).hostname,
+          url: urls[i],
+          snippet: ''
+        });
+      }
+      
+      // If we have URLs but no titles, use hostname as title
+      for (let i = results.length; i < Math.min(urls.length, limit); i++) {
+        const url = urls[i];
+        try {
+          const hostname = new URL(url).hostname;
+          results.push({
+            title: hostname,
+            url: url,
+            snippet: ''
+          });
+        } catch {}
+      }
+      
+      console.log(`[WebSearch] DuckDuckGo Lite found ${results.length} results`);
+      return results;
     }
   } catch (error) {
-    console.log("[WebSearch] DuckDuckGo search failed:", error);
+    console.log("[WebSearch] DuckDuckGo Lite failed:", error);
   }
   
   return results;
@@ -409,34 +463,44 @@ async function searchDuckDuckGo(query: string, limit: number): Promise<WebSearch
 
 async function searchSearX(query: string, limit: number, instance?: string): Promise<WebSearchResult[]> {
   const results: WebSearchResult[] = [];
+  
+  // Use more reliable SearXNG instances that don't require auth
   const searxInstances = instance ? [instance] : [
-    "https://searx.be",
-    "https://searx.tiekoetter.com",
-    "https://search.sapti.me"
+    "https://search.bus-hit.me",
+    "https://search.projectsegfau.ltd",
+    "https://searx.foss.family",
   ];
   
   for (const baseUrl of searxInstances) {
     try {
       const searchUrl = `${baseUrl}/search?q=${encodeURIComponent(query)}&format=json`;
       const response = await fetch(searchUrl, { 
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-        signal: AbortSignal.timeout(10000)
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36',
+          'Accept': 'application/json',
+        },
+        signal: AbortSignal.timeout(8000)
       });
       
-      if (!response.ok) continue;
+      if (!response.ok) {
+        console.log(`[WebSearch] ${baseUrl} returned ${response.status}`);
+        continue;
+      }
       
       const data: any = await response.json();
-      if (data.results) {
+      if (data.results && data.results.length > 0) {
         for (const r of data.results.slice(0, limit)) {
           results.push({
             title: r.title || "Untitled",
             url: r.url,
-            snippet: r.content || r.abstract || ""
+            snippet: r.content || r.snippet || ""
           });
         }
+        console.log(`[WebSearch] ${baseUrl} found ${results.length} results`);
         if (results.length >= limit) break;
       }
-    } catch {
+    } catch (err) {
+      console.log(`[WebSearch] ${baseUrl} failed:`, err);
       continue;
     }
   }

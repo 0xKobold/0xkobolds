@@ -5,7 +5,7 @@
  */
 
 import { EventEmitter } from "events";
-import { getRealGateway } from "../../gateway/index.js";
+import { getGateway } from "../../gateway/index.js";
 
 export interface SlackConfig {
   webhookUrl: string;
@@ -127,7 +127,7 @@ class SlackIntegration extends EventEmitter {
    * Forward to gateway
    */
   private forwardToGateway(message: SlackMessage): void {
-    const gateway = getRealGateway();
+    const gateway = getGateway();
     
     gateway.emit("message", {
       connection: {

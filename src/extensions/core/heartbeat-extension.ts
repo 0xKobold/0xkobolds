@@ -1,28 +1,50 @@
 /**
- * Heartbeat Extension - Koclaw-style Periodic Check-ins
+ * Heartbeat Extension - OpenClaw-Compatible Periodic Agent Check-ins
  *
- * Monitors agent health via periodic LLM check-ins using HEARTBEAT.md.
- * This is a simplified implementation inspired by koclaw/openclaw.
+ * Runs periodic agent turns in the main session so the model can surface
+ * anything that needs attention without spamming the user.
  *
- * How it works:
- * 1. Config from kobold.json (agents.defaults.heartbeat)
- * 2. Agent reads HEARTBEAT.md and decides if action is needed
- * 3. If response is HEARTBEAT_OK (with optional short text), it's suppressed
+ * OpenClaw-Compatible Configuration:
+ * - Per-agent or global configuration
+ * - Session isolation and light context options
+ * - Delivery targets (last, none, specific channel)
+ * - Active hours with timezone support
+ * - Response contract (HEARTBEAT_OK token handling)
  *
- * Configuration in kobold.json:
+ * Configuration in kobold.json or openclaw.json:
  * {
  *   "agents": {
  *     "defaults": {
  *       "heartbeat": {
- *         "enabled": true,
  *         "every": "30m",
  *         "prompt": "Read HEARTBEAT.md...",
  *         "ackMaxChars": 300,
- *         "activeHours": { "start": "09:00", "end": "22:00" }
+ *         "target": "none",
+ *         "activeHours": { "start": "09:00", "end": "22:00", "timezone": "America/New_York" },
+ *         "isolatedSession": false,
+ *         "lightContext": false,
+ *         "model": null,
+ *         "includeReasoning": false,
+ *         "suppressToolErrorWarnings": false
  *       }
- *     }
+ *     },
+ *     "list": [
+ *       {
+ *         "id": "ops",
+ *         "heartbeat": {
+ *           "every": "1h",
+ *           "target": "telegram",
+ *           "to": "+15551234567"
+ *         }
+ *       }
+ *     ]
  *   }
  * }
+ *
+ * Response Contract:
+ * - If nothing needs attention, reply with "HEARTBEAT_OK"
+ * - For alerts, do NOT include HEARTBEAT_OK
+ * - HEARTBEAT_OK at start or end is stripped; reply dropped if remaining ≤ ackMaxChars
  *
  * For users: Edit HEARTBEAT.md in your workspace to customize checks.
  */
@@ -30,43 +52,98 @@
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import { loadConfig, getConfigValue } from "../../config/loader.js";
 
-// Constants matching koclaw conventions
+// Get the directory of this module for template resolution
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const TEMPLATE_PATH = path.join(__dirname, "heartbeat-template.md");
+
+// ════════════════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ════════════════════════════════════════════════════════════════════════════
+
 const HEARTBEAT_TOKEN = "HEARTBEAT_OK";
 const DEFAULT_EVERY = "30m";
 const DEFAULT_ACK_MAX_CHARS = 300;
 const HEARTBEAT_FILENAME = "HEARTBEAT.md";
 
+// ════════════════════════════════════════════════════════════════════════════
+// TYPES
+// ════════════════════════════════════════════════════════════════════════════
+
+interface ActiveHours {
+  start: string; // "HH:MM" format, 24h
+  end: string; // "HH:MM" format, 24h (24:00 allowed for end-of-day)
+  timezone?: string; // IANA timezone identifier or "local"
+}
+
 interface HeartbeatConfig {
   enabled: boolean;
-  every: string;
+  every: string; // Duration string: "30m", "1h", "2h"
   prompt: string;
   ackMaxChars: number;
-  activeHours: {
-    start: string;
-    end: string;
-    timezone?: string;
-  } | null;
+  target: "none" | "last" | string; // "none", "last", or channel ID
+  to?: string; // Optional recipient override (e.g., phone number, chat ID)
+  activeHours: ActiveHours | null;
+  isolatedSession: boolean;
+  lightContext: boolean;
+  model?: string; // Optional model override
+  includeReasoning: boolean;
+  suppressToolErrorWarnings: boolean;
+  directPolicy: "allow" | "block"; // Block DM delivery?
 }
+
+interface HeartbeatState {
+  lastHeartbeat: string | null; // ISO timestamp
+  lastDelivery: string | null; // ISO timestamp
+  lastChannel: string | null; // Last channel used
+  skippedCount: number;
+  ackCount: number;
+  alertCount: number;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// UTILITY FUNCTIONS
+// ════════════════════════════════════════════════════════════════════════════
 
 function getDefaultConfig(): HeartbeatConfig {
   return {
     enabled: true,
     every: DEFAULT_EVERY,
-    prompt: `Read HEARTBEAT.md if it exists. Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply ${HEARTBEAT_TOKEN}.`,
+    prompt: `Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply ${HEARTBEAT_TOKEN}.`,
     ackMaxChars: DEFAULT_ACK_MAX_CHARS,
+    target: "none",
     activeHours: null,
+    isolatedSession: false,
+    lightContext: false,
+    includeReasoning: false,
+    suppressToolErrorWarnings: false,
+    directPolicy: "allow",
   };
 }
 
-// Parse duration string to milliseconds
+function getDefaultState(): HeartbeatState {
+  return {
+    lastHeartbeat: null,
+    lastDelivery: null,
+    lastChannel: null,
+    skippedCount: 0,
+    ackCount: 0,
+    alertCount: 0,
+  };
+}
+
+/**
+ * Parse duration string to milliseconds
+ * Supports: "30m", "1h", "2h", "1h30m", "90s"
+ */
 function parseDurationMs(duration: string): number {
   const regex = /^(?:(\d+)h)?\s*(?:(\d+)m)?\s?(?:(\d+)s?)?$/i;
   const match = duration.trim().match(regex);
 
   if (!match) {
-    console.warn(`[Heartbeat] Invalid duration "${duration}", using default`);
+    console.warn(`[Heartbeat] Invalid duration "${duration}", using default 30m`);
     return 30 * 60 * 1000;
   }
 
@@ -77,59 +154,76 @@ function parseDurationMs(duration: string): number {
   return ((hours * 60 + minutes) * 60 + seconds) * 1000;
 }
 
-// Read HEARTBEAT.md from workspace
-async function readHeartbeatFile(workspacePath: string): Promise<string | null> {
-  try {
-    const filePath = path.join(workspacePath, HEARTBEAT_FILENAME);
-    const content = await fs.readFile(filePath, "utf-8");
-    return content;
-  } catch {
-    return null;
-  }
+/**
+ * Parse time string "HH:MM" to minutes since midnight
+ */
+function parseTimeToMinutes(timeStr: string): number {
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  return hours * 60 + minutes;
 }
 
-// Check if content is effectively empty
-function isEffectivelyEmpty(content: string): boolean {
-  const lines = content.split("\n");
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    if (/^#+\s/.test(trimmed)) continue;
-    if (/^[-*+]\s*(\[[\sXx]\]\s*)?$/.test(trimmed)) continue;
-    return false;
-  }
-  return true;
-}
-
-// Check if currently within active hours
+/**
+ * Check if current time is within active hours
+ */
 function isWithinActiveHours(config: HeartbeatConfig): boolean {
   if (!config.activeHours) return true;
 
   const now = new Date();
-  const timeStr = now.toLocaleTimeString("en-US", {
-    hour12: false,
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const [currentHour, currentMin] = timeStr.split(":").map(Number);
-  const [startHour, startMin] = config.activeHours.start.split(":").map(Number);
-  const [endHour, endMin] = config.activeHours.end.split(":").map(Number);
 
-  const currentMinutes = currentHour * 60 + currentMin;
-  const startMinutes = startHour * 60 + startMin;
-  const endMinutes = endHour * 60 + endMin;
-
-  if (startMinutes === endMinutes) return true;
-
-  if (startMinutes > endMinutes) {
-    return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+  // Get timezone
+  let tz: string;
+  if (config.activeHours.timezone === "local") {
+    tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } else if (config.activeHours.timezone) {
+    tz = config.activeHours.timezone;
+  } else {
+    // Try user timezone from config, fallback to local
+    tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   }
 
-  return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    const timeStr = formatter.format(now);
+    const [currentHour, currentMin] = timeStr.split(":").map(Number);
+    const currentMinutes = currentHour * 60 + currentMin;
+
+    const startMinutes = parseTimeToMinutes(config.activeHours.start);
+    const endMinutes = parseTimeToMinutes(config.activeHours.end);
+
+    // Handle wrap-around (e.g., 22:00 to 06:00)
+    if (startMinutes === endMinutes) {
+      // Zero-width window, always outside
+      return false;
+    }
+
+    if (startMinutes > endMinutes) {
+      // Wrap around midnight
+      return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+    }
+
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  } catch {
+    // Invalid timezone, use local
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const startMinutes = parseTimeToMinutes(config.activeHours.start);
+    const endMinutes = parseTimeToMinutes(config.activeHours.end);
+
+    if (startMinutes === endMinutes) return false;
+    if (startMinutes > endMinutes) {
+      return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+    }
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  }
 }
 
-// Find workspace directory
+/**
+ * Find workspace directory containing HEARTBEAT.md
+ */
 async function findWorkspaceDir(): Promise<string> {
   try {
     await fs.access(HEARTBEAT_FILENAME);
@@ -154,63 +248,148 @@ async function findWorkspaceDir(): Promise<string> {
   return process.cwd();
 }
 
-async function fileExists(filepath: string): Promise<boolean> {
+/**
+ * Read HEARTBEAT.md from workspace
+ */
+async function readHeartbeatFile(workspacePath: string): Promise<string | null> {
   try {
-    await fs.access(filepath);
-    return true;
+    const filePath = path.join(workspacePath, HEARTBEAT_FILENAME);
+    const content = await fs.readFile(filePath, "utf-8");
+    return content;
   } catch {
-    return false;
+    return null;
   }
 }
+
+/**
+ * Check if content is effectively empty (no actionable items)
+ */
+function isEffectivelyEmpty(content: string): boolean {
+  const lines = content.split("\n");
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (/^#+\s/.test(trimmed)) continue; // Headers
+    if (/^[-*+]\s*(\[[\sXx]\]\s*)?$/.test(trimmed)) continue; // Empty list items
+    if (/^<!--.*-->$/.test(trimmed)) continue; // HTML comments
+    if (/^\*\*.*\*\*$/.test(trimmed)) continue; // Bold standalone
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Process HEARTBEAT_OK response contract
+ * Returns { isAck, strippedContent }
+ */
+function processHeartbeatResponse(
+  content: string,
+  ackMaxChars: number
+): { isAck: boolean; strippedContent: string; shouldDeliver: boolean } {
+  const trimmed = content.trim();
+
+  // Check for HEARTBEAT_OK at start or end
+  const startsWithToken = trimmed.startsWith(HEARTBEAT_TOKEN);
+  const endsWithToken = trimmed.endsWith(HEARTBEAT_TOKEN);
+
+  if (!startsWithToken && !endsWithToken) {
+    // Not an ack - this is an alert
+    return { isAck: false, strippedContent: content, shouldDeliver: true };
+  }
+
+  // Strip the token
+  let stripped = trimmed;
+  if (startsWithToken) {
+    stripped = stripped.slice(HEARTBEAT_TOKEN.length).trim();
+  }
+  if (endsWithToken && !startsWithToken) {
+    stripped = stripped.slice(0, -HEARTBEAT_TOKEN.length).trim();
+  }
+
+  // Check remaining length
+  const shouldDeliver = stripped.length > ackMaxChars;
+
+  return {
+    isAck: true,
+    strippedContent: stripped,
+    shouldDeliver,
+  };
+}
+
+/**
+ * Load heartbeat configuration from kobold.json
+ */
+async function loadHeartbeatConfig(): Promise<HeartbeatConfig> {
+  const defaultConfig = getDefaultConfig();
+
+  try {
+    const snapshot = await loadConfig();
+    const hbConfig = snapshot.config.agents?.defaults?.heartbeat;
+
+    if (hbConfig) {
+      return {
+        enabled: hbConfig.enabled ?? defaultConfig.enabled,
+        every: hbConfig.every ?? defaultConfig.every,
+        prompt: hbConfig.prompt ?? defaultConfig.prompt,
+        ackMaxChars: hbConfig.ackMaxChars ?? defaultConfig.ackMaxChars,
+        target: hbConfig.target ?? defaultConfig.target,
+        to: hbConfig.to,
+        activeHours: hbConfig.activeHours ?? defaultConfig.activeHours,
+        isolatedSession: hbConfig.isolatedSession ?? defaultConfig.isolatedSession,
+        lightContext: hbConfig.lightContext ?? defaultConfig.lightContext,
+        model: hbConfig.model,
+        includeReasoning: hbConfig.includeReasoning ?? defaultConfig.includeReasoning,
+        suppressToolErrorWarnings: hbConfig.suppressToolErrorWarnings ?? defaultConfig.suppressToolErrorWarnings,
+        directPolicy: hbConfig.directPolicy ?? defaultConfig.directPolicy,
+      };
+    }
+  } catch (err) {
+    console.warn("[Heartbeat] Failed to load config, using defaults:", err);
+  }
+
+  return defaultConfig;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// EXTENSION
+// ════════════════════════════════════════════════════════════════════════════
 
 export default function heartbeatExtension(pi: ExtensionAPI) {
   const startTime = Date.now();
   let checkInterval: ReturnType<typeof setInterval> | null = null;
-  let lastHeartbeat = 0;
-
-  // Load config from kobold.json
   let config: HeartbeatConfig = getDefaultConfig();
+  let state: HeartbeatState = getDefaultState();
   let configLoaded = false;
 
-  async function loadHeartbeatConfig(): Promise<void> {
-    try {
-      const snapshot = await loadConfig();
-      const hbConfig = snapshot.config.agents?.defaults?.heartbeat;
+  // ═══════════════════════════════════════════════════════════════
+  // CONFIG LOADING
+  // ═══════════════════════════════════════════════════════════════
 
-      if (hbConfig) {
-        config = {
-          enabled: hbConfig.enabled ?? config.enabled,
-          every: hbConfig.every ?? config.every,
-          prompt: hbConfig.prompt ?? config.prompt,
-          ackMaxChars: hbConfig.ackMaxChars ?? config.ackMaxChars,
-          activeHours: hbConfig.activeHours ?? config.activeHours,
-        };
-      }
-      configLoaded = true;
-    } catch (err) {
-      console.warn('[Heartbeat] Failed to load config, using defaults:', err);
-    }
+  async function reloadConfig(): Promise<void> {
+    config = await loadHeartbeatConfig();
+    configLoaded = true;
   }
 
   // Load config on startup
-  loadHeartbeatConfig().then(() => {
+  reloadConfig().then(() => {
     console.log(`[Heartbeat] Config loaded (enabled: ${config.enabled}, every: ${config.every})`);
   });
 
-  // Reload config on environment changes
   pi.on("session_start", async () => {
-    await loadHeartbeatConfig();
+    await reloadConfig();
     console.log(`[Heartbeat] Extension loaded (enabled: ${config.enabled}, every: ${config.every})`);
   });
 
   // ═══════════════════════════════════════════════════════════════
-  // REGISTER HEARTBEAT TOOL
+  // HEARTBEAT CHECK TOOL
   // ═══════════════════════════════════════════════════════════════
 
   pi.registerTool({
     name: "heartbeat_check",
     label: "Heartbeat Check",
-    description: "Perform a heartbeat check by reading HEARTBEAT.md. Returns the content for review. Reply with HEARTBEAT_OK if nothing needs attention, or describe the issue.",
+    description:
+      "Perform a heartbeat check by reading HEARTBEAT.md. Returns the content for review. Reply with HEARTBEAT_OK if nothing needs attention, or describe the issue.",
     // @ts-ignore TSchema mismatch
     parameters: {
       type: "object",
@@ -219,77 +398,117 @@ export default function heartbeatExtension(pi: ExtensionAPI) {
           type: "boolean",
           description: "Force a check even if recently performed",
         },
+        agent: {
+          type: "string",
+          description: "Agent ID to check (for per-agent configs)",
+        },
       },
     },
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-      const { force } = params as { force?: boolean };
+      const { force, agent } = params as { force?: boolean; agent?: string };
       const now = Date.now();
       const everyMs = parseDurationMs(config.every);
 
       // Check active hours
       if (!isWithinActiveHours(config)) {
         return {
-          content: [{
-            type: "text" as const,
-            text: "Heartbeat skipped - outside active hours. Reply HEARTBEAT_OK to acknowledge.",
-          }],
-          details: { skipped: true, reason: "outside_active_hours" },
+          content: [
+            {
+              type: "text" as const,
+              text: `Heartbeat skipped - outside active hours (${config.activeHours?.start} - ${config.activeHours?.end}). Reply ${HEARTBEAT_TOKEN} to acknowledge.`,
+            },
+          ],
+          details: { skipped: true, reason: "outside_active_hours", activeHours: config.activeHours },
         };
       }
 
-      if (!force && now - lastHeartbeat < everyMs) {
+      // Check if too soon (unless forced)
+      if (!force && state.lastHeartbeat && now - new Date(state.lastHeartbeat).getTime() < everyMs) {
+        const nextCheck = new Date(new Date(state.lastHeartbeat).getTime() + everyMs);
         return {
-          content: [{
-            type: "text" as const,
-            text: "Heartbeat skipped - too soon since last check. Reply HEARTBEAT_OK to acknowledge.",
-          }],
-          details: { skipped: true, lastHeartbeat },
+          content: [
+            {
+              type: "text" as const,
+              text: `Heartbeat skipped - next check at ${nextCheck.toLocaleTimeString()}. Reply ${HEARTBEAT_TOKEN} to acknowledge.`,
+            },
+          ],
+          details: { skipped: true, reason: "too_soon", nextCheck: nextCheck.toISOString() },
         };
       }
 
+      // Find and read HEARTBEAT.md
       const workspaceDir = await findWorkspaceDir();
       const heartbeatContent = await readHeartbeatFile(workspaceDir);
 
       if (heartbeatContent === null) {
         return {
-          content: [{
-            type: "text" as const,
-            text: `No HEARTBEAT.md found in workspace. Reply ${HEARTBEAT_TOKEN} to acknowledge, or create the file to enable heartbeat checks.`,
-          }],
-          details: { fileExists: false },
+          content: [
+            {
+              type: "text" as const,
+              text: `No HEARTBEAT.md found in workspace. Reply ${HEARTBEAT_TOKEN} to acknowledge, or create the file to enable heartbeat checks.`,
+            },
+          ],
+          details: { fileExists: false, workspaceDir },
         };
       }
 
       if (isEffectivelyEmpty(heartbeatContent)) {
         return {
-          content: [{
-            type: "text" as const,
-            text: "HEARTBEAT.md is effectively empty (no actionable items). Reply HEARTBEAT_OK to acknowledge.",
-          }],
+          content: [
+            {
+              type: "text" as const,
+              text: `HEARTBEAT.md is effectively empty (no actionable items). Reply ${HEARTBEAT_TOKEN} to acknowledge.`,
+            },
+          ],
           details: { fileExists: true, isEmpty: true },
         };
       }
 
-      lastHeartbeat = now;
+      // Update state
+      state.lastHeartbeat = new Date().toISOString();
+
+      // Build response with config context
+      const responseLines = [
+        `HEARTBEAT.md content:`,
+        "",
+        heartbeatContent,
+        "",
+        "---",
+        `Check interval: ${config.every}`,
+        config.activeHours ? `Active hours: ${config.activeHours.start} - ${config.activeHours.end}` : null,
+        `Delivery target: ${config.target}`,
+        "",
+        `Review the checklist above. If nothing needs attention, reply with "${HEARTBEAT_TOKEN}". Otherwise, describe what needs attention.`,
+      ].filter(Boolean);
 
       return {
-        content: [{
-          type: "text" as const,
-          text: `HEARTBEAT.md content:\n\n${heartbeatContent}\n\nReview the checklist above. If nothing needs attention, reply with "${HEARTBEAT_TOKEN}". Otherwise, describe what needs attention.`,
-        }],
-        details: { fileExists: true, isEmpty: false },
+        content: [
+          {
+            type: "text" as const,
+            text: responseLines.join("\n"),
+          },
+        ],
+        details: {
+          fileExists: true,
+          isEmpty: false,
+          config: {
+            every: config.every,
+            target: config.target,
+            activeHours: config.activeHours,
+          },
+        },
       };
     },
   });
 
   // ═══════════════════════════════════════════════════════════════
-  // COMMANDS
+  // HEARTBEAT STATUS COMMAND
   // ═══════════════════════════════════════════════════════════════
 
   pi.registerCommand("heartbeat", {
     description: "Show heartbeat status or trigger manual check",
     handler: async (args, ctx) => {
-      await loadHeartbeatConfig();
+      await reloadConfig();
 
       if (args.trim() === "now" || args.trim() === "check") {
         if (!isWithinActiveHours(config)) {
@@ -311,20 +530,42 @@ export default function heartbeatExtension(pi: ExtensionAPI) {
         return;
       }
 
+      // Show status
       const lines = [
         "❤️ Heartbeat Configuration",
         `Enabled: ${config.enabled ? "✅" : "❌"}`,
         `Interval: ${config.every}`,
         `Ack Max Chars: ${config.ackMaxChars}`,
+        `Target: ${config.target}`,
+        `Isolated Session: ${config.isolatedSession}`,
+        `Light Context: ${config.lightContext}`,
       ];
 
       if (config.activeHours) {
         lines.push(`Active Hours: ${config.activeHours.start} - ${config.activeHours.end}`);
+        if (config.activeHours.timezone) {
+          lines.push(`Timezone: ${config.activeHours.timezone}`);
+        }
+      }
+
+      if (config.model) {
+        lines.push(`Model Override: ${config.model}`);
       }
 
       const workspaceDir = await findWorkspaceDir();
-      const hbExists = await fileExists(path.join(workspaceDir, HEARTBEAT_FILENAME));
+      const hbExists = await fs
+        .access(path.join(workspaceDir, HEARTBEAT_FILENAME))
+        .then(() => true)
+        .catch(() => false);
       lines.push(`HEARTBEAT.md: ${hbExists ? "✅ Found" : "⚠️ Not found"}`);
+
+      // State
+      lines.push("");
+      lines.push("📊 State:");
+      lines.push(`Last Check: ${state.lastHeartbeat || "Never"}`);
+      lines.push(`Acknowledged: ${state.ackCount}`);
+      lines.push(`Alerts: ${state.alertCount}`);
+      lines.push(`Skipped: ${state.skippedCount}`);
 
       lines.push("", "Usage:", "  /heartbeat now - Run check immediately", "  /heartbeat-init - Create HEARTBEAT.md");
 
@@ -332,47 +573,57 @@ export default function heartbeatExtension(pi: ExtensionAPI) {
     },
   });
 
+  // ═══════════════════════════════════════════════════════════════
+  // HEARTBEAT INIT COMMAND
+  // ═══════════════════════════════════════════════════════════════
+
   pi.registerCommand("heartbeat-init", {
     description: "Create HEARTBEAT.md template in workspace",
     handler: async (_args, ctx) => {
       const workspaceDir = await findWorkspaceDir();
       const filePath = path.join(workspaceDir, HEARTBEAT_FILENAME);
 
-      if (await fileExists(filePath)) {
+      const exists = await fs
+        .access(filePath)
+        .then(() => true)
+        .catch(() => false);
+      if (exists) {
         ctx.ui.notify(`HEARTBEAT.md already exists at ${filePath}`, "warning");
         return;
       }
 
-      const template = `# Heartbeat Checklist
-
-<!--
-This file controls what the agent checks during periodic heartbeats.
-Keep it short and actionable. If this file is empty or only contains headers,
-heartbeats will be skipped to save tokens.
-
-The agent reads this file every heartbeat interval (default: 30m).
-If nothing needs attention, it replies with HEARTBEAT_OK.
-If something needs attention, it describes the issue without the token.
--->
-
-## Regular Checks
-
-- [ ] Review any pending tasks in your workspace
-- [ ] Check for blocked items needing human input
-- [ ] Verify system status (if monitoring anything)
-
-## Context-Aware
-
-Only check these when relevant:
-- [ ] Active sessions that haven't been updated recently
-- [ ] Scheduled tasks or reminders
-- [ ] Follow-ups from previous conversations
+      // Try to read the template file, fallback to embedded template
+      let template: string;
+      try {
+        template = await fs.readFile(TEMPLATE_PATH, "utf-8");
+      } catch {
+        // Fallback to minimal template
+        template = `# Heartbeat Checklist
 
 ## Response Protocol
 
-If nothing needs attention → reply: \`HEARTBEAT_OK\`
-If something needs attention → brief alert message (no HEARTBEAT_OK token)
+Reply with HEARTBEAT_OK if nothing needs attention.
+
+---
+
+## Regular Checks
+
+- [ ] Pending tasks needing human input
+- [ ] Blocked items
+- [ ] System status alerts
+
+## Context-Aware Checks
+
+Only when relevant:
+- [ ] Scheduled tasks/reminders
+- [ ] Social platform notifications
+- [ ] Monitoring alerts
+
+---
+
+HEARTBEAT_OK
 `;
+      }
 
       try {
         await fs.writeFile(filePath, template, "utf-8");
@@ -381,6 +632,60 @@ If something needs attention → brief alert message (no HEARTBEAT_OK token)
         const errMsg = err instanceof Error ? err.message : String(err);
         ctx.ui.notify(`❌ Failed to create file: ${errMsg}`, "error");
       }
+    },
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // PER-AGENT HEARTBEAT CONFIG
+  // ═══════════════════════════════════════════════════════════════
+
+  pi.registerTool({
+    name: "heartbeat_config",
+    label: "Heartbeat Config",
+    description:
+      "Get or update heartbeat configuration. Use this to check current settings or modify behavior per agent.",
+    // @ts-ignore TSchema mismatch
+    parameters: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: ["get", "set"],
+          description: "Get current config or update settings",
+        },
+        setting: {
+          type: "object",
+          description: "Settings to update (for set action)",
+        },
+      },
+    },
+    async execute(_toolCallId, params) {
+      const { action, setting } = params as { action?: string; setting?: Record<string, unknown> };
+
+      if (action === "set" && setting) {
+        // Merge new settings
+        config = { ...config, ...setting };
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Heartbeat config updated:\n${JSON.stringify(config, null, 2)}`,
+            },
+          ],
+          details: { config },
+        };
+      }
+
+      // Get current config
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Current heartbeat configuration:\n${JSON.stringify(config, null, 2)}`,
+          },
+        ],
+        details: { config, state },
+      };
     },
   });
 
@@ -400,34 +705,37 @@ If something needs attention → brief alert message (no HEARTBEAT_OK token)
         timestamp: now,
         uptime: `${Math.floor(uptime / 86400)}d ${Math.floor((uptime % 86400) / 3600)}h ${Math.floor((uptime % 3600) / 60)}m ${Math.floor(uptime % 60)}s`,
         uptimeSeconds: Math.floor(uptime),
-        version: process.env.npm_package_version || "0.0.3",
-        extensions: {
-          heartbeat: {
-            enabled: config.enabled,
-            interval: config.every,
-            lastCheck: lastHeartbeat ? new Date(lastHeartbeat).toISOString() : null
-          }
+        heartbeat: {
+          enabled: config.enabled,
+          interval: config.every,
+          lastCheck: state.lastHeartbeat,
+          activeHours: config.activeHours,
+          currentlyActive: isWithinActiveHours(config),
         },
         memory: {
-          heapUsed: Math.round(memory.heapUsed / 1024 / 1024) + " MB",
-          heapTotal: Math.round(memory.heapTotal / 1024 / 1024) + " MB",
-          rss: Math.round(memory.rss / 1024 / 1024) + " MB"
-        }
+          heapUsed: `${Math.round(memory.heapUsed / 1024 / 1024)} MB`,
+          heapTotal: `${Math.round(memory.heapTotal / 1024 / 1024)} MB`,
+          rss: `${Math.round(memory.rss / 1024 / 1024)} MB`,
+        },
+        stats: {
+          acknowledged: state.ackCount,
+          alerts: state.alertCount,
+          skipped: state.skippedCount,
+        },
       };
 
-      // Return JSON for programmatic access
       ctx.ui.notify(JSON.stringify(status, null, 2), "info");
     },
   });
 
-  // Also register /health as alias
   pi.registerCommand("health", {
     description: "Health check (alias for /healthz)",
     handler: async (_args, ctx) => {
       // Forward to healthz
-      const healthzCmd = (pi as any).getCommands?.()?.find((c: any) => c.name === "healthz");
-      if (healthzCmd) {
-        await healthzCmd.handler("", ctx);
+      const cmds = (pi as any).getCommands?.() || [];
+      const healthz = cmds.find((c: any) => c.name === "healthz");
+      if (healthz) {
+        await healthz.handler("", ctx);
       }
     },
   });
@@ -437,7 +745,7 @@ If something needs attention → brief alert message (no HEARTBEAT_OK token)
   // ═══════════════════════════════════════════════════════════════
 
   pi.on("session_start", async () => {
-    await loadHeartbeatConfig();
+    await reloadConfig();
 
     if (!config.enabled) {
       console.log("[Heartbeat] Disabled in config, not starting scheduler");
@@ -446,10 +754,16 @@ If something needs attention → brief alert message (no HEARTBEAT_OK token)
 
     const everyMs = parseDurationMs(config.every);
 
+    // Clear any existing interval
+    if (checkInterval) {
+      clearInterval(checkInterval);
+    }
+
     // Schedule periodic checks
     checkInterval = setInterval(async () => {
       if (!isWithinActiveHours(config)) {
         console.log("[Heartbeat] Skipped - outside active hours");
+        state.skippedCount++;
         return;
       }
 
@@ -458,11 +772,12 @@ If something needs attention → brief alert message (no HEARTBEAT_OK token)
 
       // Skip if no file or empty file
       if (content === null || isEffectivelyEmpty(content)) {
+        console.log("[Heartbeat] Skipped - no or empty HEARTBEAT.md");
         return;
       }
 
-      // Use the tool to trigger heartbeat
-      pi.sendUserMessage("Perform a heartbeat check using the heartbeat_check tool.", { deliverAs: "followUp" });
+      // Trigger heartbeat via user message
+      pi.sendUserMessage(config.prompt, { deliverAs: "followUp" });
     }, everyMs);
 
     console.log(`[Heartbeat] Scheduler started (every ${config.every})`);
@@ -475,5 +790,5 @@ If something needs attention → brief alert message (no HEARTBEAT_OK token)
     }
   });
 
-  console.log("[Heartbeat] Extension loaded");
+  console.log("[Heartbeat] Extension loaded (OpenClaw-compatible)");
 }

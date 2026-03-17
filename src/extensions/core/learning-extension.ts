@@ -540,7 +540,7 @@ function createLLMInterface(ollamaUrl: string): LLMInterface {
       const response = await fetch(`${ollamaUrl}/api/embeddings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "nomic-embed-text", prompt: text }),
+        body: JSON.stringify({ model: "nomic-embed-text-v2-moe", prompt: text }),
       });
       
       if (!response.ok) throw new Error(`Embedding error: ${response.status}`);

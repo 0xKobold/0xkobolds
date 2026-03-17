@@ -5,7 +5,7 @@
  */
 
 import { Command } from "commander";
-import { startGateway, getRealGateway, resetRealGateway } from "../../gateway/index.js";
+import { startGateway, getGateway, stopGateway } from "../../gateway/index.js";
 import { getDiscordBot, resetDiscordBot } from "../../gateway/discord-bot.js";
 
 export function createGatewayCommand(): Command {
@@ -62,7 +62,7 @@ export function createGatewayCommand(): Command {
         process.on("SIGINT", async () => {
           console.log("\n🛑 Shutting down...");
           resetDiscordBot();
-          resetRealGateway();
+          stopGateway();
           console.log("✅ Gateway stopped");
           process.exit(0);
         });
@@ -80,7 +80,7 @@ export function createGatewayCommand(): Command {
     .action(async () => {
       console.log("🛑 Stopping gateway server...");
       resetDiscordBot();
-      resetRealGateway();
+      stopGateway();
       console.log("✅ Gateway server stopped");
     });
 
@@ -89,7 +89,7 @@ export function createGatewayCommand(): Command {
     .command("status")
     .description("Check gateway server status")
     .action(() => {
-      const gateway = getRealGateway();
+      const gateway = getGateway();
       
       if (gateway.isRunning()) {
         console.log("🟢 Gateway Status: Running");
@@ -113,7 +113,7 @@ export function createGatewayCommand(): Command {
     .alias("ls")
     .description("List active connections")
     .action(() => {
-      const gateway = getRealGateway();
+      const gateway = getGateway();
       const connections = gateway.getConnections();
 
       if (connections.size === 0) {
@@ -137,7 +137,7 @@ export function createGatewayCommand(): Command {
     .option("-c, --channel <channel>", "Channel to send to")
     .option("-m, --message <message>", "Message content", "Hello from 0xKobold!")
     .action(async (options) => {
-      const gateway = getRealGateway();
+      const gateway = getGateway();
       
       if (!gateway.isRunning()) {
         console.error("❌ Gateway is not running. Start it with '0xkobold gateway start'");

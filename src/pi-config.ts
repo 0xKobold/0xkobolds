@@ -68,7 +68,8 @@ export const config: Config = {
     // 🐉 Community Extensions (PI Ecosystem Wrappers)
     './src/extensions/community/draconic-subagents-wrapper.ts',  // pi-subagents bridge
     './src/extensions/community/draconic-messenger-wrapper.ts',  // pi-messenger bridge
-    '../../node_modules/pi-web-access/index.ts',  // 🕸️ Web search, fetch, research
+    // '../../node_modules/pi-web-access/index.ts',  // 🕸️ DISABLED: Requires Perplexity/Gemini API key
+    // Using websearch-enhanced-extension.ts instead (free DuckDuckGo + SearX fallback)
     
     // 🧠 Context Engine Extension (Koclaw-style context management)
     './src/extensions/core/intelligent-context-extension.ts',  // Intelligent context via framework events

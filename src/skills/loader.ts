@@ -3,6 +3,11 @@
  *
  * Hot-reload skill system using Bun's file watcher.
  * Skills are plain .ts/.md files in the skills directories.
+ * 
+ * Conditional activation via agentskills.io spec:
+ * - fallback_for_toolsets: Show when toolsets are unavailable
+ * - requires_toolsets: Show only when toolsets ARE available
+ * - platforms: OS restrictions
  */
 
 import { watch } from 'fs';
@@ -13,6 +18,7 @@ import { existsSync } from 'fs';
 import { homedir } from 'os';
 import type { Skill, SkillEntry, SkillModule } from './types';
 import { eventBus, createEventEmitter } from '../event-bus';
+import { getConditionalSkillRegistry, type SkillFilterOptions } from './conditional-skills.js';
 
 const emit = createEventEmitter('skills');
 
@@ -432,6 +438,70 @@ export async function reloadSkills(): Promise<void> {
  */
 export function getSkillRegistry(): SkillRegistry {
   return skillRegistry;
+}
+
+/**
+ * Get skills filtered by conditional activation rules
+ * 
+ * Uses agentskills.io spec with Hermes metadata:
+ * - fallback_for_toolsets: Show when toolsets are unavailable
+ * - requires_toolsets: Show only when toolsets ARE available
+ * - platforms: OS restrictions
+ */
+export function getFilteredSkills(
+  availableToolsets: Set<string>,
+  platform?: "macos" | "linux" | "windows",
+  tags?: string[]
+): SkillEntry[] {
+  const allEntries = skillRegistry.list(); // Returns SkillEntry[]
+  const conditionalRegistry = getConditionalSkillRegistry();
+  const options: SkillFilterOptions = {
+    availableToolsets,
+    unavailableToolsets: new Set(),
+    platform,
+    tags,
+  };
+  
+  // Get names of skills that pass conditional filter
+  const filteredNames = new Set(
+    conditionalRegistry.filterSkills(options).map(s => s.frontmatter.name)
+  );
+  
+  // Include skills that pass the conditional check
+  const result: SkillEntry[] = [];
+  for (const entry of allEntries) {
+    if (filteredNames.has(entry.name)) {
+      result.push(entry);
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * Get available toolsets from registered skills
+ * 
+ * Scans all skills for toolset dependencies
+ */
+export function getAvailableToolsets(): Set<string> {
+  const toolsets = new Set<string>();
+  
+  // Known toolsets based on available tools
+  // These should match the tool definitions
+  const knownToolsets = [
+    "terminal",      // Bash, shell access
+    "filesystem",    // Read, write, edit files
+    "web",           // web_fetch, web_search
+    "memory",        // perennial_save, perennial_search
+    "dialectic",     // Reasoning about users
+    "skills",        // skill_manage, skills_list
+    "cron",          // Scheduling
+    "gateway",       // Queue modes, messaging
+  ];
+  
+  knownToolsets.forEach(t => toolsets.add(t));
+  
+  return toolsets;
 }
 
 // Re-export

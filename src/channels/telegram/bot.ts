@@ -6,7 +6,7 @@
 
 import TelegramBot from "node-telegram-bot-api";
 import { EventEmitter } from "events";
-import { getRealGateway } from "../../gateway/index.js";
+import { getGateway } from "../../gateway/index.js";
 
 export interface TelegramConfig {
   token: string;
@@ -212,7 +212,7 @@ class TelegramIntegration extends EventEmitter {
    * Forward to gateway
    */
   private forwardToGateway(message: TelegramMessage): void {
-    const gateway = getRealGateway();
+    const gateway = getGateway();
 
     gateway.emit("message", {
       connection: {
@@ -234,7 +234,7 @@ class TelegramIntegration extends EventEmitter {
    * Register with gateway
    */
   private registerWithGateway(): void {
-    const gateway = getRealGateway();
+    const gateway = getGateway();
 
     this.gatewayConnectionId = gateway.registerConnection({
       type: "telegram",
@@ -255,7 +255,7 @@ class TelegramIntegration extends EventEmitter {
    */
   private unregisterFromGateway(): void {
     if (this.gatewayConnectionId) {
-      const gateway = getRealGateway();
+      const gateway = getGateway();
       gateway.removeConnection(this.gatewayConnectionId);
       this.gatewayConnectionId = undefined;
     }

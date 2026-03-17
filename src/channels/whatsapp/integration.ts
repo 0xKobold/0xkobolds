@@ -19,7 +19,7 @@ import { EventEmitter } from "events";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { existsSync } from "node:fs";
-import { getRealGateway } from "../../gateway/index.js";
+import { getGateway } from "../../gateway/index.js";
 
 export interface WhatsAppConfig {
   sessionPath: string;
@@ -285,7 +285,7 @@ class WhatsAppIntegration extends EventEmitter {
    * Forward to gateway
    */
   private forwardToGateway(message: WhatsAppMessage): void {
-    const gateway = getRealGateway();
+    const gateway = getGateway();
     
     gateway.emit("message", {
       connection: {
@@ -307,7 +307,7 @@ class WhatsAppIntegration extends EventEmitter {
    * Register with gateway
    */
   private registerWithGateway(): void {
-    const gateway = getRealGateway();
+    const gateway = getGateway();
     
     this.gatewayConnectionId = gateway.registerConnection({
       type: "whatsapp",
@@ -329,7 +329,7 @@ class WhatsAppIntegration extends EventEmitter {
    */
   private unregisterFromGateway(): void {
     if (this.gatewayConnectionId) {
-      const gateway = getRealGateway();
+      const gateway = getGateway();
       gateway.removeConnection(this.gatewayConnectionId);
       this.gatewayConnectionId = undefined;
     }

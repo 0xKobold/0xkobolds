@@ -17,6 +17,9 @@ export async function loadExtensions(
   pi: ExtensionAPI,
   extensionPaths: string[]
 ): Promise<void> {
+  // Check if extension logging is enabled via environment variable
+  const extensionLoggingEnabled = process.env.KOBOLD_EXTENSION_LOGS !== 'false';
+  
   for (const path of extensionPaths) {
     try {
       const resolvedPath = resolve(path);
@@ -25,7 +28,9 @@ export async function loadExtensions(
 
       if (typeof extension === 'function') {
         await extension(pi);
-        console.log(`[Extensions] Loaded: ${path}`);
+        if (extensionLoggingEnabled) {
+          console.log(`[Extensions] Loaded: ${path}`);
+        }
       } else {
         console.error(`[Extensions] ${path} must export a function`);
       }

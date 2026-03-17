@@ -65,11 +65,18 @@ export {
   registerTelegramChannel,
 } from "./websocket-server.js";
 
-// Backward compatibility - new gateway uses these names
+// Queue Modes (v0.1.0 - Hermes-style)
 export {
-  getGateway as getRealGateway,
-  stopGateway as resetRealGateway,
-} from "./gateway-server";
+  createMessageQueue,
+  MessageQueue,
+  InterruptHandler,
+  getRecommendedMode,
+  PLATFORM_RECOMMENDATIONS,
+  type QueueMode,
+  type QueueConfig,
+  type QueuedMessage,
+  type InterruptResult,
+} from "./queue-modes.js";
 
 // Session Store (Phase 2 + Phase 5)
 export {

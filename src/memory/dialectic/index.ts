@@ -45,6 +45,15 @@ export {
   type SkillSuggestion,
 } from "./skill-creation";
 
+// New: Reasoning Engine with multiple strategies
+export {
+  DialecticReasoningEngine,
+  getDialecticReasoningEngine,
+  setReasoningModel,
+  type ReasoningStrategy,
+  type ReasoningConfig,
+} from "./reasoning-engine";
+
 // ═════════════════════════════════════════════════════════════════
 // CONVENIENCE EXPORTS
 // ═════════════════════════════════════════════════════════════════

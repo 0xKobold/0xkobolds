@@ -1,8 +1,29 @@
-export { loadBootstrapFiles, ensureDefaultBootstrap, DEFAULT_BOOTSTRAP_FILES } from "./bootstrap-loader.js";
-export { buildSystemPrompt, createSystemPromptOverride } from "./system-prompt.js";
-export { runEmbeddedAgent, initEmbeddedMode, isEmbeddedModeAvailable } from "./embedded-runner.js";
+// Bootstrap Loader (v0.4.0 - Hermes style)
+// Instance-level identity from KOBOLD_HOME, project-level AGENTS.md, personality overlays
+export { 
+  loadInstanceFiles, 
+  discoverProjectFiles, 
+  loadPersonalityOverlay,
+  loadBootstrap,
+  formatBootstrapForPrompt, 
+  ensureDefaultFiles,
+  getBootstrapSummary,
+  getKoboldHome,
+  INSTANCE_FILES,
+  PROJECT_FILES,
+} from "./bootstrap-loader.js";
 export type { BootstrapFile, BootstrapConfig } from "./bootstrap-loader.js";
+
+export { 
+  buildSystemPrompt, 
+  buildSystemPromptAsync,
+  createSystemPromptOverride,
+  getPromptStats 
+} from "./system-prompt.js";
 export type { SystemPromptConfig } from "./system-prompt.js";
+
+// Embedded Runner (v0.4.0 - Hermes style)
+export { runEmbeddedAgent, initEmbeddedMode, isEmbeddedModeAvailable } from "./embedded-runner.js";
 export type { EmbeddedRunConfig, EmbeddedRunResult } from "./embedded-runner.js";
 
 // Agent Types (v0.2.0)

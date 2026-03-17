@@ -46,6 +46,12 @@ export interface UnifiedConfig {
   version: string;
   updatedAt: number;
   
+  // Logging configuration
+  logging?: {
+    level?: 'error' | 'warn' | 'info' | 'debug' | 'silent';
+    extensionLogs?: boolean;
+  };
+  
   // Provider configs
   ollama?: OllamaConfig;
   
@@ -77,6 +83,12 @@ const DEFAULT_CONFIG: UnifiedConfig = {
   discord: {
     enabled: false,
     autoReply: true,
+  },
+  
+  // Logging configuration
+  logging: {
+    level: 'info',
+    extensionLogs: true,
   },
 };
 

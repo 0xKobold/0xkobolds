@@ -124,8 +124,63 @@ export const setupCommand = new Command("setup")
       `);
       db.close();
 
+      // Initialize model scoring database  
+      const scoringDb = new Database(join(KOBOLD_DIR, "model-scoring.db"));
+      scoringDb.exec(`
+        CREATE TABLE IF NOT EXISTS performance_history (
+          id TEXT PRIMARY KEY,
+          model_name TEXT NOT NULL,
+          task_type TEXT DEFAULT 'chat',
+          complexity TEXT DEFAULT 'medium',
+          latency_ms INTEGER DEFAULT 0,
+          input_tokens INTEGER DEFAULT 0,
+          output_tokens INTEGER DEFAULT 0,
+          timestamp INTEGER NOT NULL,
+          user_rating INTEGER,
+          success INTEGER DEFAULT 1,
+          session_id TEXT
+        );
+        CREATE TABLE IF NOT EXISTS model_scores (
+          model_name TEXT PRIMARY KEY,
+          avg_latency REAL DEFAULT 0,
+          avg_quality REAL DEFAULT 0,
+          usage_count INTEGER DEFAULT 0,
+          success_rate REAL DEFAULT 0,
+          score REAL DEFAULT 0,
+          last_used INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS user_feedback (
+          id TEXT PRIMARY KEY,
+          model_name TEXT NOT NULL,
+          rating INTEGER NOT NULL,
+          task_type TEXT,
+          timestamp INTEGER NOT NULL
+        );
+      `);
+      scoringDb.close();
+
+      // Initialize model popularity database
+      const popDb = new Database(join(KOBOLD_DIR, "model-popularity.db"));
+      popDb.exec(`
+        CREATE TABLE IF NOT EXISTS ollama_models (
+          name TEXT PRIMARY KEY,
+          pull_count INTEGER DEFAULT 0,
+          tags TEXT,
+          updated_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS model_popularity (
+          model_name TEXT PRIMARY KEY,
+          pull_count INTEGER DEFAULT 0,
+          local_usage_count INTEGER DEFAULT 0,
+          last_updated INTEGER
+        );
+      `);
+      popDb.close();
+
       console.log("✓ Configuration created");
       console.log(`✓ Database initialized at ${join(KOBOLD_DIR, "kobold.db")}`);
+      console.log(`✓ Model scoring initialized at ${join(KOBOLD_DIR, "model-scoring.db")}`);
+      console.log(`✓ Model popularity initialized at ${join(KOBOLD_DIR, "model-popularity.db")}`);
     } else {
       console.log("📋 Configuration Options:\n");
       console.log("   LLM Provider: Ollama (local)");

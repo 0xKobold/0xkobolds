@@ -1,0 +1,3 @@
+# User submission files - do not commit individual submissions
+# The aggregated model-stats.json is what gets committed after review
+/submissions/*.json

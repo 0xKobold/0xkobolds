@@ -50,9 +50,13 @@ export type GatewayMethodHandler <TParams = unknown, TResult = unknown> = (param
 // Client info from connection
 export interface GatewayClientInfo {
   id: string;
-  type: "web" | "discord" | "telegram" | "internal";
+  type: "web" | "discord" | "telegram" | "internal" | "node";
   scopes?: string[];
   connect?: ConnectInfo;
+  // Node-specific fields
+  nodeId?: string;
+  nodeType?: string;
+  nodeName?: string;
 }
 
 export interface ConnectInfo {

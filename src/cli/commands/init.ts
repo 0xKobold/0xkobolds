@@ -179,6 +179,98 @@ export const initCommand = new Command("init")
         db.close();
         console.log("✓ Database initialized");
 
+        // Initialize model scoring database
+        const scoringDb = new Database(join(GLOBAL_KOBOLD_DIR, "model-scoring.db"));
+        scoringDb.exec(`
+          CREATE TABLE IF NOT EXISTS performance_history (
+            id TEXT PRIMARY KEY,
+            model_name TEXT NOT NULL,
+            task_type TEXT DEFAULT 'chat',
+            complexity TEXT DEFAULT 'medium',
+            latency_ms INTEGER DEFAULT 0,
+            input_tokens INTEGER DEFAULT 0,
+            output_tokens INTEGER DEFAULT 0,
+            timestamp INTEGER NOT NULL,
+            user_rating INTEGER,
+            success INTEGER DEFAULT 1,
+            session_id TEXT
+          );
+          CREATE INDEX IF NOT EXISTS idx_perf_model ON performance_history(model_name);
+          CREATE INDEX IF NOT EXISTS idx_perf_time ON performance_history(timestamp);
+          
+          CREATE TABLE IF NOT EXISTS model_scores (
+            model_name TEXT PRIMARY KEY,
+            avg_latency REAL DEFAULT 0,
+            avg_quality REAL DEFAULT 0,
+            usage_count INTEGER DEFAULT 0,
+            success_rate REAL DEFAULT 0,
+            score REAL DEFAULT 0,
+            last_used INTEGER,
+            last_updated INTEGER
+          );
+          
+          CREATE TABLE IF NOT EXISTS user_feedback (
+            id TEXT PRIMARY KEY,
+            model_name TEXT NOT NULL,
+            rating INTEGER NOT NULL,
+            task_type TEXT,
+            context TEXT,
+            timestamp INTEGER NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_feedback_model ON user_feedback(model_name);
+          
+          CREATE TABLE IF NOT EXISTS tier_lists (
+            id TEXT PRIMARY KEY,
+            generated_at INTEGER NOT NULL,
+            period TEXT NOT NULL,
+            tiers TEXT NOT NULL,
+            summary TEXT,
+            total_samples INTEGER DEFAULT 0
+          );
+        `);
+        scoringDb.close();
+        console.log("✓ Model scoring database initialized");
+
+        // Initialize model popularity database
+        const popDb = new Database(join(GLOBAL_KOBOLD_DIR, "model-popularity.db"));
+        popDb.exec(`
+          CREATE TABLE IF NOT EXISTS ollama_models (
+            name TEXT PRIMARY KEY,
+            pull_count INTEGER DEFAULT 0,
+            tags TEXT,
+            description TEXT,
+            updated_at INTEGER
+          );
+          CREATE INDEX IF NOT EXISTS idx_ollama_pulls ON ollama_models(pull_count DESC);
+          
+          CREATE TABLE IF NOT EXISTS model_popularity (
+            model_name TEXT PRIMARY KEY,
+            pull_count INTEGER DEFAULT 0,
+            pull_count_rank INTEGER DEFAULT 999,
+            community_score REAL DEFAULT 0,
+            community_sample_size INTEGER DEFAULT 0,
+            local_usage_count INTEGER DEFAULT 0,
+            trending INTEGER DEFAULT 0,
+            last_updated INTEGER
+          );
+          
+          CREATE TABLE IF NOT EXISTS nostr_reports (
+            id TEXT PRIMARY KEY,
+            pubkey TEXT NOT NULL,
+            model_name TEXT NOT NULL,
+            rating INTEGER,
+            task_type TEXT,
+            latency INTEGER,
+            success INTEGER,
+            timestamp INTEGER NOT NULL,
+            signature TEXT,
+            UNIQUE(pubkey, model_name, timestamp)
+          );
+          CREATE INDEX IF NOT EXISTS idx_nostr_model ON nostr_reports(model_name);
+        `);
+        popDb.close();
+        console.log("✓ Model popularity database initialized");
+
           // Create persona files (v0.2.0 system)
         const timestamp = new Date().toISOString();
         

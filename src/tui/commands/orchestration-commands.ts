@@ -310,6 +310,82 @@ const AgentsCommand: SlashCommand = {
 // ============================================================================
 
 // ============================================================================
+// Command: /personality - OpenClaw/Hermes-style personality overlay
+// ============================================================================
+
+const PersonalityCommand: SlashCommand = {
+  name: "personality",
+  aliases: ["/persona", "/mode"],
+  description: "Switch session personality/mode overlay",
+  usage: "/personality [name] or /personality list or /personality reset",
+  hasArgument: false,
+
+  async execute(ctx, args) {
+    const workspaceDir = process.env.KOBOLD_WORKSPACE || process.env.HOME + "/.0xkobold";
+    const personalitiesDir = workspaceDir + "/personalities";
+    
+    // List personalities
+    if (args?.trim() === "list" || !args?.trim()) {
+      try {
+        const fs = await import("fs/promises");
+        const files = await fs.readdir(personalitiesDir);
+        const personalities = files.filter(f => f.endsWith(".md")).map(f => f.replace(".md", ""));
+        
+        ctx.chatLog.addSystem(
+          "🎭 Available Personalities:\n" + 
+          personalities.map(p => `  • ${p}`).join("\n") +
+          "\n\nUsage: /personality <name> to switch\n" +
+          "       /personality reset to clear overlay"
+        );
+      } catch {
+        ctx.chatLog.addSystem("No personalities found. Create ~/.0xkobold/personalities/<name>.md");
+      }
+      return;
+    }
+    
+    // Reset personality
+    if (args?.trim() === "reset" || args?.trim() === "clear") {
+      // Store in session that personality is cleared
+      process.env.KOBOLD_PERSONALITY = "";
+      ctx.chatLog.addSystem("🎭 Personality overlay cleared. Using default persona.");
+      return;
+    }
+    
+    // Set personality
+    const personalityName = args?.trim().toLowerCase();
+    if (!personalityName) {
+      ctx.chatLog.addSystem("Usage: /personality <name> | list | reset");
+      return;
+    }
+    
+    try {
+      const fs = await import("fs/promises");
+      const personalityPath = `${personalitiesDir}/${personalityName}.md`;
+      const content = await fs.readFile(personalityPath, "utf-8");
+      
+      if (content.length === 0) {
+        ctx.chatLog.addSystem(`❌ Personality '${personalityName}' is empty.`);
+        return;
+      }
+      
+      // Set environment variable for session
+      process.env.KOBOLD_PERSONALITY = personalityName;
+      process.env.KOBOLD_PERSONALITY_CONTENT = content;
+      
+      ctx.chatLog.addSystem(
+        `🎭 Personality set: ${personalityName}\n` +
+        `Preview: ${content.slice(0, 100).replace(/\n/g, " ")}...`
+      );
+    } catch {
+      ctx.chatLog.addSystem(
+        `❌ Personality '${personalityName}' not found.\n` +
+        `Create it at: ~/.0xkobold/personalities/${personalityName}.md`
+      );
+    }
+  },
+};
+
+// ============================================================================
 // Command: /agent-cleanup (Meta-agent pattern!)
 // ============================================================================
 
@@ -381,6 +457,7 @@ export const OrchestrationCommands: SlashCommand[] = [
   AgentCleanupCommand,
   AgentsCommand,
   AgentResetCommand,
+  PersonalityCommand,
 ];
 
 // ============================================================================

@@ -496,7 +496,7 @@ export class DialecticReasoning {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama3.2",
+        model: "glm-5:cloud",
         prompt,
         stream: false,
         format: "json",
@@ -508,7 +508,19 @@ export class DialecticReasoning {
     }
 
     const data = await response.json() as { response: string };
-    return data.response;
+    let result = data.response;
+    
+    // Handle markdown code blocks - extract JSON from ```json ... ```
+    if (result.includes("```")) {
+      const jsonMatch = result.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch && jsonMatch[1]) {
+        result = jsonMatch[1].trim();
+      } else {
+        result = result.replace(/```json?/g, "").replace(/```/g, "").trim();
+      }
+    }
+    
+    return result;
   }
 }
 

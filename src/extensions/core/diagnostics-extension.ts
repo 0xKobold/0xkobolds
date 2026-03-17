@@ -41,77 +41,116 @@ interface HealthStatus {
   latency?: number;
 }
 
-async function initDb(): Promise<Database> {
-  await fs.mkdir(DIAGNOSTICS_DIR, { recursive: true });
-  const db = new Database(DB_PATH);
-  db.exec("PRAGMA journal_mode = WAL;");
+// Singleton database instance with lazy initialization
+let dbInstance: Database | null = null;
+let dbInitPromise: Promise<Database> | null = null;
+
+async function getDb(): Promise<Database> {
+  // Return existing instance if available
+  if (dbInstance) return dbInstance;
   
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS token_metrics (
-      id TEXT PRIMARY KEY,
-      timestamp TEXT NOT NULL,
-      provider TEXT NOT NULL,
-      model TEXT,
-      tokens_sent INTEGER DEFAULT 0,
-      tokens_received INTEGER DEFAULT 0,
-      duration_ms INTEGER DEFAULT 0,
-      cost REAL DEFAULT 0,
-      session_id TEXT
-    );
-    
-    CREATE INDEX IF NOT EXISTS idx_metrics_time ON token_metrics(timestamp);
-    CREATE INDEX IF NOT EXISTS idx_metrics_provider ON token_metrics(provider);
-    CREATE INDEX IF NOT EXISTS idx_metrics_session ON token_metrics(session_id);
-    
-    CREATE TABLE IF NOT EXISTS health_checks (
-      id TEXT PRIMARY KEY,
-      timestamp TEXT NOT NULL,
-      name TEXT NOT NULL,
-      status TEXT NOT NULL,
-      message TEXT,
-      latency_ms INTEGER
-    );
-    
-    CREATE INDEX IF NOT EXISTS idx_health_time ON health_checks(timestamp);
-  `);
+  // Wait for ongoing initialization if any
+  if (dbInitPromise) return dbInitPromise;
   
-  return db;
+  // Start initialization
+  dbInitPromise = (async () => {
+    await fs.mkdir(DIAGNOSTICS_DIR, { recursive: true });
+    const db = new Database(DB_PATH);
+    
+    // Use WAL mode with busy timeout for better concurrency
+    db.exec("PRAGMA journal_mode = WAL;");
+    db.exec("PRAGMA busy_timeout = 5000;"); // Wait up to 5s for locks
+    db.exec("PRAGMA synchronous = NORMAL;"); // Faster writes
+    
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS token_metrics (
+        id TEXT PRIMARY KEY,
+        timestamp TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        model TEXT,
+        tokens_sent INTEGER DEFAULT 0,
+        tokens_received INTEGER DEFAULT 0,
+        duration_ms INTEGER DEFAULT 0,
+        cost REAL DEFAULT 0,
+        session_id TEXT
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_metrics_time ON token_metrics(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_metrics_provider ON token_metrics(provider);
+      CREATE INDEX IF NOT EXISTS idx_metrics_session ON token_metrics(session_id);
+      
+      CREATE TABLE IF NOT EXISTS health_checks (
+        id TEXT PRIMARY KEY,
+        timestamp TEXT NOT NULL,
+        name TEXT NOT NULL,
+        status TEXT NOT NULL,
+        message TEXT,
+        latency_ms INTEGER
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_health_time ON health_checks(timestamp);
+    `);
+    
+    dbInstance = db;
+    return db;
+  })();
+  
+  return dbInitPromise;
+}
+
+// Synchronous check if DB is ready
+function isDbReady(): boolean {
+  return dbInstance !== null;
 }
 
 export default function diagnosticsExtension(pi: ExtensionAPI) {
   console.log("[Diagnostics] Loading...");
   
-  let db: Database;
-  initDb().then((d) => { db = d; console.log("[Diagnostics] Ready"); });
+  // Initialize database asynchronously
+  getDb().then(() => {
+    console.log("[Diagnostics] Ready");
+  }).catch((err) => {
+    console.error("[Diagnostics] Failed to initialize database:", err);
+  });
   
   // Track metrics on turn_end
   pi.on("turn_end", async (event: any, ctx: ExtensionContext) => {
-    if (!db) return;
+    // Skip if DB isn't ready yet
+    if (!isDbReady()) return;
     
-    const config = (ctx as any).config || {};
-    const provider = config.llm?.provider || "unknown";
-    const model = config.llm?.model || "unknown";
-    const tokensSent = event.tokenUsage?.sent || 0;
-    const tokensReceived = event.tokenUsage?.received || 0;
-    
-    // Cost estimation (simplified)
-    let cost = 0;
-    if (provider === "ollama-cloud") {
-      cost = ((tokensSent + tokensReceived) / 1000) * 0.001; // $0.001 per 1K tokens
+    try {
+      const db = await getDb();
+      const config = (ctx as any).config || {};
+      const provider = config.llm?.provider || "unknown";
+      const model = config.llm?.model || "unknown";
+      const tokensSent = event.tokenUsage?.sent || 0;
+      const tokensReceived = event.tokenUsage?.received || 0;
+      
+      // Cost estimation (simplified)
+      let cost = 0;
+      if (provider === "ollama-cloud") {
+        cost = ((tokensSent + tokensReceived) / 1000) * 0.001; // $0.001 per 1K tokens
+      }
+      
+      db.query(`
+        INSERT INTO token_metrics (id, timestamp, provider, model, tokens_sent, tokens_received, duration_ms, cost, session_id)
+        VALUES (?, datetime('now'), ?, ?, ?, ?, 0, ?, ?)
+      `).run(
+        "metric-" + Date.now(),
+        provider,
+        model,
+        tokensSent,
+        tokensReceived,
+        cost,
+        ctx.sessionManager?.getSessionId?.()
+      );
+    } catch (err: any) {
+      // Don't crash on DB errors - just log
+      if (err?.code !== "SQLITE_BUSY" && err?.message !== "database is locked") {
+        console.error("[Diagnostics] Failed to record metrics:", err?.message || err);
+      }
+      // Silently skip if database is locked - another process is writing
     }
-    
-    db.query(`
-      INSERT INTO token_metrics (id, timestamp, provider, model, tokens_sent, tokens_received, duration_ms, cost, session_id)
-      VALUES (?, datetime('now'), ?, ?, ?, ?, 0, ?, ?)
-    `).run(
-      "metric-" + Date.now(),
-      provider,
-      model,
-      tokensSent,
-      tokensReceived,
-      cost,
-      ctx.sessionManager?.getSessionId?.()
-    );
   });
   
   // TOOL: Get metrics
@@ -124,7 +163,7 @@ export default function diagnosticsExtension(pi: ExtensionAPI) {
       provider: Type.Optional(Type.String({ description: "Filter by provider" })),
     }),
     async execute(_id: string, params: Record<string, unknown>): Promise<AgentToolResult<unknown>> {
-      if (!db) throw new Error("Diagnostics DB not ready");
+      const db = await getDb();
       
       const since = (params.since || "1d") as string;
       let sinceSql = "1 day";
@@ -178,6 +217,7 @@ export default function diagnosticsExtension(pi: ExtensionAPI) {
       
       // Check database
       try {
+        const db = await getDb();
         db.query("SELECT 1").get();
         checks.push({ ts: new Date().toISOString(), name: "diagnostics_db", status: "healthy", latency: 1 });
       } catch (e) {
@@ -215,10 +255,9 @@ export default function diagnosticsExtension(pi: ExtensionAPI) {
       const checks: string[] = [];
       
       try {
-        if (db) {
-          db.query("SELECT 1").get();
-          checks.push("✅ Diagnostics DB: OK");
-        }
+        const db = await getDb();
+        db.query("SELECT 1").get();
+        checks.push("✅ Diagnostics DB: OK");
       } catch { checks.push("❌ Diagnostics DB: Error"); }
       
       try {
@@ -229,7 +268,8 @@ export default function diagnosticsExtension(pi: ExtensionAPI) {
       
       // Get today's metrics
       let metrics = "No metrics yet";
-      if (db) {
+      try {
+        const db = await getDb();
         const row = db.query(`
           SELECT SUM(tokens_sent + tokens_received) as tokens, SUM(cost) as cost
           FROM token_metrics
@@ -238,7 +278,7 @@ export default function diagnosticsExtension(pi: ExtensionAPI) {
         if (row && row.tokens) {
           metrics = `Today: ${row.tokens} tokens, $${(row.cost || 0).toFixed(4)}`;
         }
-      }
+      } catch { /* ignore */ }
       
       ctx.ui.notify([
         "📊 0xKobold Diagnostics",

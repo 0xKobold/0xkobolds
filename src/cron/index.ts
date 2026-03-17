@@ -55,6 +55,13 @@ export {
   CRON_PRESETS,
 } from "./parser.js";
 
+// Natural Language Parser (v0.1.0)
+export {
+  parseNaturalSchedule,
+  createCronFromNL,
+  type ParsedSchedule,
+} from "./nl-parser.js";
+
 // Scheduler
 export {
   CronScheduler,

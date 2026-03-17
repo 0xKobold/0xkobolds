@@ -30,6 +30,7 @@ import type {
 import { 
   getDialecticStore, 
   getDialecticReasoning, 
+  getDialecticReasoningEngine,
   getNudgeEngine,
   createUser,
   createAgent,
@@ -43,6 +44,7 @@ import {
   checkNudges,
   processNudges,
   getStats,
+  type ReasoningStrategy,
 } from "../../memory/dialectic/index.js";
 
 // Constants
@@ -284,7 +286,7 @@ async function getEmbedding(text: string, ollamaUrl: string): Promise<number[]> 
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "nomic-embed-text",
+      model: "nomic-embed-text-v2-moe",
       prompt: text,
     }),
   });
@@ -1298,9 +1300,20 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("reason", {
-    description: "Run dialectic reasoning on a peer: /reason <peer>",
+    description: "Run dialectic reasoning on a peer: /reason <peer> [strategy]",
     handler: async (args: string, ctx: ExtensionContext) => {
-      const name = args.trim() || "default";
+      const parts = args.trim().split(/\s+/);
+      const name = parts[0] || "default";
+      const strategy = (parts[1] || "dialectic") as ReasoningStrategy;
+      
+      const validStrategies: ReasoningStrategy[] = [
+        "dialectic", "chain-of-thought", "self-consistency", "tree-of-thought", "formal-logic"
+      ];
+      
+      if (!validStrategies.includes(strategy)) {
+        ctx.ui.notify(`Invalid strategy. Use: ${validStrategies.join(", ")}`, "error");
+        return;
+      }
       
       if (!ollamaAvailable) {
         ctx.ui.notify("❌ Ollama not available - reasoning requires LLM", "error");
@@ -1315,21 +1328,27 @@ export default async function perennialMemoryExtension(pi: ExtensionAPI) {
         return;
       }
 
-      ctx.ui.notify(`🧠 Reasoning about ${peer.name}...`, "info");
+      ctx.ui.notify(`🧠 Reasoning about ${peer.name} using ${strategy}...`, "info");
 
       try {
-        const result = await reason(peer.id);
+        // Use new reasoning engine with configurable strategy
+        const engine = getDialecticReasoningEngine({ strategy });
+        const result = await engine.reason(peer.id);
         
         const summary = [
-          `✅ Reasoning complete for ${peer.name}`,
+          `✅ Reasoning complete for ${peer.name} (${strategy})`,
           ``,
-          `Synthesis: ${result.synthesis || "No new insights"}`,
+          `Synthesis: ${result.synthesis?.content || "No new insights"}`,
+          `Confidence: ${result.synthesis?.confidence?.toFixed(2) || "N/A"}`,
           ``,
           `Extracted:`,
-          `  - ${result.preferences} preferences`,
-          `  - ${result.goals} goals`,
-          `  - ${result.constraints} constraints`,
-          `  - ${result.values} values`,
+          `  - ${result.preferences.length} preferences`,
+          `  - ${result.goals.length} goals`,
+          `  - ${result.constraints.length} constraints`,
+          `  - ${result.values.length} values`,
+          `  - ${result.contradictions.length} contradictions`,
+          ``,
+          `Path: ${result.reasoningPath.join(" → ")}`,
         ].join("\n");
         
         ctx.ui.notify(summary, "info");

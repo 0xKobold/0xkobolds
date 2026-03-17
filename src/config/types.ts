@@ -29,8 +29,17 @@ export type AgentHeartbeatConfig = {
     end: string;   // "22:00"
     timezone?: string;
   } | null;
-  lightContext?: boolean;
+  // Delivery target
+  target?: "none" | "last" | string; // "none", "last", or channel ID
+  to?: string; // Optional recipient override (e.g., phone number, chat ID)
+  // Session options
+  isolatedSession?: boolean; // Fresh session each run (saves tokens)
+  lightContext?: boolean; // Only load HEARTBEAT.md from bootstrap files
+  model?: string; // Optional model override for heartbeat runs
+  // Delivery policy
+  directPolicy?: "allow" | "block"; // Block DM delivery?
   includeReasoning?: boolean;
+  suppressToolErrorWarnings?: boolean;
 };
 
 export type AgentContextPruningConfig = {

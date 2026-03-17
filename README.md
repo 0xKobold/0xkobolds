@@ -139,8 +139,8 @@ npm install -g 0xkobold
 # Initialize workspace
 0xkobold init
 
-# Start 0xKobold
-0xkobold start
+# Start 0xKobold (reduce extension logs with env var)
+KOBOLD_EXTENSION_LOGS=false 0xkobold start
 ```
 
 #### Option 2: Clone from source
@@ -156,9 +156,15 @@ bun install
 # Initialize workspace
 bun run init
 
-# Start 0xKobold
-bun run start
+# Start 0xKobold (reduce extension logs with env var)
+KOBOLD_EXTENSION_LOGS=false bun run start
 ```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `KOBOLD_EXTENSION_LOGS` | Set to `false` to reduce extension loading logs | `true` |
 
 ---
 
@@ -188,6 +194,111 @@ delegate the user authentication project
 | researcher | 🔍 | Information gathering |
 | worker | ⚒️ | Implementation |
 | reviewer | 👁️ | Code review, validation |
+
+---
+
+## Model Scoring & Rankings 📊
+
+0xKobold tracks model performance and generates AI-powered tier lists.
+
+### Commands
+
+```bash
+/rate <1-5>                           # Rate last response
+/model-rankings [day|week|month|all]  # Show leaderboard
+/tier-list [day|week|month|all]       # AI-generated tier list
+/popularity [--refresh]                # Ollama pull counts
+/router stats <model>                 # Per-model statistics
+/router history                        # Recent performance
+
+/best-for [code|chat|vision|reasoning|all]  # Best models per task
+/community enable                     # Enable anonymous sharing
+/community export                     # Generate submission file
+/community fetch                      # Fetch community stats
+/community merge                       # Merge local + community
+/community tier-list                  # Show community tiers
+```
+
+### Task-Specific Rankings
+
+The `/best-for` command shows which models perform best for specific tasks:
+
+```bash
+/best-for code      # Best models for coding
+/best-for chat      # Best for general conversation
+/best-for vision    # Best for image analysis
+/best-for reasoning # Best for complex reasoning
+/best-for all       # Show all categories
+```
+
+### How It Works
+
+| Factor | Weight | Description |
+|--------|--------|-------------|
+| Quality | 40% | User ratings (1-5) |
+| Success Rate | 30% | Response success/failure |
+| Latency | 20% | Response time |
+| Popularity | 10% | Community usage |
+
+### Tier System
+
+| Tier | Score | Description |
+|------|-------|-------------|
+| 🥇 S | ≥0.85 | Excellent - Top performers |
+| 🥈 A | ≥0.70 | Great - Reliable choices |
+| 🥉 B | ≥0.55 | Good - Solid performers |
+| ⭐ C | ≥0.40 | Fair - Acceptable |
+| · D | <0.40 | Needs improvement |
+
+### Community Stats
+
+Share anonymized data to help everyone:
+
+```bash
+# Enable sharing
+/community enable
+
+# Use models and rate them
+/rate 4
+
+# Generate submission file
+/community export
+
+# File saved to ~/.0xkobold/community-submission.json
+# Submit to: https://github.com/kobolds/0xKobolds/tree/main/community
+```
+
+### Data Tracked per Task
+
+| Metric | Code | Chat | Vision | Reasoning |
+|--------|------|------|--------|------------|
+| Rating | ✅ | ✅ | ✅ | ✅ |
+| Latency | ✅ | ✅ | ✅ | ✅ |
+| Success Rate | ✅ | ✅ | ✅ | ✅ |
+| Usage Count | ✅ | ✅ | ✅ | ✅ |
+
+### Privacy
+
+- ✅ **Local only** - All data stored in `~/.0xkobold/`
+- ✅ **No prompts/responses stored** - Only metrics
+- ✅ **No user identity tracked** - Anonymous session IDs
+- ✅ **Community sharing opt-in** - Disabled by default
+- ✅ **See exactly what's shared** - `/community export` shows all data
+
+### Example Output
+
+```
+🏆 AI-Generated Model Tier List
+
+🥇 Tier S - Excellent (score ≥ 0.85)
+   qwen3-coder:14b - 0.87 █████████ [Reliable, Fast]
+
+🥈 Tier A - Great (score ≥ 0.70)
+   llama3.1:8b - 0.78 ███████▊ [Well-tested]
+
+🥉 Tier B - Good (score ≥ 0.55)
+   mistral:7b - 0.62 ██████▎ [Fast]
+```
 
 ---
 
@@ -472,6 +583,7 @@ eventBus.on('agent.spawned', handler);
 | `src/gateway/` | Koclaw JSON-RPC gateway (port 7777) |
 | `src/gateway/protocol/` | Frame types (Hello, Connect, Request, Response, Event) |
 | `src/gateway/methods/` | Method handlers (agent.run, agent.status, etc.) |
+| `src/node/` | Node system for external devices (see `docs/NODE-SYSTEM-DESIGN.md`) |
 | `src/memory/` | Conversation persistence & session management |
 | `src/memory/session-store.ts` | SQLite session persistence |
 | `src/memory/session-resume.ts` | Auto-save/restore sessions |
@@ -539,6 +651,28 @@ bun test --coverage
 │   └── usage.md, workflow.md # Living docs
 └── scripts/                # Deployment scripts
 ```
+
+---
+
+## Packages
+
+The project includes several packages in `packages/`:
+
+| Package | Description |
+|---------|-------------|
+| `kobold-desktop-pet` | 3D animated desktop pet (VRM + Mixamo) - see `packages/kobold-desktop-pet/README.md` |
+| `mission-control` | Web dashboard for monitoring agents |
+| `pi-cloudflare-browser` | Cloudflare browser automation |
+
+### Desktop Pet
+
+The `kobold-desktop-pet` package connects as a **node** to the gateway:
+- Shows agent status (idle, working, thinking, sleeping)
+- Draggable, always-on-top transparent window
+- System tray integration
+- Custom VRM avatars with Mixamo animations
+
+See `docs/NODE-SYSTEM-DESIGN.md` for node architecture.
 
 ---
 

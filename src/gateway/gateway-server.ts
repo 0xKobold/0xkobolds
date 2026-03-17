@@ -12,6 +12,7 @@ import { gatewayHandlers, getHandler } from "./methods/index";
 import type { GatewayContext, GatewayRespond, GatewayClientInfo } from "./methods/types";
 import { AgentStore } from "./persistence/AgentStore";
 import { loadConfig } from "../config/loader";
+import { nodeRegistry } from "./methods/node";
 
 const GATEWAY_VERSION = "2";
 
@@ -26,11 +27,15 @@ export interface GatewayConfig {
 interface WSConnection {
   id: string;
   socket?: WebSocket;
-  type: "web" | "discord" | "telegram" | "internal";
+  type: "web" | "discord" | "telegram" | "internal" | "node";
   connectedAt: Date;
   lastPing: Date;
   clientInfo?: GatewayClientInfo;
   protocolVersion?: string;
+  // Node-specific fields
+  nodeId?: string;
+  nodeType?: string;
+  nodeName?: string;
 }
 
 // In-memory dedupe store (Phase 3: move to SQLite)
@@ -150,16 +155,32 @@ class RealGatewayServer extends EventEmitter {
       websocket: {
         open(ws: any) {
           const id = `ws-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+          const connType = (ws.data?.type || "web") as WSConnection["type"];
           const conn: WSConnection = {
             id,
             socket: ws as unknown as WebSocket,
-            type: ws.data?.type || "web",
+            type: connType,
             connectedAt: new Date(),
             lastPing: new Date(),
           };
           self.connections.set(id, conn);
           self.emit("connected", conn);
           console.log(`[Gateway] WebSocket connected: ${id} (${conn.type})`);
+
+          // For node connections, send welcome message with role info
+          if (connType === "node") {
+            const nodeName = ws.data?.name || "unknown";
+            conn.nodeName = nodeName;
+            conn.nodeType = ws.data?.nodeType || "generic";
+            self.sendToConnection(id, {
+              id: "welcome",
+              result: {
+                ok: true,
+                role: "node",
+                message: "Node connected. Please register your commands via node.register",
+              },
+            } as ResponseFrame);
+          }
         },
 
         message(ws: any, message: string | Buffer) {
@@ -171,6 +192,11 @@ class RealGatewayServer extends EventEmitter {
         close(ws: any, code: number, reason: string) {
           const conn = self.findConnectionByWs(ws);
           if (conn) {
+            // Unregister node if this was a node connection
+            if (conn.type === "node" && conn.nodeId) {
+              nodeRegistry.unregister(conn.nodeId);
+              console.log(`[Gateway] Node unregistered: ${conn.nodeId}`);
+            }
             self.connections.delete(conn.id);
             self.emit("disconnected", { id: conn.id, code, reason });
             console.log(`[Gateway] WebSocket disconnected: ${conn.id}`);
@@ -227,16 +253,23 @@ class RealGatewayServer extends EventEmitter {
   }
 
   private handleConnect(conn: WSConnection, frame: RequestFrame): void {
-    const params = (frame.params || {}) as { clientName?: string; clientVersion?: string; capabilities?: string[] };
+    const params = (frame.params || {}) as { clientName?: string; clientVersion?: string; capabilities?: string[]; role?: string };
+
+    // Determine scopes based on connection type
+    const scopes = conn.type === "node"
+      ? ["node:invoke", "node:event"]
+      : ["agent:run", "agent:read"];
+
+    const role = params.role || conn.type;
 
     conn.clientInfo = {
       id: conn.id,
       type: conn.type,
-      scopes: ["agent:run", "agent:read"],
+      scopes,
       connect: {
         clientName: params.clientName || "unknown",
         clientVersion: params.clientVersion || "0.0.0",
-        scopes: ["agent:run", "agent:read"],
+        scopes,
         caps: params.capabilities || [],
       },
     };
@@ -259,6 +292,56 @@ class RealGatewayServer extends EventEmitter {
 
     if (!handler) {
       this.sendError(conn.id, frame.id, ErrorCodes.METHOD_NOT_FOUND, `Method not found: ${frame.method}`);
+      return;
+    }
+
+    // Special handling for node.register - need to store socket reference
+    if (frame.method === "node.register") {
+      const params = frame.params as { name?: string; type?: string; commands?: Record<string, { description: string; params?: unknown }> };
+
+      // Register node with socket reference
+      const nodeId = `node-${params.type || 'unknown'}-${params.name || 'unnamed'}-${Date.now().toString(36)}`;
+      const node = nodeRegistry.register(nodeId, {
+        name: params.name || 'unnamed',
+        type: params.type || 'generic',
+        version: '1.0.0',
+        commands: (params.commands || {}) as Record<string, { description: string; params?: unknown }>,
+        socket: conn.socket,
+        status: 'connected',
+      });
+
+      // Store node ID in connection
+      conn.nodeId = nodeId;
+      conn.nodeType = params.type;
+      conn.nodeName = params.name;
+
+      // Send response
+      this.sendToConnection(conn.id, {
+        id: frame.id,
+        result: {
+          ok: true,
+          nodeId,
+          commands: Object.keys(params.commands || {}),
+          gatewayVersion: GATEWAY_VERSION,
+          protocolVersion: PROTOCOL_VERSION,
+        },
+      });
+
+      console.log(`[Gateway] Node registered: ${nodeId} (${params.type}/${params.name})`);
+      return;
+    }
+
+    // For node.response, handle directly
+    if (frame.method === "node.response") {
+      const params = frame.params as { id?: string; result?: unknown; error?: { message: string } };
+      if (params.id) {
+        if (params.error) {
+          nodeRegistry.rejectInvocation(params.id, new Error(params.error.message || 'Unknown error'));
+        } else {
+          nodeRegistry.resolveInvocation(params.id, params.result);
+        }
+      }
+      this.sendToConnection(conn.id, { id: frame.id, result: { received: true } });
       return;
     }
 

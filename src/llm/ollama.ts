@@ -1,21 +1,16 @@
 /**
  * Ollama LLM Provider
  *
- * Unified local + cloud support using shared utilities from @0xkobold/pi-ollama.
- * DRY: All client management, model detection, and chat logic is shared.
+ * Unified local + cloud support using official Ollama client.
  * Uses OpenAI-compatible endpoints (/v1) for pi-coding-agent compatibility.
  */
 
 import type { LLMProvider, ChatOptions, ChatResponse, Message } from './types';
+import { Ollama } from 'ollama';
 import {
   loadConfigFromEnv,
-  createClients,
-  isLocalRunning,
-  getClientForModel,
-  getModelName,
-  listAllModels,
-  chat,
-  chatStream,
+  DEFAULT_CONFIG,
+  type OllamaConfig,
   type OllamaClients,
 } from '@0xkobold/pi-ollama/shared';
 
@@ -29,44 +24,77 @@ export class OllamaProvider implements LLMProvider {
   private cloudOnly: boolean = false;
 
   constructor() {
-    let config = loadConfigFromEnv();
-    // Fallback if config is incomplete (before extension loads)
-    if (!config || !config.baseUrl) {
-      config = {
-        baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
-        cloudUrl: process.env.OLLAMA_CLOUD_URL || 'https://ollama.com',
-        apiKey: process.env.OLLAMA_API_KEY,
-      };
-    }
-    this.clients = createClients(config);
+    // Merge env config with defaults
+    const envConfig = loadConfigFromEnv();
+    const config: OllamaConfig = {
+      baseUrl: envConfig.baseUrl ?? process.env.OLLAMA_BASE_URL ?? DEFAULT_CONFIG.baseUrl,
+      cloudUrl: envConfig.cloudUrl ?? process.env.OLLAMA_CLOUD_URL ?? DEFAULT_CONFIG.cloudUrl,
+      apiKey: envConfig.apiKey ?? process.env.OLLAMA_API_KEY ?? DEFAULT_CONFIG.apiKey,
+    };
+    
+    // Create clients
+    this.clients = {
+      local: new Ollama({ host: config.baseUrl }),
+      cloud: config.apiKey 
+        ? new Ollama({ host: config.cloudUrl, headers: { Authorization: `Bearer ${config.apiKey}` } })
+        : null,
+    };
+    
     this.detectMode();
   }
 
   private async detectMode(): Promise<void> {
-    this.cloudOnly = !(await isLocalRunning(this.clients.local));
+    try {
+      await this.clients.local.list();
+      this.cloudOnly = false;
+    } catch {
+      this.cloudOnly = true;
+    }
+  }
+
+  /**
+   * Get the appropriate client for a model
+   */
+  private getClient(model: string): { client: Ollama; isCloud: boolean } {
+    // If model has :cloud suffix, use cloud client
+    if (model.endsWith(':cloud') && this.clients.cloud) {
+      return { client: this.clients.cloud, isCloud: true };
+    }
+    // If local is unavailable, use cloud
+    if (this.cloudOnly && this.clients.cloud) {
+      return { client: this.clients.cloud, isCloud: true };
+    }
+    // Default to local
+    return { client: this.clients.local, isCloud: false };
   }
 
   async chat(options: ChatOptions): Promise<ChatResponse> {
-    const { client, isCloud } = getClientForModel(options.model, this.clients, this.cloudOnly);
-    const model = getModelName(options.model);
+    const { client, isCloud } = this.getClient(options.model);
+    const model = options.model.replace(':cloud', '');
 
-    // Convert messages to shared format
+    // Convert messages to OpenAI format
     const messages = options.messages.map((m: Message) => ({
       role: m.role as 'system' | 'user' | 'assistant' | 'tool',
       content: m.content,
     }));
 
     try {
-      const result = await chat(client, {
+      // Use the chat API
+      const response = await client.chat({
         model,
         messages,
-        temperature: options.temperature,
-        maxTokens: options.maxTokens,
+        options: {
+          temperature: options.temperature ?? 0.7,
+          num_predict: options.maxTokens ?? 4096,
+        },
       });
 
       return {
-        content: result.content,
-        usage: result.usage,
+        content: response.message.content,
+        usage: {
+          inputTokens: response.prompt_eval_count ?? 0,
+          outputTokens: response.eval_count ?? 0,
+        },
         model: options.model,
       };
     } catch (err: any) {
@@ -75,37 +103,73 @@ export class OllamaProvider implements LLMProvider {
   }
 
   async *chatStream(options: ChatOptions): AsyncGenerator<string, void, unknown> {
-    const { client } = getClientForModel(options.model, this.clients, this.cloudOnly);
-    const model = getModelName(options.model);
+    const { client, isCloud } = this.getClient(options.model);
+    const model = options.model.replace(':cloud', '');
 
-    // Convert messages to shared format
+    // Convert messages to OpenAI format
     const messages = options.messages.map((m: Message) => ({
       role: m.role as 'system' | 'user' | 'assistant' | 'tool',
       content: m.content,
     }));
 
     try {
-      yield* chatStream(client, {
+      const stream = await client.chat({
         model,
         messages,
-        temperature: options.temperature,
-        maxTokens: options.maxTokens,
+        stream: true,
+        options: {
+          temperature: options.temperature ?? 0.7,
+          num_predict: options.maxTokens ?? 4096,
+        },
       });
+
+      for await (const chunk of stream) {
+        if (chunk.message?.content) {
+          yield chunk.message.content;
+        }
+      }
     } catch (err: any) {
       throw new Error(`Ollama stream error: ${err.message}`);
     }
   }
 
   async listModels(): Promise<string[]> {
-    const models = await listAllModels(this.clients);
-    return models.map(m => m.name);
+    try {
+      const { models } = await this.clients.local.list();
+      const modelNames = models.map(m => m.name);
+      
+      // Also list cloud models if available
+      if (this.clients.cloud && !this.cloudOnly) {
+        try {
+          const { models: cloudModels } = await this.clients.cloud.list();
+          const cloudNames = cloudModels.map(m => `${m.name}:cloud`);
+          return [...modelNames, ...cloudNames];
+        } catch {
+          // Cloud unavailable, just return local
+        }
+      }
+      
+      return modelNames;
+    } catch {
+      // If local fails, try cloud
+      if (this.clients.cloud) {
+        const { models } = await this.clients.cloud.list();
+        return models.map(m => `${m.name}:cloud`);
+      }
+      return [];
+    }
   }
 
   /**
    * Check if Ollama is running (local mode)
    */
   async isLocalRunning(): Promise<boolean> {
-    return isLocalRunning(this.clients.local);
+    try {
+      await this.clients.local.list();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -118,17 +182,19 @@ export class OllamaProvider implements LLMProvider {
 
 /**
  * Check if Ollama is running (local mode)
- * Re-exported for compatibility
  */
 export async function isOllamaRunning(): Promise<boolean> {
-  const config = loadConfigFromEnv();
-  const clients = createClients(config);
-  return isLocalRunning(clients.local);
+  try {
+    const client = new Ollama({ host: process.env.OLLAMA_HOST || 'http://localhost:11434' });
+    await client.list();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
  * List available Ollama models
- * Re-exported for compatibility
  */
 export async function listOllamaModels(): Promise<string[]> {
   const provider = new OllamaProvider();
