@@ -122,7 +122,7 @@ export class AdaptiveModelRouter {
   // ============================================================================
 
   async selectModel(
-    message: string,
+    message: unknown,
     options: TaskRequirements & { trackPerformance?: boolean; sessionId?: string } = {}
   ): Promise<string> {
     await this.ensureInitialized();
@@ -146,10 +146,25 @@ export class AdaptiveModelRouter {
       candidates = this.getFallbackModels(models, requirements.type);
     }
 
+    // Normalize message for scoring
+    let msgStr: string;
+    if (typeof message !== 'string') {
+      if (Array.isArray(message)) {
+        const textPart = message.find(p => p?.type === 'text');
+        msgStr = textPart?.text || '';
+      } else if (message && typeof message === 'object') {
+        msgStr = (message as any).text || '';
+      } else {
+        msgStr = String(message ?? '');
+      }
+    } else {
+      msgStr = message;
+    }
+
     // Score and rank
     const scored = candidates.map(m => ({
       model: m,
-      score: this.scoreModelAdaptive(m, requirements, message),
+      score: this.scoreModelAdaptive(m, requirements, msgStr),
     }));
 
     scored.sort((a, b) => b.score - a.score);
@@ -422,15 +437,30 @@ export class AdaptiveModelRouter {
   }
 
   private inferRequirements(
-    message: string,
+    message: unknown,
     options: TaskRequirements
   ): Required<TaskRequirements> {
-    const lower = message.toLowerCase();
+    // Handle non-string content safely
+    let msg: string;
+    if (typeof message !== 'string') {
+      if (Array.isArray(message)) {
+        const textPart = message.find(p => p?.type === 'text');
+        msg = textPart?.text || '';
+      } else if (message && typeof message === 'object') {
+        msg = (message as any).text || '';
+      } else {
+        msg = String(message ?? '');
+      }
+    } else {
+      msg = message;
+    }
+    
+    const lower = msg.toLowerCase();
 
     // Determine task type
     let type = options.type;
     if (!type) {
-      if (lower.includes('```') || /\b(function|class|const|let|var|import|export)\b/.test(message)) {
+      if (lower.includes('```') || /\b(function|class|const|let|var|import|export)\b/.test(msg)) {
         type = 'code';
       } else if (/\b(image|picture|photo|look at|describe)\b/.test(lower)) {
         type = 'vision';
@@ -446,7 +476,7 @@ export class AdaptiveModelRouter {
     // Determine complexity
     let complexity = options.complexity;
     if (!complexity) {
-      const score = this.assessComplexity(message);
+      const score = this.assessComplexity(msg);
       if (score < 3) complexity = 'low';
       else if (score < 6) complexity = 'medium';
       else complexity = 'high';

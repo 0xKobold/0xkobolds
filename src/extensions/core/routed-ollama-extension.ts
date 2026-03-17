@@ -39,7 +39,21 @@ export default async function routedOllamaExtension(pi: ExtensionAPI) {
     /**
      * Infer task type from message content
      */
-    function inferTaskType(message: string): string {
+    function inferTaskType(msg: unknown): string {
+      // Handle non-string content safely
+      let message: string;
+      if (typeof msg === 'string') {
+        message = msg;
+      } else if (Array.isArray(msg)) {
+        // Handle array content (multimodal)
+        const textPart = msg.find(p => p?.type === 'text');
+        message = textPart?.text || '';
+      } else if (msg && typeof msg === 'object') {
+        message = (msg as any).text || '';
+      } else {
+        message = String(msg ?? '');
+      }
+      
       const lower = message.toLowerCase();
       if (/\b(function|class|const|let|var|import|export|code|implement|debug)\b/.test(lower)) {
         return 'code';
