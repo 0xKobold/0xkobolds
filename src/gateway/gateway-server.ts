@@ -13,6 +13,8 @@ import type { GatewayContext, GatewayRespond, GatewayClientInfo } from "./method
 import { AgentStore } from "./persistence/AgentStore";
 import { loadConfig } from "../config/loader";
 import { nodeRegistry } from "./methods/node";
+import { getHeartbeatScheduler, startHeartbeatScheduler, stopHeartbeatScheduler, HeartbeatScheduler } from "./heartbeat-scheduler";
+import { getCronScheduler, startCronScheduler, stopCronScheduler, CronScheduler } from "./cron-scheduler";
 
 const GATEWAY_VERSION = "2";
 
@@ -81,6 +83,8 @@ class RealGatewayServer extends EventEmitter {
   private dedupe = new DedupeStore();
   private agentStore: AgentStore;
   private context: GatewayContext;
+  private heartbeatScheduler: HeartbeatScheduler | null = null;
+  private cronScheduler: CronScheduler | null = null;
 
   constructor(config: Partial<GatewayConfig> = {}) {
     super();
@@ -207,8 +211,44 @@ class RealGatewayServer extends EventEmitter {
 
     this.running = true;
     this.startHeartbeat();
+    this.startSchedulers();
     this.emit("started", { port: this.config.port, host: this.config.host });
     console.log(`🐉 Gateway running on ws://${this.config.host}:${this.config.port}/ws`);
+  }
+
+  /**
+   * Start heartbeat and cron schedulers
+   */
+  private startSchedulers(): void {
+    // Start heartbeat scheduler
+    try {
+      this.heartbeatScheduler = startHeartbeatScheduler();
+      console.log("[Gateway] Heartbeat scheduler started");
+    } catch (err) {
+      console.error("[Gateway] Failed to start heartbeat scheduler:", err);
+    }
+
+    // Start cron scheduler
+    try {
+      this.cronScheduler = startCronScheduler();
+      console.log("[Gateway] Cron scheduler started");
+    } catch (err) {
+      console.error("[Gateway] Failed to start cron scheduler:", err);
+    }
+  }
+
+  /**
+   * Stop heartbeat and cron schedulers
+   */
+  private stopSchedulers(): void {
+    if (this.heartbeatScheduler) {
+      stopHeartbeatScheduler();
+      this.heartbeatScheduler = null;
+    }
+    if (this.cronScheduler) {
+      stopCronScheduler();
+      this.cronScheduler = null;
+    }
   }
 
   private handleMessage(conn: WSConnection, data: string): void {
@@ -497,6 +537,7 @@ class RealGatewayServer extends EventEmitter {
   stop(): void {
     this.running = false;
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    this.stopSchedulers();
     this.server?.stop();
     this.emit("stopped");
     console.log("[Gateway] Server stopped");

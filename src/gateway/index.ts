@@ -57,6 +57,24 @@ export {
 
 export type { GatewayConfig } from "./gateway-server";
 
+// Heartbeat Scheduler (Gateway-based)
+export {
+  HeartbeatScheduler,
+  getHeartbeatScheduler,
+  startHeartbeatScheduler,
+  stopHeartbeatScheduler,
+} from "./heartbeat-scheduler";
+
+// Cron Scheduler (Gateway-based)
+export {
+  CronScheduler,
+  getCronScheduler,
+  startCronScheduler,
+  stopCronScheduler,
+} from "./cron-scheduler";
+
+export type { CronJob, CronSchedule, CronResult } from "./cron-scheduler";
+
 // Legacy exports (deprecated, will be removed)
 export {
   getGatewayServer,
