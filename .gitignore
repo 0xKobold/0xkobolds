@@ -39,4 +39,4 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 plan.md
 .npmrc
 .dead-code-backup
-EOF
+EOF.npmrc
