@@ -402,6 +402,9 @@ class ModelDiscoveryService {
     if (name.includes('llama3')) return 8192;
     if (name.includes('mistral')) return 32768;
     if (name.includes('mixtral')) return 32768;
+    // qwen3.5 and qwen3 have larger context windows
+    if (name.includes('qwen3')) return 32768;
+    if (name.includes('qwen2.5')) return 32768;
     if (name.includes('qwen')) return 32768;
     if (name.includes('kimi')) return 128000;
     if (name.includes('minimax')) return 128000;

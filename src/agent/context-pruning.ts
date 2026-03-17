@@ -37,16 +37,22 @@ export interface PruningResult {
 
 export const DEFAULT_BUDGET: ContextBudget = {
   maxTokens: 128000, // Default for high-context models
-  warningThreshold: 80,
-  criticalThreshold: 95,
+  warningThreshold: 75,  // Warning at 75% to leave buffer
+  criticalThreshold: 90, // Critical at 90% to safely compact before hitting limits
 };
 
+// Safety buffer to prevent "exceeded max context length" errors
+// This accounts for estimation inaccuracy (~5%) and system overhead
+const SAFETY_BUFFER_TOKENS = 1000;
+
 /**
- * Token estimation (rough approximation)
+ * Token estimation (improved accuracy)
  */
 export function estimateTokens(text: string): number {
-  // ~4 chars per token on average
-  return Math.ceil(text.length / 4);
+  // ~3.5 chars per token is more accurate for most LLMs
+  // Add 10% buffer for special tokens, formatting overhead
+  const base = text.length / 3.5;
+  return Math.ceil(base * 1.1); // 10% overhead for safety
 }
 
 /**
