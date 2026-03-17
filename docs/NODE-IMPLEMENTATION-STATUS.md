@@ -1,6 +1,6 @@
 # Node System Implementation Status
 
-## Implemented ✅
+## Implementation Complete ✅
 
 ### Gateway Node Protocol
 
@@ -26,6 +26,8 @@
 - `packages/kobold-desktop-pet/src/gateway/familiar-node.ts` - Familiar-specific commands
 - `packages/kobold-desktop-pet/src/gateway/index.ts` - Exports
 - `packages/kobold-desktop-pet/src/main.ts` - Updated to use FamiliarNode
+- `packages/kobold-desktop-pet/src/renderer/turtle-renderer.js` - VRM 3D renderer
+- `packages/kobold-desktop-pet/src/renderer/renderer.js` - Pixel fallback
 
 **Familiar Commands:**
 | Command | Description | Status |
@@ -38,6 +40,12 @@
 | `familiar.message` | Show message bubble | ✅ |
 | `familiar.animation` | Play named animation | ✅ |
 | `familiar.speak` | Speak with emotion | ✅ |
+
+### Background Process Manager
+
+**Created documentation:** `docs/BACKGROUND-PROCESSES.md`
+
+**NOT YET IMPLEMENTED** - See Future Work section
 
 ### Background Process Manager
 

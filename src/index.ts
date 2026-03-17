@@ -27,8 +27,37 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(__dirname, '..');
 
 // Detect if we're running from dist/ or src/
-// If __dirname contains 'dist/src', we're running compiled code
+// If __dirname contains 'dist', we're running compiled code
 const isRunningFromDist = __dirname.includes('dist');
+
+// Find @0xkobold/pi-ollama from wherever it's installed
+// This handles bun link global installs, npm installs, and local dev
+function findOllamaExtension(): string {
+  try {
+    // Use import.meta.resolve to find the package from wherever it's installed
+    const resolved = import.meta.resolve('@0xkobold/pi-ollama');
+    // import.meta.resolve returns a file:// URL, convert to path
+    const packagePath = fileURLToPath(resolved);
+    // This gives us .../pi-ollama/dist/index.js or similar
+    // We want the dist/index.js
+    if (packagePath.includes('dist/index.js') || packagePath.includes('dist/index.ts')) {
+      return packagePath;
+    }
+    // Fallback: construct path from package root
+    return resolve(packagePath, 'dist/index.js');
+  } catch {
+    // Fallback: use packageRoot-based resolution
+    // For bun link global install, node_modules is sibling to package, not inside dist
+    if (isRunningFromDist) {
+      // Go up from dist/src to find node_modules at package root level
+      // __dirname is .../node_modules/0xkobold/dist/src
+      // We need .../node_modules/@0xkobold/pi-ollama/dist/index.js
+      const globalModulesRoot = resolve(__dirname, '../../../..');
+      return resolve(globalModulesRoot, '@0xkobold/pi-ollama/dist/index.js');
+    }
+    return resolve(packageRoot, 'node_modules/@0xkobold/pi-ollama/dist/index.js');
+  }
+}
 // For dist: __dirname is .../dist/src, packageRoot is .../dist
 // So we just need src/extensions/core from packageRoot
 const extensionDir = isRunningFromDist 
@@ -83,12 +112,22 @@ function ext(name: string): string {
 
 // Verify extensions exist (for debugging)
 function verifyExtensions(): string[] {
+  const ollamaExtensionPath = findOllamaExtension();
+  
+  // Debug: log where we found pi-ollama
+  if (!existsSync(ollamaExtensionPath)) {
+    console.error(`⚠️  pi-ollama extension not found at: ${ollamaExtensionPath}`);
+    console.error(`   __dirname: ${__dirname}`);
+    console.error(`   packageRoot: ${packageRoot}`);
+    console.error(`   isRunningFromDist: ${isRunningFromDist}`);
+  }
+
   const extensions: string[] = [
     // Infrastructure
     // '--extension', ext('ollama-extension'),
 
     // Ollama Provider Extension (npm package)
-    '--extension', resolve(packageRoot, 'node_modules/@0xkobold/pi-ollama/dist/index.js'),
+    '--extension', ollamaExtensionPath,
     // 🧠 Adaptive Model Router (must load after pi-ollama)
     '--extension', ext('routed-ollama-extension'),
 
