@@ -1,5 +1,58 @@
 # Changelog
 
+## [0.8.0] - "The Foundation Stone"
+
+### Added
+
+#### ❤️ Heartbeat System (OpenClaw-Compatible)
+- **Config-driven heartbeat** - Per-agent configuration in kobold.json
+- **Session isolation** - `isolatedSession` option for fresh runs (saves tokens)
+- **Light context mode** - `lightContext` to skip bootstrap files
+- **Delivery targets** - `"none"`, `"last"`, or channel ID
+- **Active hours** - Timezone-aware scheduling
+- **Model override** - Use different model for heartbeat runs
+- **Per-agent override** - Agent-specific heartbeat configs
+
+#### 🧠 Dialectic Reasoning (Honcho-style)
+- **Representation system** - Store observations, preferences, goals
+- **Peer synthesis** - Combine observations into understanding
+- **Contradiction detection** - Find conflicts in beliefs
+- **Nudge engine** - Trigger reflections on observation thresholds
+- **Commands**: `/represent`, `/observe`, `/reason`, `/ask-peer`, `/nudge`
+
+#### 🔄 Adaptive Model Router
+- **Performance learning** - Track model performance per task type
+- **Community popularity** - Sync with Ollama library stats
+- **Model scoring DB** - Local SQLite for rankings
+- **Task inference** - Auto-detect code/vision/reasoning/chat
+- **Commands**: `/router`, `/models`, `/rate`, `/model-rankings`, `/tier-list`, `/popularity`, `/best-for`
+
+#### 📦 Package Improvements
+- **pi-ollama@0.2.0** - Fixed context window detection for GLM-5, Kimi, etc.
+- **Context window detection** - Now reads from `model_info.*.context_length`
+- **Bun link fix** - Extension loads correctly from global installs
+
+### Fixed
+
+- **TUI status bar** - Context window now shows correct value (e.g., `?/202k` for GLM-5)
+- **Router crash** - Handle multimodal messages (arrays) in `.toLowerCase()`
+- **Context buffer** - Safety margin and token estimation improvements
+- **TieredMemory** - Handle non-array LLM responses in extraction
+
+### Changed
+
+- **Safety extensions** - Consolidated into `draconic-safety-extension`
+- **Agent orchestrator** - Unified v0.2.0 with real subagent execution
+- **Memory system** - Session events table for consolidation
+
+### Technical
+
+- **Build**: Clean TypeScript compilation
+- **Tests**: 694 passing (+425 since v0.7.0)
+- **Dependencies**: pi-coding-agent@0.57.1
+
+---
+
 ## [0.3.0] - "The Gap Closer"
 
 ### Added
