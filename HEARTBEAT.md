@@ -30,10 +30,10 @@ Maintain 0xKobold health: update packages, fix security vulnerabilities, complet
 | music-metadata (baileys) | ⚠️ ACCEPT | HIGH | WhatsApp integration, deep dep |
 | request (node-telegram-bot-api) | ⚠️ ACCEPT | MODERATE | Deep dep, cannot override safely |
 | @mozilla/readability (pi-web-access) | ⚠️ ACCEPT | LOW | Deep dep, cannot override safely |
-| Review environment variable handling | ⬜ TODO | HIGH | Ensure secrets not in logs |
-| Audit API key storage | ⬜ TODO | HIGH | Check ~/.0xkobold/auth-profiles.db |
-| Review Discord token handling | ⬜ TODO | MEDIUM | Verify token not leaked in logs |
-| Check SQL injection vectors | ⬜ TODO | MEDIUM | Review all SQLite queries |
+| ~~Review environment variable handling~~ | ✅ DONE | HIGH | No secrets logged to console |
+| ~~Audit API key storage~~ | ✅ DONE | HIGH | DB empty, plaintext storage noted (MEDIUM risk) |
+| ~~Review Discord token handling~~ | ✅ DONE | MEDIUM | Secure - only status messages logged |
+| ~~Check SQL injection vectors~~ | ✅ DONE | MEDIUM | Minor LIKE pattern issues (LOW risk) |
 
 ### 📦 Package Updates
 
@@ -248,6 +248,7 @@ The Moltube skill now has the required `description` field in its SKILL.md front
 16. **SECURITY FIXES** - Upgraded packages, added overrides, reduced from 21 → 4 vulnerabilities
 17. **PACKAGE UPDATES** - Updated all packages: commander 14.0.3, glob 13.0.6, sharp 0.34.5, zod 4.3.6, @types/node 25.5.0
 18. **TMUX TERMINAL NODE** - Created new package with TmuxManager, TmuxNode, Electron app. Core implementation complete.
+19. **SECURITY AUDIT** - Reviewed env vars, API key storage, Discord tokens, SQL injection. All clean except plaintext key storage.
 
 ### Priorities Next Session
 
