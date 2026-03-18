@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>🐉 0xKobold Terminal</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <span class="logo">🐉</span>
+        <span class="title">0xKobold Terminal</span>
+      </div>
+      <div class="header-right">
+        <span id="connection-status" class="status disconnected">Disconnected</span>
+        <button id="reconnect-btn" class="btn btn-small" title="Reconnect">↻</button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="content">
+      <!-- Session Tabs Bar -->
+      <div class="tabs-bar">
+        <div id="session-tabs" class="session-tabs">
+          <!-- Tabs will be inserted here -->
+        </div>
+        <button id="new-session-btn" class="btn btn-small" title="New Session">+</button>
+      </div>
+
+      <!-- Error Message -->
+      <div id="error-container" class="error-container hidden">
+        <span id="error-message"></span>
+        <button id="dismiss-error" class="btn btn-small">×</button>
+      </div>
+
+      <!-- Terminal Area -->
+      <div class="terminal-area">
+        <div id="terminal-container" class="terminal-container">
+          <!-- Welcome screen when no session selected -->
+          <div id="welcome-screen" class="welcome">
+            <h2>Welcome to 0xKobold Terminal</h2>
+            <p>Select a session from the tabs above or create a new one.</p>
+            <div class="quick-actions">
+              <button id="quick-create-btn" class="btn btn-primary">Create New Session</button>
+            </div>
+          </div>
+
+          <!-- Terminal will be shown here when attached -->
+          <div id="attached-session" class="attached-session hidden">
+            <div class="session-info">
+              <span>Session: <strong id="current-session-name">-</strong></span>
+              <span>Path: <code id="current-session-path">-</code></span>
+            </div>
+            <div class="terminal-instructions">
+              <p>Run in your terminal:</p>
+              <code id="attach-command"></code>
+              <button id="copy-command-btn" class="btn btn-small">Copy</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Status Bar -->
+    <footer class="status-bar">
+      <span id="status-message">Ready</span>
+      <span id="session-count">0 sessions</span>
+    </footer>
+  </div>
+
+  <!-- New Session Dialog -->
+  <dialog id="new-session-dialog" class="dialog">
+    <h3>Create New Session</h3>
+    <form id="new-session-form">
+      <div class="form-group">
+        <label for="session-name">Session Name</label>
+        <input type="text" id="session-name" placeholder="my-session" required pattern="[a-zA-Z0-9_-]+" title="Alphanumeric, underscore, or hyphen">
+      </div>
+      <div class="form-group">
+        <label for="session-command">Initial Command (optional)</label>
+        <input type="text" id="session-command" placeholder="bun run dev">
+      </div>
+      <div class="form-actions">
+        <button type="button" id="cancel-new-session" class="btn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="./app.js"></script>
+</body>
+</html>
