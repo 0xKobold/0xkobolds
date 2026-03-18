@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.8.1] - "Tmux Terminal & Security Hardening"
+
+### Added
+
+#### 🖥️ Tmux Terminal Node
+- **New package**: `packages/tmux-terminal/` - Desktop terminal node for Kobold infrastructure
+- **TmuxManager**: Full tmux session management (create, list, send, capture, kill)
+- **TmuxNode**: WebSocket client connecting to Kobold gateway
+- **CLI tools**: `bun run src/cli.ts test` for testing tmux functionality
+- **Cross-machine**: Connects Dasua (100.75.97.120) to Pi gateway (100.65.167.97:7777) via Tailscale
+- **Agent commands**: `tmux.list`, `tmux.create`, `tmux.send`, `tmux.capture`, `tmux.kill`
+
+#### 🎨 Mission Control Enhancements
+- **Agent Activity WebSocket**: Real-time agent events via `useGateway` hook
+- **Connection status indicator**: Shows gateway connection state
+- **Gateway URL config**: `.env.example` for `NEXT_PUBLIC_GATEWAY_URL`
+
+### Security
+
+#### 🔒 Security Hardening
+- **Package updates**: commander 14.0.3, glob 13.0.6, sharp 0.34.5, zod 4.3.6, @types/node 25.5.0
+- **Overrides added**: undici 7.24.4, file-type 21.3.1, fast-xml-parser 5.5.6, tough-cookie 4.1.4, qs 6.14.1
+- **Vulnerabilities fixed**: 17 → 4 remaining (deep transitive deps)
+- **Security audit completed**: Environment variables, API keys, Discord tokens, SQL injection vectors reviewed
+
+### Fixed
+
+- ✅ Desktop Pet: Fixed `petNode` → `familiarNode` variable names
+- ✅ Desktop Pet: Added cleanup functions for intervals
+- ✅ Desktop Pet: Fixed `parseAnimationClips` TypeScript error
+- ✅ Desktop Pet: Added `getClient()` method for client access
+- ✅ Moltube skill: Added missing `description` field
+- ✅ TmuxNode: Fixed WebSocket URL format for gateway connection
+
+### Changed
+
+- **Pi-coding-agent**: Upgraded to 0.59.0
+- **HEARTBEAT tracking**: All security items documented and resolved
+
 ## [0.8.0] - "The Foundation Stone"
 
 ### Added
