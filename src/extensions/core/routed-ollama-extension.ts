@@ -21,6 +21,91 @@ import {
 } from "../../llm";
 import { getModelPopularityService } from "../../llm/model-popularity";
 
+// ============================================================================
+// Embedding Model Detection
+// ============================================================================
+
+/**
+ * Known embedding model name patterns.
+ * These models ONLY support embeddings, NOT chat completion.
+ */
+const EMBEDDING_MODEL_PATTERNS = [
+  'nomic-embed',
+  'all-minilm',
+  'mxbai-embed',
+  'bge-',
+  'e5-',
+  'embed',
+  'embedding',
+  '-embed-',
+  'text-embedding',
+  'qwen3-embedding',  // Specific: qwen3-embedding is embedding
+  'qwen3:0.6b',       // qwen3 0.6b is embedding-only
+  'sentence-',
+  'uae-',
+];
+
+/**
+ * Check if a model name indicates it's an embedding-only model.
+ */
+function isEmbeddingModel(model: string): boolean {
+  const modelLower = model.toLowerCase().replace(':cloud', '').replace(':latest', '');
+  return EMBEDDING_MODEL_PATTERNS.some(pattern => 
+    modelLower.includes(pattern) || modelLower.startsWith(pattern)
+  );
+}
+
+/**
+ * Filter out embedding models from router selection.
+ * Returns a safe chat-capable model.
+ */
+async function selectSafeModel(router: any, userMessage: string): Promise<string> {
+  let selectedModel = await router.selectModel(userMessage);
+  
+  // If router selected an embedding model, fall back to a safe chat model
+  if (isEmbeddingModel(selectedModel)) {
+    console.log(`[RoutedOllama] WARNING: Router selected embedding model "${selectedModel}" - falling back to chat model`);
+    
+    // Try to get next best model or use fallback
+    const models = await router.listModels();
+    
+    // Priority order for safe chat models
+    const preferredModels = [
+      'llama3.2',
+      'llama3.1',
+      'gemma2',
+      'qwen2.5',
+      'phi4',
+      'mistral',
+    ];
+    
+    // Find first available preferred model
+    for (const preferred of preferredModels) {
+      const match = models.find((m: string) => 
+        m.toLowerCase().startsWith(preferred.toLowerCase()) && !isEmbeddingModel(m)
+      );
+      if (match) {
+        selectedModel = match;
+        console.log(`[RoutedOllama] Fallback to: ${selectedModel}`);
+        return selectedModel;
+      }
+    }
+    
+    // Fallback: any non-embedding model
+    const safeModel = models.find((m: string) => !isEmbeddingModel(m));
+    if (safeModel) {
+      selectedModel = safeModel;
+      console.log(`[RoutedOllama] Fallback to: ${selectedModel}`);
+    } else {
+      // Ultimate fallback - use cloud model
+      selectedModel = 'glm-5:cloud';
+      console.log(`[RoutedOllama] Ultimate fallback to: ${selectedModel}`);
+    }
+  }
+  
+  return selectedModel;
+}
+
 export default async function routedOllamaExtension(pi: ExtensionAPI) {
   console.log("[RoutedOllama] Extension loading...");
 
@@ -80,8 +165,8 @@ export default async function routedOllamaExtension(pi: ExtensionAPI) {
       // Store task type for tracking
       lastTaskType = inferTaskType(userMessage);
 
-      // Select best model using our router
-      const selectedModel = await router.selectModel(userMessage);
+      // Select best model using our router (with embedding model protection)
+      const selectedModel = await selectSafeModel(router, userMessage);
 
       // Avoid redundant switches
       if (selectedModel === lastRoutedModel) {
@@ -140,7 +225,7 @@ export default async function routedOllamaExtension(pi: ExtensionAPI) {
 
         // Fallback: override event.model if native switch didn't work
         if (!routedModel && event.model) {
-          const selectedModel = await router.selectModel(lastUserMsg);
+          const selectedModel = await selectSafeModel(router, lastUserMsg);
           event.model = selectedModel;
           setCurrentModel(selectedModel, "event override");
         }
