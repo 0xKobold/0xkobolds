@@ -60,7 +60,7 @@ Maintain 0xKobold health: update packages, fix security vulnerabilities, complet
 | Feature | Location | Status | Notes |
 |---------|----------|--------|-------|
 | Kobold Desktop Pet | packages/kobold-desktop-pet/ | 🔄 IN PROGRESS | Tests created, TypeScript compiles, needs sprite refinement |
-| Agent Activity WebSocket | packages/mission-control/ | ⬜ TODO | Connect to gateway ws://100.65.167.97:7777 |
+| ~~Agent Activity WebSocket~~ | packages/mission-control/ | ✅ DONE | useGateway hook wired to AgentActivityView, real-time events |
 | **Tmux Terminal Node** | packages/tmux-terminal/ | 🆕 PHASE 1 DONE | Core implementation complete, needs Electron build fix |
 | ~~Moltube Skill~~ | ~~~/.0xkobold/skills/moltube/~~ | ✅ FIXED | Description field now present in SKILL.md |
 
@@ -249,14 +249,14 @@ The Moltube skill now has the required `description` field in its SKILL.md front
 17. **PACKAGE UPDATES** - Updated all packages: commander 14.0.3, glob 13.0.6, sharp 0.34.5, zod 4.3.6, @types/node 25.5.0
 18. **TMUX TERMINAL NODE** - Created new package with TmuxManager, TmuxNode, Electron app. Core implementation complete.
 19. **SECURITY AUDIT** - Reviewed env vars, API key storage, Discord tokens, SQL injection. All clean except plaintext key storage.
+20. **AGENT ACTIVITY WEBSOCKET** - Wired useGateway hook to AgentActivityView for real-time agent events. Added connection status.
 
 ### Priorities Next Session
 
-1. **WebSocket for Mission Control** - Real-time agent events from gateway
-2. **Create systemd service** - Auto-start Mission Control on boot
-3. **Tmux Terminal Node** - Fix Electron build, test with gateway
-4. **Continue Desktop Pet** - Sprite refinement
-5. **Fix Desktop Pet vitest** - Resolve test runner compatibility issue
+1. **Create systemd service** - Auto-start Mission Control on boot
+2. **Tmux Terminal Node** - Test with gateway (run `bun run src/cli.ts test`)
+3. **Continue Desktop Pet** - Sprite refinement
+4. **Fix Desktop Pet vitest** - Resolve test runner compatibility issue
 
 ### Open Questions
 
