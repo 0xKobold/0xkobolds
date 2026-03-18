@@ -61,7 +61,7 @@ Maintain 0xKobold health: update packages, fix security vulnerabilities, complet
 |---------|----------|--------|-------|
 | Kobold Desktop Pet | packages/kobold-desktop-pet/ | 🔄 IN PROGRESS | Tests created, TypeScript compiles, needs sprite refinement |
 | ~~Agent Activity WebSocket~~ | packages/mission-control/ | ✅ DONE | useGateway hook wired to AgentActivityView, real-time events |
-| **Tmux Terminal Node** | packages/tmux-terminal/ | ✅ WORKING | Connects Pi to Dasua gateway via Tailscale |
+| **Tmux Terminal Node** | packages/tmux-terminal/ | ✅ WORKING | Node on Dasua connects to Pi gateway via Tailscale |
 | ~~Moltube Skill~~ | ~~~/.0xkobold/skills/moltube/~~ | ✅ FIXED | Description field now present in SKILL.md |
 
 ### 🐛 Known Bugs
@@ -250,12 +250,12 @@ The Moltube skill now has the required `description` field in its SKILL.md front
 18. **TMUX TERMINAL NODE** - Created new package with TmuxManager, TmuxNode, Electron app. Core implementation complete.
 19. **SECURITY AUDIT** - Reviewed env vars, API key storage, Discord tokens, SQL injection. All clean except plaintext key storage.
 20. **AGENT ACTIVITY WEBSOCKET** - Wired useGateway hook to AgentActivityView for real-time agent events. Added connection status.
-21. **TMUX TERMINAL ON PI** - Tested on Raspberry Pi 5, connects to Dasua gateway via Tailscale. Fixed WebSocket URL format.
+21. **TMUX TERMINAL ON PI** - Node runs on Dasua (100.75.97.120), connects to Pi gateway (100.65.167.97:7777) via Tailscale. Fixed WebSocket URL format.
 
 ### Priorities Next Session
 
 1. **Create systemd service** - Auto-start Mission Control on boot
-2. **Tmux Terminal on Pi** - Add startup script for auto-connect on boot
+2. **Tmux Terminal on Dasua** - Run `connect-dasua.ts` to connect to Pi gateway
 3. **Continue Desktop Pet** - Sprite refinement
 4. **Fix Desktop Pet vitest** - Resolve test runner compatibility issue
 
