@@ -20,6 +20,10 @@ let walkSpeed = 2;
 let screenWidth = 1920;
 let screenHeight = 1080;
 
+// Interval references for cleanup
+let randomWalkInterval = null;
+let animationFrameId = null;
+
 // Initialize the dragon
 function init() {
   // Get screen dimensions
@@ -36,10 +40,10 @@ function init() {
   document.addEventListener('mouseup', endDrag);
   
   // Start animation loop
-  requestAnimationFrame(animate);
+  animationFrameId = requestAnimationFrame(animate);
   
   // Start movement loop (random walking)
-  setInterval(randomWalk, 15000);
+  randomWalkInterval = setInterval(randomWalk, 15000);
   
   // Listen for agent state updates
   ipcRenderer.on('agent-state', (event, state) => {
@@ -71,7 +75,10 @@ function animate(timestamp) {
   // Render current frame
   renderDragon(frameIndex, currentState);
   
-  requestAnimationFrame(animate);
+  // Continue animation loop
+  if (animationFrameId !== null) {
+    animationFrameId = requestAnimationFrame(animate);
+  }
 }
 
 // Update dragon based on agent state
@@ -458,6 +465,21 @@ function notifyStateChange(newState) {
     visible: true
   });
 }
+
+// Cleanup function to stop all intervals and animation
+function cleanup() {
+  if (randomWalkInterval) {
+    clearInterval(randomWalkInterval);
+    randomWalkInterval = null;
+  }
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+}
+
+// Listen for window close to cleanup
+window.addEventListener('beforeunload', cleanup);
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', init);

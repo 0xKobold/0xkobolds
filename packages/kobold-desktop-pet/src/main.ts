@@ -24,6 +24,7 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let stayOnTop = true;
 let familiarNode: FamiliarNode | null = null;
+let pollingInterval: NodeJS.Timeout | null = null;
 
 // Agent state from 0xKobold
 interface AgentState {
@@ -207,6 +208,9 @@ async function connectToGateway() {
     await familiarNode.connect();
     console.log('[Main] Connected to gateway as node:', familiarNode.getNodeId());
 
+    // Stop HTTP polling since we're using gateway
+    stopPolling();
+
     // Update tray to show connected
     updateTrayMenu(true);
   } catch (error) {
@@ -222,16 +226,31 @@ async function connectToGateway() {
  * Start HTTP polling as fallback
  */
 function startPolling() {
+  // Clear any existing polling interval
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+  }
+  
   console.log('[Main] Starting HTTP polling for agent state');
   pollAgentState();
-  setInterval(pollAgentState, 2000);
+  pollingInterval = setInterval(pollAgentState, 2000);
+}
+
+/**
+ * Stop HTTP polling
+ */
+function stopPolling() {
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+  }
 }
 
 /**
  * Poll 0xKobold for agent state (fallback)
  */
 async function pollAgentState() {
-  if (petNode?.isConnected()) {
+  if (familiarNode?.isConnected()) {
     // Using gateway, skip HTTP polling
     return;
   }
@@ -276,7 +295,7 @@ function updateTrayMenu(connected: boolean) {
     { label: 'Reconnect to Gateway', click: connectToGateway, enabled: !connected },
     { type: 'separator' },
     { label: 'Quit', click: () => {
-      petNode?.disconnect();
+      familiarNode?.disconnect();
       tray?.destroy();
       app.quit();
     }}
@@ -324,7 +343,7 @@ function setupIPC() {
   // Familiar events from renderer - forward to gateway
   ipcMain.on('familiar-event', (_event, data: { type: string; data: unknown }) => {
     if (familiarNode && familiarNode.isConnected()) {
-      familiarNode.client.sendEvent(`familiar.${data.type}`, data.data);
+      familiarNode.getClient().sendEvent(`familiar.${data.type}`, data.data);
     }
   });
 
@@ -367,5 +386,15 @@ app.on('certificate-error', (event, webContents, url, error, certificate, callba
     callback(true);
   } else {
     callback(false);
+  }
+});
+
+// Clean up on quit
+app.on('will-quit', () => {
+  stopPolling();
+  familiarNode?.disconnect();
+  if (tray) {
+    tray.destroy();
+    tray = null;
   }
 });

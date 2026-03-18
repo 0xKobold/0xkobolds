@@ -81,12 +81,13 @@ export function retargetMixamoAnimation(
   } = options;
 
   // Get animation clips from FBX
-  const clips = THREE.AnimationClip.parseAnimationClips(fbx.animations);
+  // In Three.js r160+, animations are directly on the object
+  const clips = fbx.animations || [];
   if (clips.length === 0) {
     throw new Error('No animation clips found in FBX');
   }
 
-  const sourceClip = clips[0];
+  const sourceClip = clips[0] as THREE.AnimationClip;
   const tracks: THREE.KeyframeTrack[] = [];
 
   // Calculate height scale

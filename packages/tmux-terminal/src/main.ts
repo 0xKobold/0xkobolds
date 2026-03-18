@@ -9,7 +9,7 @@
 
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import { spawn } from 'child_process';
-import { resolve, dirname } from 'path';
+import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { TmuxNode } from './tmux-node.js';
 import {
@@ -22,6 +22,9 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Detect if we're in development mode
+const isDev = !app.isPackaged;
 
 let mainWindow: BrowserWindow | null = null;
 let tmuxNode: TmuxNode | null = null;
@@ -46,11 +49,13 @@ function createWindow(): BrowserWindow {
   });
 
   // Load the renderer
-  if (process.env.NODE_ENV === 'development') {
+  if (isDev) {
+    // Development: electron-vite dev server
     win.loadURL('http://localhost:5173');
     win.webContents.openDevTools();
   } else {
-    win.loadFile(resolve(__dirname, 'renderer', 'index.html'));
+    // Production: built files
+    win.loadFile(resolve(__dirname, '..', 'renderer', 'index.html'));
   }
 
   // Show when ready

@@ -8,8 +8,9 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "start": "electron-vite preview",
-    "typecheck": "tsc --noEmit"
+    "start": "electron .",
+    "typecheck": "tsc --noEmit",
+    "compile": "tsc"
   },
   "keywords": [
     "tmux",

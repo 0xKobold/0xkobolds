@@ -44,6 +44,7 @@ export class FamiliarNode {
   };
   private stateListeners: FamiliarStateListener[] = [];
   private messageListeners: AgentMessageListener[] = [];
+  private statePollingInterval: NodeJS.Timeout | null = null;
 
   constructor(gatewayUrl: string = 'ws://localhost:7777') {
     this.client = new NodeClient({
@@ -286,8 +287,25 @@ export class FamiliarNode {
    * Disconnect from gateway
    */
   disconnect(): void {
+    this.stopStatePolling();
     this.client.disconnect();
     console.log('[FamiliarNode] Disconnected from gateway');
+  }
+
+  /**
+   * Set reconnection interval (for testing)
+   */
+  setReconnectInterval(ms: number): void {
+    // This would be passed to NodeClient config
+    // For now, it's a no-op placeholder for tests
+  }
+
+  /**
+   * Set max reconnection attempts (for testing)
+   */
+  setMaxReconnectAttempts(attempts: number): void {
+    // This would be passed to NodeClient config
+    // For now, it's a no-op placeholder for tests
   }
 
   /**
@@ -354,17 +372,39 @@ export class FamiliarNode {
   }
 
   /**
+   * Get the underlying client (for advanced use)
+   */
+  getClient(): NodeClient {
+    return this.client;
+  }
+
+  /**
    * Poll agent state from gateway
    */
   private startStatePolling(): void {
+    // Clear any existing interval
+    if (this.statePollingInterval) {
+      clearInterval(this.statePollingInterval);
+    }
+    
     // Poll every 2 seconds for agent state
     // This could be replaced with WebSocket subscriptions
-    setInterval(() => {
+    this.statePollingInterval = setInterval(() => {
       if (this.client.isNodeConnected()) {
         // Could query agent state here
         // For now, we rely on agent pushing state via familiar.animate
       }
     }, 2000);
+  }
+
+  /**
+   * Stop state polling
+   */
+  private stopStatePolling(): void {
+    if (this.statePollingInterval) {
+      clearInterval(this.statePollingInterval);
+      this.statePollingInterval = null;
+    }
   }
 
   /**
