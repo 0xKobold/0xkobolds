@@ -13,6 +13,8 @@ import type { LLMProvider, ChatResponse } from './types';
 import { getModelDiscoveryService, type DiscoveredModel } from './model-discovery';
 import { getModelScoringDB, type ModelTier } from './model-scoring-db';
 import { getModelPopularityService } from './model-popularity';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // ============================================================================
 // Types
@@ -55,6 +57,22 @@ export { ModelTier };
 // Adaptive Model Router
 // ============================================================================
 
+export interface DataCollectionConfig {
+  enabled: boolean;              // Enable data collection mode
+  minTestsThreshold: number;      // Minimum tests before trusting scores (default: 10)
+  confidentThreshold: number;     // Tests needed for confident scoring (default: 50)
+  explorationRate: number;        // Fraction of requests to explore (default: 0.2)
+  shareToNostr: boolean;          // Share scores to community
+}
+
+const DEFAULT_DATA_COLLECTION: DataCollectionConfig = {
+  enabled: true,
+  minTestsThreshold: 10,
+  confidentThreshold: 50,
+  explorationRate: 0.2,
+  shareToNostr: true,
+};
+
 export class AdaptiveModelRouter {
   private discovery = getModelDiscoveryService();
   private scoringDB = getModelScoringDB();
@@ -70,7 +88,11 @@ export class AdaptiveModelRouter {
   private learningEnabled = true;
   private favoriteModels: string[] = [];
 
-  // Tuned weights for scoring
+  // Data collection mode
+  private dataCollection: DataCollectionConfig = DEFAULT_DATA_COLLECTION;
+  private explorationCounter = 0;
+
+  // Tuned weights for scoring (used when NOT in data collection mode)
   private weights = {
     complexityMatch: 15,
     specialization: 12,
@@ -88,6 +110,21 @@ export class AdaptiveModelRouter {
     this.defaultModel = defaultModel ?? 'kimi-k2.5:cloud';
     this.loadPerformanceData();
     this.loadScoresFromDB();
+    this.loadDataCollectionConfig();
+  }
+
+  /**
+   * Set data collection mode configuration
+   */
+  setDataCollectionConfig(config: Partial<DataCollectionConfig>): void {
+    this.dataCollection = { ...this.dataCollection, ...config };
+  }
+
+  /**
+   * Get current data collection config
+   */
+  getDataCollectionConfig(): DataCollectionConfig {
+    return { ...this.dataCollection };
   }
 
   // ============================================================================
@@ -146,6 +183,15 @@ export class AdaptiveModelRouter {
       candidates = this.getFallbackModels(models, requirements.type);
     }
 
+    // Data collection mode: Check if we should explore
+    if (this.dataCollection.enabled && this.shouldExplore()) {
+      const explorationModel = await this.selectExplorationModel(candidates);
+      if (explorationModel) {
+        console.log(`[Router] Data collection mode: exploring ${explorationModel}`);
+        return explorationModel;
+      }
+    }
+
     // Normalize message for scoring
     let msgStr: string;
     if (typeof message !== 'string') {
@@ -162,21 +208,57 @@ export class AdaptiveModelRouter {
     }
 
     // Score and rank
-    const scored = candidates.map(m => ({
-      model: m,
-      score: this.scoreModelAdaptive(m, requirements, msgStr),
-    }));
+    const scored = candidates.map(m => {
+      // Data collection mode: Use real score for confident models
+      let score = this.scoreModelAdaptive(m, requirements, msgStr);
+      
+      if (this.dataCollection.enabled) {
+        const confidence = this.getConfidenceLevel(m.name);
+        if (confidence === 'confident') {
+          // Override with real score from actual usage data
+          const realScore = this.calculateRealScore(m.name);
+          if (realScore > 0) {
+            score = realScore;
+          }
+        }
+      }
+      
+      return { model: m, score };
+    });
 
     scored.sort((a, b) => b.score - a.score);
 
     const best = scored[0];
     if (best) {
       const reason = this.getSelectionReason(best.model, requirements);
-      console.log(`[Router] Selected ${best.model.name} (score: ${best.score.toFixed(1)}) - ${reason}`);
+      const confidence = this.dataCollection.enabled ? ` (${this.getConfidenceLevel(best.model.name)})` : '';
+      console.log(`[Router] Selected ${best.model.name} (score: ${best.score.toFixed(1)}) - ${reason}${confidence}`);
       return best.model.name;
     }
 
     return this.defaultModel;
+  }
+
+  /**
+   * Check if we should explore a new model (data collection mode)
+   */
+  private shouldExplore(): boolean {
+    // Check exploration rate
+    this.explorationCounter++;
+    
+    // Every Nth request, explore
+    const exploreEvery = Math.round(1 / this.dataCollection.explorationRate);
+    if (this.explorationCounter % exploreEvery === 0) {
+      return true;
+    }
+    
+    // Check if primary model needs more data
+    const primaryConfidence = this.getConfidenceLevel(this.defaultModel);
+    if (primaryConfidence === 'exploration') {
+      return true; // Need data on primary model
+    }
+    
+    return false;
   }
 
   async getModelInfo(name: string): Promise<DiscoveredModel | undefined> {
@@ -424,6 +506,161 @@ export class AdaptiveModelRouter {
       this.modelScores.set(score.modelName, score);
     }
     console.log(`[Router] Loaded ${scores.length} model scores from database`);
+  }
+
+  private loadDataCollectionConfig(): void {
+    // Load from config file if exists
+    try {
+      const configPath = path.join(process.env.HOME || '', '.0xkobold', 'router-config.json');
+      if (fs.existsSync(configPath)) {
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        if (config.dataCollection) {
+          this.dataCollection = { ...DEFAULT_DATA_COLLECTION, ...config.dataCollection };
+        }
+      }
+    } catch (e) {
+      // Use defaults if config not found
+    }
+  }
+
+  // ============================================================================
+  // Data Collection Mode
+  // ============================================================================
+
+  /**
+   * Check if a model needs more data collection
+   */
+  needsExploration(modelName: string): boolean {
+    const score = this.modelScores.get(modelName);
+    const usageCount = score?.usageCount ?? 0;
+    return usageCount < this.dataCollection.minTestsThreshold;
+  }
+
+  /**
+   * Get confidence level for a model's score
+   */
+  getConfidenceLevel(modelName: string): 'exploration' | 'learning' | 'confident' {
+    const score = this.modelScores.get(modelName);
+    const usageCount = score?.usageCount ?? 0;
+    
+    if (usageCount < this.dataCollection.minTestsThreshold) {
+      return 'exploration';
+    }
+    if (usageCount < this.dataCollection.confidentThreshold) {
+      return 'learning';
+    }
+    return 'confident';
+  }
+
+  /**
+   * Select a model for exploration (rotate through untested models)
+   */
+  async selectExplorationModel(models: DiscoveredModel[]): Promise<string> {
+    // Filter to cloud models that need exploration
+    const needsTesting = models.filter(m => 
+      !m.name.includes('embed') && 
+      this.needsExploration(m.name)
+    );
+
+    if (needsTesting.length > 0) {
+      // Pick randomly from models that need testing
+      const idx = Math.floor(Math.random() * needsTesting.length);
+      const selected = needsTesting[idx];
+      console.log(`[Router] Exploration mode: testing ${selected.name} (${this.modelScores.get(selected.name)?.usageCount ?? 0} uses)`);
+      return selected.name;
+    }
+
+    // All models have enough data - use normal selection
+    return this.defaultModel;
+  }
+
+  /**
+   * Calculate real score from actual usage data
+   */
+  calculateRealScore(modelName: string): number {
+    const score = this.modelScores.get(modelName);
+    if (!score) return 0;
+
+    const confidence = this.getConfidenceLevel(modelName);
+    
+    // In exploration mode, return 0 to not influence selection
+    if (confidence === 'exploration') {
+      return 0;
+    }
+
+    // Calculate score from real metrics
+    const qualityScore = (score.avgQuality / 100) * 40;  // 0-40 points
+    const speedScore = Math.max(0, 30 - (score.avgLatency / 1000)); // 0-30 points (faster = higher)
+    const reliabilityScore = score.successRate * 20;  // 0-20 points
+    
+    let totalScore = qualityScore + speedScore + reliabilityScore;
+    
+    // Confidence bonus for models with more data
+    if (confidence === 'confident') {
+      totalScore += 10; // Bonus for reliable scores
+    }
+
+    return totalScore;
+  }
+
+  /**
+   * Record model usage with metrics
+   */
+  async recordModelUsage(
+    modelName: string,
+    metrics: {
+      latencyMs: number;
+      success: boolean;
+      userRating?: number;
+      taskType?: string;
+    }
+  ): Promise<void> {
+    const score = this.modelScores.get(modelName) || {
+      modelName,
+      avgLatency: 0,
+      avgQuality: 0,
+      usageCount: 0,
+      successRate: 0,
+      score: 0,
+    };
+
+    // Update running averages
+    const newCount = score.usageCount + 1;
+    score.avgLatency = (score.avgLatency * score.usageCount + metrics.latencyMs) / newCount;
+    score.usageCount = newCount;
+    
+    if (metrics.success) {
+      score.successRate = (score.successRate * (newCount - 1) + 1) / newCount;
+    } else {
+      score.successRate = (score.successRate * (newCount - 1)) / newCount;
+    }
+
+    // Update quality from user rating if provided
+    if (metrics.userRating !== undefined) {
+      score.avgQuality = (score.avgQuality * (newCount - 1) + metrics.userRating * 20) / newCount;
+    }
+
+    // Recalculate score
+    score.score = this.calculateRealScore(modelName);
+
+    // Save to in-memory cache
+    this.modelScores.set(modelName, score);
+
+    // Persist to database via recordPerformance
+    const perf: ModelPerformance = {
+      modelName,
+      taskType: metrics.taskType || 'chat',
+      complexity: 'medium',
+      latencyMs: metrics.latencyMs,
+      inputTokens: 0,
+      outputTokens: 0,
+      timestamp: Date.now(),
+      userRating: metrics.userRating,
+      success: metrics.success,
+    };
+    this.scoringDB.recordPerformance(perf);
+
+    console.log(`[Router] Recorded usage for ${modelName}: ${newCount} uses, score ${score.score.toFixed(1)}, confidence ${this.getConfidenceLevel(modelName)}`);
   }
 
   // ============================================================================
