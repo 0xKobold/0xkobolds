@@ -496,7 +496,7 @@ export class DialecticReasoning {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "glm-5:cloud",
+        model: "minimax-m2.7:cloud",
         prompt,
         stream: false,
         format: "json",

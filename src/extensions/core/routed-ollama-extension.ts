@@ -98,7 +98,7 @@ async function selectSafeModel(router: any, userMessage: string): Promise<string
       console.log(`[RoutedOllama] Fallback to: ${selectedModel}`);
     } else {
       // Ultimate fallback - use cloud model
-      selectedModel = 'glm-5:cloud';
+      selectedModel = 'minimax-m2.7:cloud';
       console.log(`[RoutedOllama] Ultimate fallback to: ${selectedModel}`);
     }
   }

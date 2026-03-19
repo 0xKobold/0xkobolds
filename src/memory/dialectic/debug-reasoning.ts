@@ -23,7 +23,7 @@ async function main() {
   console.log("\n🧠 Running dialectic reasoning with glm-5:cloud...\n");
   
   try {
-    const engine = getDialecticReasoningEngine({ strategy: "dialectic", model: "glm-5:cloud" });
+    const engine = getDialecticReasoningEngine({ strategy: "dialectic", model: "minimax-m2.7:cloud" });
     const result = await engine.reason(peer.id);
     
     console.log("Results:");
