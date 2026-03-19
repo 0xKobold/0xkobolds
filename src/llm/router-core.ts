@@ -63,6 +63,8 @@ export interface DataCollectionConfig {
   confidentThreshold: number;     // Tests needed for confident scoring (default: 50)
   explorationRate: number;        // Fraction of requests to explore (default: 0.2)
   shareToNostr: boolean;          // Share scores to community
+  manualTestingMode?: boolean;    // Manual testing only (default: false)
+  allowedModels?: string[];       // Only use these models in manual mode
 }
 
 const DEFAULT_DATA_COLLECTION: DataCollectionConfig = {
@@ -167,8 +169,11 @@ export class AdaptiveModelRouter {
     const requirements = this.inferRequirements(message, options);
     const models = await this.discovery.discoverModels();
 
+    // Manual testing mode: Only use allowed models
+    let filteredModels = this.filterAllowedModels(models);
+
     // Filter by required capabilities
-    let candidates = models.filter(m => {
+    let candidates = filteredModels.filter(m => {
       if (requirements.type && !m.capabilities[requirements.type]) return false;
       if (requirements.requiredCapabilities) {
         for (const cap of requirements.requiredCapabilities) {
@@ -180,7 +185,7 @@ export class AdaptiveModelRouter {
 
     // Fallback logic
     if (candidates.length === 0) {
-      candidates = this.getFallbackModels(models, requirements.type);
+      candidates = this.getFallbackModels(filteredModels, requirements.type);
     }
 
     // Data collection mode: Check if we should explore
@@ -243,6 +248,11 @@ export class AdaptiveModelRouter {
    * Check if we should explore a new model (data collection mode)
    */
   private shouldExplore(): boolean {
+    // Manual testing mode: no exploration
+    if (this.dataCollection.manualTestingMode) {
+      return false;
+    }
+    
     // Check exploration rate
     this.explorationCounter++;
     
@@ -259,6 +269,17 @@ export class AdaptiveModelRouter {
     }
     
     return false;
+  }
+
+  /**
+   * Filter models to only allowed models (manual testing mode)
+   */
+  private filterAllowedModels(models: DiscoveredModel[]): DiscoveredModel[] {
+    if (!this.dataCollection.manualTestingMode || !this.dataCollection.allowedModels) {
+      return models;
+    }
+    
+    return models.filter(m => this.dataCollection.allowedModels.includes(m.name));
   }
 
   async getModelInfo(name: string): Promise<DiscoveredModel | undefined> {
