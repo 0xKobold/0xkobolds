@@ -70,7 +70,8 @@ export class OllamaProvider implements LLMProvider {
 
   async chat(options: ChatOptions): Promise<ChatResponse> {
     const { client, isCloud } = this.getClient(options.model);
-    const model = options.model.replace(':cloud', '');
+    // Only strip :cloud suffix when actually using cloud client
+    const model = isCloud ? options.model.replace(':cloud', '') : options.model;
 
     // Convert messages to OpenAI format
     const messages = options.messages.map((m: Message) => ({
@@ -104,7 +105,8 @@ export class OllamaProvider implements LLMProvider {
 
   async *chatStream(options: ChatOptions): AsyncGenerator<string, void, unknown> {
     const { client, isCloud } = this.getClient(options.model);
-    const model = options.model.replace(':cloud', '');
+    // Only strip :cloud suffix when actually using cloud client
+    const model = isCloud ? options.model.replace(':cloud', '') : options.model;
 
     // Convert messages to OpenAI format
     const messages = options.messages.map((m: Message) => ({

@@ -71,3 +71,21 @@ export type {
 // Version
 export const MEMORY_VERSION = "1.0.0";
 export const MEMORY_PHASE = "Complete (Phases 1-3)";
+
+// Session Search with FTS5 (Hermes-style)
+export {
+  sessionSearchFts,
+  initFtsTables,
+  indexSessionContent,
+  searchSessions,
+  searchWithLineageContext,
+  getSessionLineage,
+  getSessionChildren,
+  registerSessionLineage,
+  markSessionCompressed,
+  autoTitleSession,
+  getSessionSummaryPrompt,
+  type SearchResult,
+  type SessionLineage,
+  type SearchOptions,
+} from "./session-search-fts.js";

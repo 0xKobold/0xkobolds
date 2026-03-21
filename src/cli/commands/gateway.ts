@@ -7,6 +7,11 @@
 import { Command } from "commander";
 import { startGateway, getGateway, stopGateway } from "../../gateway/index.js";
 import { getDiscordBot, resetDiscordBot } from "../../gateway/discord-bot.js";
+import { initDeliveryFromConfig, getDelivery } from "../../gateway/delivery-integration.js";
+import { getConfigManager } from "../../config/manager.js";
+
+// Default home channel for proactive delivery
+const DEFAULT_HOME_CHANNEL = process.env.DISCORD_HOME_CHANNEL || "1466825989332926464";
 
 export function createGatewayCommand(): Command {
   const cmd = new Command("gateway")
@@ -20,9 +25,11 @@ export function createGatewayCommand(): Command {
     .option("-h, --host <host>", "Host to bind to", "localhost")
     .option("--discord", "Enable Discord bot integration")
     .option("--discord-token <token>", "Discord bot token")
+    .option("--home-channel <channelId>", "Home channel for proactive delivery", DEFAULT_HOME_CHANNEL)
     .action(async (options) => {
       const port = parseInt(options.port);
       const host = options.host;
+      const homeChannelId = options.homeChannel;
 
       console.log("🌐 Starting 0xKobold Gateway Server...\n");
 
@@ -47,9 +54,48 @@ export function createGatewayCommand(): Command {
         if (options.discord || process.env.DISCORD_TOKEN) {
           const token = options.discordToken || process.env.DISCORD_TOKEN;
           if (token) {
-            const bot = getDiscordBot({ token });
+            // Load config from file
+            const configManager = getConfigManager();
+            await configManager.load();
+            const fullConfig = configManager.getConfig();
+            
+            // Support both root-level "discord" and "channels.discord" config
+            const discordConfig = (fullConfig as any).discord ?? configManager.get('channels').discord;
+            
+            // Determine settings with precedence: CLI/env > config file > defaults
+            const requireMention = process.env.DISCORD_REQUIRE_MENTION === 'false' 
+              ? false 
+              : (discordConfig?.requireMention ?? true);
+            const createThreads = process.env.DISCORD_CREATE_THREADS === 'false'
+              ? false
+              : (discordConfig?.createThreads ?? true);
+            const allowedChannels = process.env.DISCORD_ALLOWED_CHANNELS?.split(',').map(c => c.trim()).filter(Boolean)
+              ?? discordConfig?.allowedChannels;
+            const configHomeChannel = discordConfig?.homeChannel || DEFAULT_HOME_CHANNEL;
+            const homeChannelId = options.homeChannel || process.env.DISCORD_HOME_CHANNEL || configHomeChannel;
+            
+            const bot = getDiscordBot({ 
+              token,
+              requireMention,
+              createThreads,
+              allowedChannels,
+            });
             await bot.start();
-            console.log("🤖 Discord bot integration enabled\n");
+            
+            console.log("🤖 Discord bot integration enabled");
+            console.log(`   requireMention: ${requireMention}`);
+            console.log(`   createThreads: ${createThreads}`);
+            if (allowedChannels?.length) {
+              console.log(`   allowedChannels: ${allowedChannels.join(', ')}`);
+            }
+            console.log();
+            
+            // Initialize delivery system with Discord and home channel
+            const delivery = initDeliveryFromConfig({
+              discordClient: bot.getClient(),
+              homeChannelId,
+            });
+            console.log(`📡 Delivery system initialized with home channel: ${homeChannelId}\n`);
           } else {
             console.warn("⚠️  Discord bot integration requested but no token provided");
             console.log("   Set DISCORD_TOKEN env var or use --discord-token\n");

@@ -68,7 +68,31 @@ export type DomainEventType =
   // Cron events (used)
   | 'cron.job.injected'
   // Notification channels (used)
-  | 'whatsapp.notify';
+  | 'whatsapp.notify'
+  // Autonomy events (inner monologue, desires, pursuit)
+  | 'autonomy.monologue_started'
+  | 'autonomy.monologue_stopped'
+  | 'autonomy.thought'
+  | 'autonomy.thought_surfaceable'
+  | 'autonomy.reflection'
+  | 'autonomy.desire_spawned'
+  | 'autonomy.desire_pursued'
+  | 'autonomy.desire_blocked'
+  | 'autonomy.desire_unblocked'
+  | 'autonomy.action_executed'
+  | 'autonomy.action_failed'
+  | 'autonomy.pursuit_started'
+  | 'autonomy.pursuit_stopped'
+  | 'autonomy.started'
+  | 'autonomy.stopped'
+  | 'autonomy.send_message'
+  | 'autonomy.start_project'
+  | 'autonomy.research'
+  | 'autonomy.follow_up'
+  | 'autonomy.share_thought'
+  | 'autonomy.user_active'
+  | 'autonomy.proactive_message'
+  | 'autonomy.action_outcome';
 
 // Domain Event Interface
 export interface DomainEvent {

@@ -9,7 +9,9 @@
 import { EventEmitter } from "node:events";
 import type { AgentToolResult } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { getDraconicRunRegistry, DraconicAgentRun } from "../agent/DraconicRunRegistry";
+import { getDraconicRunRegistry, DraconicAgentRun } from "../agent/DraconicRunRegistry.js";
+import { runEmbeddedAgent } from "../agent/embedded-runner.js";
+import { getAgentType } from "../agent/types/index.js";
 
 // Types
 export type AgentType = "coordinator" | "specialist" | "researcher" | "planner" | "reviewer";
@@ -109,6 +111,8 @@ class DirectDraconicTUI extends EventEmitter implements DraconicTUI {
   }
 
   async spawnSubagent(options: SpawnOptions): Promise<SpawnResult> {
+    const startTime = Date.now();
+    
     // Create run in registry
     const run = this.registry.create({
       sessionKey: process.env.DRACONIC_SESSION_KEY || "default",
@@ -133,10 +137,56 @@ class DirectDraconicTUI extends EventEmitter implements DraconicTUI {
       type: options.type,
       status: "running",
       task: options.task,
-      tokens: { estimated: 1000 }, // Would calculate
+      tokens: { estimated: 1000 },
     };
 
     this.emit("spawned", spawnResult);
+    
+    // Get agent type definition for system prompt
+    const agentTypeDef = getAgentType(options.type);
+    const systemPrompt = agentTypeDef?.systemPrompt || "";
+    
+    // Actually run the agent
+    try {
+      const result = await runEmbeddedAgent({
+        prompt: options.task,
+        cwd: process.cwd(),
+        extraSystemPrompt: systemPrompt,
+        useTuiSettings: true,
+      });
+      
+      // Update registry with result
+      this.registry.updateStatus(run.id, result.output ? "completed" : "error");
+      
+      // Store artifacts
+      if (result.output) {
+        run.artifacts = [{
+          type: "text",
+          content: result.output,
+          key: "output",
+          createdAt: Date.now(),
+        }];
+      }
+      
+      spawnResult.status = "completed";
+      spawnResult.output = result.output;
+      spawnResult.duration = result.metadata?.duration || Date.now() - startTime;
+      const tokens = result.metadata?.tokens as { input?: number; output?: number; total?: number } | undefined;
+      spawnResult.tokens = {
+        estimated: 1000,
+        actual: tokens?.input !== undefined && tokens?.output !== undefined 
+          ? tokens.input + tokens.output 
+          : tokens?.total,
+      };
+      
+      this.emit("completed", spawnResult);
+    } catch (error) {
+      this.registry.updateStatus(run.id, "error");
+      spawnResult.status = "error";
+      spawnResult.output = `Error: ${error}`;
+      this.emit("error", error instanceof Error ? error : new Error(String(error)));
+    }
+
     return spawnResult;
   }
 

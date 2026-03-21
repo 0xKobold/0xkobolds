@@ -8,7 +8,7 @@
 import {Command} from "commander";
 import {getCronScheduler} from "../../cron/scheduler.js";
 import {parseAt} from "../../cron/parser.js";
-import type {AddJobOptions} from "../../cron/types.js";
+import type {AddJobOptions, CronJob} from "../../cron/types.js";
 
 export const cronCommand = new Command("cron").description(
   "Manage scheduled cron jobs"
@@ -123,7 +123,7 @@ cronCommand
         cron: options.cron,
         at: options.at,
         timezone: options.timezone,
-        session: options.session,
+        session: options.session as "main" | "isolated",
         message: options.message,
         model: options.model,
         thinkingLevel: options.thinking,

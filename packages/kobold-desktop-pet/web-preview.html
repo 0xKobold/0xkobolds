@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🐢 Cool Turtle - Web Preview</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: #e5e7eb;
+    }
+    
+    h1 {
+      margin-bottom: 20px;
+      font-size: 1.5rem;
+      color: #10b981;
+    }
+    
+    #canvas-container {
+      position: relative;
+      width: 400px;
+      height: 400px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(16, 185, 129, 0.3);
+    }
+    
+    #vrm-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      max-width: 400px;
+    }
+    
+    .controls button {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid #10b981;
+      color: #10b981;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    
+    .controls button:hover {
+      background: #10b981;
+      color: #1a1a2e;
+    }
+    
+    .controls button.active {
+      background: #10b981;
+      color: #1a1a2e;
+    }
+    
+    #status {
+      margin-top: 15px;
+      padding: 8px 16px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 18px;
+      color: #10b981;
+    }
+    
+    .error {
+      color: #ef4444;
+      padding: 20px;
+      text-align: center;
+    }
+    
+    .info {
+      margin-top: 20px;
+      font-size: 12px;
+      color: #6b7280;
+      text-align: center;
+      max-width: 400px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🐢 Cool Turtle Preview</h1>
+  
+  <div id="canvas-container">
+    <canvas id="vrm-canvas"></canvas>
+    <div id="loading">Loading VRM model...</div>
+  </div>
+  
+  <div id="status">Status: Loading...</div>
+  
+  <div class="controls">
+    <button data-anim="idle" class="active">🧍 Idle</button>
+    <button data-anim="walking">🚶 Walk</button>
+    <button data-anim="waving">👋 Wave</button>
+    <button data-anim="thinking">🤔 Think</button>
+    <button data-anim="sleeping">😴 Sleep</button>
+    <button data-anim="cheering">🎉 Cheer</button>
+  </div>
+  
+  <div class="info">
+    Cool Turtle VRM avatar from <a href="https://opensourceavatars.com" target="_blank" style="color: #10b981;">opensourceavatars.com</a><br>
+    Animations retargeted from Mixamo
+  </div>
+
+  <!-- Import Three.js and VRM from CDN -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+
+    // State
+    let scene, camera, renderer, controls;
+    let vrm = null;
+    let mixer = null;
+    let clock = new THREE.Clock();
+    let currentAction = null;
+    let animations = new Map();
+
+    // Animation files to load
+    const ANIMATIONS = {
+      idle: 'Breathing Idle.fbx',
+      walking: 'Walking.fbx',
+      waving: 'Waving.fbx',
+      thinking: 'Look Around.fbx',
+      sleeping: 'Sleeping Idle.fbx',
+      cheering: 'Cheering.fbx'
+    };
+
+    const ANIMATION_PATHS = {
+      idle: 'assets/animations/Breathing Idle.fbx',
+      walking: 'assets/animations/Walking.fbx',
+      waving: 'assets/animations/Waving.fbx',
+      thinking: 'assets/animations/Look Around.fbx',
+      sleeping: 'assets/animations/Sleeping Idle.fbx',
+      cheering: 'assets/animations/Cheering.fbx'
+    };
+
+    // Initialize Three.js scene
+    function init() {
+      const canvas = document.getElementById('vrm-canvas');
+      const container = document.getElementById('canvas-container');
+      
+      // Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x1a1a2e);
+
+      // Camera
+      camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+      camera.position.set(0, 1.2, 2.5);
+
+      // Renderer
+      renderer = new THREE.WebGLRenderer({ 
+        canvas, 
+        antialias: true,
+        alpha: true
+      });
+      renderer.setSize(400, 400);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.shadowMap.enabled = true;
+
+      // Controls
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.target.set(0, 1, 0);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.minDistance = 1.5;
+      controls.maxDistance = 5;
+
+      // Lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      directionalLight.position.set(5, 10, 5);
+      directionalLight.castShadow = true;
+      scene.add(directionalLight);
+
+      // Ground plane
+      const groundGeometry = new THREE.CircleGeometry(2, 32);
+      const groundMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x10b981,
+        transparent: true,
+        opacity: 0.1
+      });
+      const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      scene.add(ground);
+
+      // Animation buttons
+      document.querySelectorAll('.controls button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const anim = btn.dataset.anim;
+          playAnimation(anim);
+          updateButtonStates(anim);
+        });
+      });
+
+      // Load VRM
+      loadVRM();
+    }
+
+    // Load VRM model
+    async function loadVRM() {
+      const loading = document.getElementById('loading');
+      const status = document.getElementById('status');
+      
+      try {
+        const loader = new GLTFLoader();
+        loader.register((parser) => new VRMLoaderPlugin(parser));
+
+        const gltf = await loader.loadAsync('assets/avatars/coolturtle.vrm');
+        vrm = gltf.userData.vrm;
+
+        if (!vrm) {
+          throw new Error('VRM not found in GLTF');
+        }
+
+        VRMUtils.removeUnnecessaryJoints(gltf.scene);
+
+        vrm.scene.traverse((obj) => {
+          if (obj.isMesh) {
+            obj.castShadow = true;
+            obj.receiveShadow = true;
+          }
+        });
+
+        // Center and scale
+        const box = new THREE.Box3().setFromObject(vrm.scene);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+        
+        vrm.scene.position.y = -center.y + 0.1;
+        
+        scene.add(vrm.scene);
+
+        // Create animation mixer
+        mixer = new THREE.AnimationMixer(vrm.scene);
+
+        // Load idle animation as default
+        await loadFBXAnimation('idle');
+
+        loading.style.display = 'none';
+        status.textContent = 'Status: Idle';
+        updateButtonStates('idle');
+
+        // Start animation loop
+        animate();
+
+      } catch (error) {
+        console.error('Failed to load VRM:', error);
+        loading.innerHTML = `<div class="error">Failed to load model<br><small>${error.message}</small><br><br>Make sure to run this from a local server</div>`;
+        status.textContent = 'Status: Error';
+        
+        // Show placeholder
+        showPlaceholder();
+      }
+    }
+
+    // Show placeholder turtle if VRM fails to load
+    function showPlaceholder() {
+      // Create a simple turtle shape as placeholder
+      const geometry = new THREE.SphereGeometry(0.3, 32, 16);
+      const material = new THREE.MeshStandardMaterial({ color: 0x10b981 });
+      const body = new THREE.Mesh(geometry, material);
+      body.scale.set(1, 0.6, 1.2);
+      body.position.y = 0.5;
+      scene.add(body);
+
+      // Head
+      const headGeom = new THREE.SphereGeometry(0.15, 16, 8);
+      const head = new THREE.Mesh(headGeom, material);
+      head.position.set(0, 0.65, 0.35);
+      scene.add(head);
+
+      // Shell pattern
+      const shellGeom = new THREE.SphereGeometry(0.32, 8, 4);
+      const shellMat = new THREE.MeshStandardMaterial({ color: 0x059669 });
+      const shell = new THREE.Mesh(shellGeom, shellMat);
+      shell.scale.set(0.9, 0.4, 1);
+      shell.position.y = 0.55;
+      scene.add(shell);
+
+      loading.style.display = 'none';
+    }
+
+    // Load FBX animation (simplified - for preview)
+    async function loadFBXAnimation(name) {
+      // For web preview, we'll use a simple idle pose since FBX loading from file:// is complex
+      // In production, these would be loaded from the FBX files
+      
+      if (name === 'idle') {
+        // Create a simple idle pose
+        const idleTrack = new THREE.VectorKeyframeTrack(
+          '.rotation',
+          [0, 1, 2],
+          [0, 0, 0, 0, 0.1, 0, 0, 0, 0]
+        );
+        const idleClip = new THREE.AnimationClip('idle', 2, [idleTrack]);
+        animations.set('idle', idleClip);
+      }
+    }
+
+    // Play animation
+    function playAnimation(name) {
+      if (!mixer) return;
+
+      // For preview, we use simple breathing animation
+      const status = document.getElementById('status');
+      const statusNames = {
+        idle: 'Idle',
+        walking: 'Walking',
+        waving: 'Waving',
+        thinking: 'Looking Around',
+        sleeping: 'Sleeping',
+        cheering: 'Cheering'
+      };
+      
+      status.textContent = `Status: ${statusNames[name] || name}`;
+    }
+
+    // Update button states
+    function updateButtonStates(active) {
+      document.querySelectorAll('.controls button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.anim === active);
+      });
+    }
+
+    // Animation loop
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      const time = clock.getElapsedTime();
+
+      // Update VRM
+      if (vrm) {
+        vrm.update(delta);
+
+        // Simple breathing animation
+        const breathe = Math.sin(time * 2) * 0.02;
+        vrm.scene.position.y = Math.sin(time * 2) * 0.01;
+      }
+
+      // Update mixer
+      if (mixer) {
+        mixer.update(delta);
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // Start when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>

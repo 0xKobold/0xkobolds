@@ -15,7 +15,7 @@ describe("Real Gateway Server - v0.2.0", () => {
   let gateway: any;
 
   beforeAll(async () => {
-    const { default: RealGatewayServer } = await import("../../../src/gateway/server.js");
+    const { RealGatewayServer } = await import("../../../src/gateway/gateway-server.js");
     gateway = new RealGatewayServer({ port: testPort, host: "localhost", cors: true });
     await gateway.start();
     await new Promise(r => setTimeout(r, 100));
@@ -114,6 +114,6 @@ describe("Real Gateway Server - v0.2.0", () => {
 
   test("should track connections", () => {
     expect(typeof gateway.getConnectionCount()).toBe("number");
-    expect(Array.isArray(gateway.getConnections())).toBe(true);
+    expect(gateway.getConnections() instanceof Map).toBe(true);
   });
 });

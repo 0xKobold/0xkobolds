@@ -25,7 +25,8 @@ Maintain 0xKobold health: update packages, fix security vulnerabilities, complet
 | ~~Update fast-xml-parser~~ | ✅ DONE | MEDIUM | Overrode to 5.5.6 |
 | ~~Update tough-cookie~~ | ✅ DONE | MEDIUM | Overrode to 4.1.4 |
 | ~~Update qs~~ | ✅ DONE | MEDIUM | Overrode to 6.14.1 |
-| ~~Update pi-coding-agent~~ | ✅ DONE | HIGH | upgraded to 0.59.0 |
+| ~~Update pi-coding-agent~~ | ✅ DONE | HIGH | Upgraded to 0.60.0 |
+| ~~Update socket.io-parser~~ | ✅ DONE | HIGH | Overrode to 4.2.6, fixes binary attachment DoS |
 | form-data (node-telegram-bot-api) | ⚠️ ACCEPT | CRITICAL | Deep dep, cannot override safely |
 | music-metadata (baileys) | ⚠️ ACCEPT | HIGH | WhatsApp integration, deep dep |
 | request (node-telegram-bot-api) | ⚠️ ACCEPT | MODERATE | Deep dep, cannot override safely |
@@ -39,9 +40,9 @@ Maintain 0xKobold health: update packages, fix security vulnerabilities, complet
 
 | Package | Current | Latest | Status | Notes |
 |---------|---------|--------|--------|-------|
-| ~~@mariozechner/pi-coding-agent~~ | ~~0.57.1~~ | 0.59.0 | ✅ UPDATED | Core framework |
-| ~~@mariozechner/pi-tui~~ | ~~0.57.1~~ | 0.59.0 | ✅ UPDATED | Terminal UI |
-| ~~@mariozechner/pi-agent-core~~ | ~~0.57.1~~ | 0.59.0 | ✅ UPDATED | Agent core |
+| ~~@mariozechner/pi-coding-agent~~ | ~~0.57.1~~ | 0.60.0 | ✅ UPDATED | Core framework |
+| ~~@mariozechner/pi-tui~~ | ~~0.57.1~~ | 0.60.0 | ✅ UPDATED | Terminal UI |
+| ~~@mariozechner/pi-agent-core~~ | ~~0.57.1~~ | 0.60.0 | ✅ UPDATED | Agent core |
 | ~~undici~~ | ~~6.21.3~~ | 7.24.4 | ✅ OVERRIDDEN | Fixed 6 CVEs |
 | ~~file-type~~ | ~~<21.3.1~~ | 21.3.1 | ✅ OVERRIDDEN | Fixed ASF/ZIP vulns |
 | ~~fast-xml-parser~~ | ~~<=5.5.5~~ | 5.5.6 | ✅ OVERRIDDEN | Fixed entity expansion |
@@ -52,17 +53,22 @@ Maintain 0xKobold health: update packages, fix security vulnerabilities, complet
 | ~~sharp~~ | ~~0.33.5~~ | 0.34.5 | ✅ UPDATED | Image processing |
 | ~~zod~~ | ~~3.25.76~~ | 4.3.6 | ✅ UPDATED | Schema validation |
 | ~~@types/node~~ | ~~20.19.37~~ | 25.5.0 | ✅ UPDATED | Dev types |
-| bun | Check | Latest | ⬜ TODO | Runtime |
+| bun | ~~1.3.10~~ | 1.3.11 | ✅ UPDATED | Runtime |
 | discord.js | 14.25.1 | 14.25.1 | ✅ LATEST | Already latest |
 
 ### 🔧 Incomplete Implementations
 
 | Feature | Location | Status | Notes |
 |---------|----------|--------|-------|
-| Kobold Desktop Pet | packages/kobold-desktop-pet/ | 🔄 IN PROGRESS | Tests created, TypeScript compiles, needs sprite refinement |
+| Kobold Desktop Pet | packages/kobold-desktop-pet/ | 🔄 IN PROGRESS | Tests created, TypeScript compiles, Phase 5 needs desktop-pet integration |
 | ~~Agent Activity WebSocket~~ | packages/mission-control/ | ✅ DONE | useGateway hook wired to AgentActivityView, real-time events |
-| **Tmux Terminal Node** | packages/tmux-terminal/ | ✅ WORKING | Node on Dasua connects to Pi gateway via Tailscale |
+| ~~Tmux Terminal Node~~ | packages/tmux-terminal/ | ✅ WORKING | Node on Dasua connects to Pi gateway via Tailscale |
 | ~~Moltube Skill~~ | ~~~/.0xkobold/skills/moltube/~~ | ✅ FIXED | Description field now present in SKILL.md |
+| **Agent Body Interface** | src/body/ | ✅ INTEGRATED | All 5 phases + CLI + gateway wiring + WAL + Working Buffer |
+| **Body State API** | packages/mission-control/api/body-state | ✅ DONE | GET /api/body-state endpoint |
+| **System Monitor Skill** | src/skills/builtin/system-monitor.ts | ✅ DONE | Built-in health & diagnostics skill |
+| **Orchestrate Skill** | src/skills/builtin/orchestrate.ts | ✅ DONE | Multi-agent orchestration strategies |
+| **Twitch Extension** | src/extensions/core/twitch-extension.ts | ✅ DONE | Twitch IRC chat integration |
 
 ### 🐛 Known Bugs
 
@@ -110,7 +116,8 @@ The Moltube skill now has the required `description` field in its SKILL.md front
   "file-type": "^21.3.1",
   "fast-xml-parser": "^5.5.6",
   "tough-cookie": "^4.1.4",
-  "qs": "^6.14.1"
+  "qs": "^6.14.1",
+  "socket.io-parser": "^4.2.6"
 }
 ```
 
@@ -163,10 +170,10 @@ The Moltube skill now has the required `description` field in its SKILL.md front
 
 ### Weekly Tasks
 
-- [ ] Run `bun audit` to check for vulnerabilities
-- [ ] Run `bun outdated` to check for updates
-- [ ] Review logs for errors
-- [ ] Check disk usage (~/.0xkobold/)
+- [x] Run `bun audit` to check for vulnerabilities
+- [x] Run `bun outdated` to check for updates
+- [x] Review logs for errors
+- [x] Check disk usage (~/.0xkobold/)
 
 ### Monthly Tasks
 
@@ -205,6 +212,12 @@ The Moltube skill now has the required `description` field in its SKILL.md front
 ### Database Files
 - `~/.0xkobold/dialectic/dialectic.db` - Dialectic reasoning
 - `~/.0xkobold/memory/perennial/knowledge.db` - Perennial memory
+
+### Twitch Integration
+- `src/twitch/irc-client.ts` - Twitch IRC client
+- `src/twitch/config.ts` - Configuration loading
+- `src/extensions/core/twitch-extension.ts` - Extension
+- `~/.0xkobold/config.json` - Twitch config (add `"twitch": {...}`)
 
 ### Dashboard Files
 - `packages/mission-control/` - Mission Control dashboard
@@ -251,6 +264,30 @@ The Moltube skill now has the required `description` field in its SKILL.md front
 19. **SECURITY AUDIT** - Reviewed env vars, API key storage, Discord tokens, SQL injection. All clean except plaintext key storage.
 20. **AGENT ACTIVITY WEBSOCKET** - Wired useGateway hook to AgentActivityView for real-time agent events. Added connection status.
 21. **TMUX TERMINAL ON PI** - Node runs on Dasua (100.75.97.120), connects to Pi gateway (100.65.167.97:7777) via Tailscale. Fixed WebSocket URL format.
+22. **AGENT BODY INTERFACE** - Implemented all 5 phases:
+    - Phase 1: Sensors (CPU temp, load, memory, disk, network, uptime) + platform detection
+    - Phase 2: Gateway integration - broadcasts body-state every 30s
+    - Phase 3: Proactive messaging - daily reflection, morning briefing, health alerts
+    - Phase 4: Environment scanner - Tailscale peers, services, temporal awareness
+    - Phase 5: CLI commands (`body health`, `body feel`, `body scan`, `body sensors`, `body platform`)
+    - Integrated into CLI (`src/cli/program.ts`) and gateway startup (`src/index.ts`)
+    - Created `/api/body-state` endpoint for Mission Control
+    - Works on Raspberry Pi: 56.75°C CPU, 2.14 load, 75.4% memory, 2d 6h uptime
+23. **BUILTIN SKILLS ADDED** - Created `system-monitor` and `orchestrate` skills:
+    - `system-monitor`: Health checks, diagnostics, metrics, logs, actions (restart, cleanup)
+    - `orchestrate`: Multi-agent strategies (research swarm, epic parallel build, sequential pipeline, parallel sweep, multi-dimensional audit, full lifecycle)
+24. **WAL PROTOCOL & WORKING BUFFER** - Integrated proactive-agent patterns into Agent Body:
+    - Write-Ahead Logging: Critical information logged before responding
+    - Working Buffer: Captures exchanges during context transitions
+    - Compaction Recovery: Recovery procedures after context loss
+25. **TWITCH INTEGRATION** - Created Twitch IRC extension:
+    - `src/twitch/irc-client.ts` - Twitch IRC client with rate limiting
+    - `src/twitch/config.ts` - Configuration loading and validation
+    - `src/extensions/core/twitch-extension.ts` - 0xKobold extension
+    - Commands: `twitch:connect`, `twitch:disconnect`, `twitch:say`, `twitch:status`
+    - Tools: `twitch_say`, `twitch_whisper`, `twitch_status` for agent use
+    - Rate limited (20 msg/30s for non-mod, 100/30s for mods)
+    - Event bus integration for messages, whispers, commands
 
 ### Priorities Next Session
 
@@ -308,11 +345,30 @@ cd packages/tmux-terminal && GATEWAY_URL=ws://100.65.167.97:7777 bun run connect
 
 # View metrics
 cat ~/.0xkobold/metrics.json | jq . 
+
+# Agent Body Commands
+bun run cli body health    # Check system health
+bun run cli body feel       # Interpret current state as mood
+bun run cli body scan       # Scan environment (peers, services)
+bun run cli body sensors    # List available sensors
+bun run cli body platform   # Show platform information
+
+# System Monitor Skill (builtin)
+bun run cli system status   # Overview of all systems
+bun run cli system health   # Detailed health check
+bun run cli system diagnose "why is my agent slow?"  # Diagnose issues
+
+# Twitch Integration (requires config in ~/.0xkobold/config.json)
+# Add: "twitch": { "username": "BotName", "oauthToken": "oauth:xxx", "channels": ["#channel1"], "enabled": true }
+bun run cli twitch:connect    # Connect to Twitch IRC
+bun run cli twitch:disconnect # Disconnect from Twitch
+bun run cli twitch:status     # Show connection status
+bun run cli twitch:say channel="#channel" message="Hello!" # Send message
 ```
 
 ---
 
-*Last Updated: 2026-03-17 EDT*
+*Last Updated: 2026-03-18 EDT*
 ---
 Check interval: 30m
 Delivery target: none

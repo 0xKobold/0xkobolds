@@ -201,6 +201,13 @@ class DiscordBotIntegration {
       guilds: this.client?.guilds.cache.size || 0,
     };
   }
+
+  /**
+   * Get Discord client for delivery system integration
+   */
+  getClient(): Client | null {
+    return this.client;
+  }
 }
 
 // Singleton

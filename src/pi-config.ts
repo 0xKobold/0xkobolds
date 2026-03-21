@@ -37,6 +37,7 @@ export const config: Config = {
     // Multi-Channel
     './src/extensions/core/multi-channel-extension.ts', // Unified channel management
     './src/extensions/core/discord-extension.ts',       // Discord bot integration
+    './src/extensions/core/twitch-extension.ts',       // Twitch chat integration
     
     // 🐉 DRACONIC SYSTEMS (Superior agent management)
     './src/extensions/core/agent-orchestrator-extension.ts',  // Agent orchestration

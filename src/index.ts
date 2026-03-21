@@ -266,6 +266,23 @@ async function main(): Promise<void> {
         console.log(`🌐 Gateway started on port ${gatewayPort}`);
       }
 
+      // Initialize Agent Body System
+      try {
+        const { initializeBodyGateway } = await import('./body/gateway-integration');
+        const { getDeliverySystem } = await import('./gateway/delivery');
+        const { getGateway } = await import('./gateway/gateway-server');
+        
+        const gateway = getGateway();
+        const delivery = getDeliverySystem();
+        
+        if (gateway && delivery) {
+          await initializeBodyGateway(gateway, delivery);
+          console.log('🫀 Agent Body initialized');
+        }
+      } catch (err: any) {
+        console.warn('⚠️  Agent Body error:', err?.message || err);
+      }
+
       // Load auth profiles from config
       ensureAuthProfilesFromConfig();
     } catch (err: any) {

@@ -11,6 +11,7 @@ import { loadBootstrap, ensureDefaultFiles, loadInstanceFiles } from "./bootstra
 import { buildSystemPromptAsync, createSystemPromptOverride } from "./system-prompt.js";
 import { config as piConfig } from "../pi-config.js";
 import { loadConfig, getConfigValue } from "../config/loader.js";
+import { chat } from "../llm/multi-provider.js";
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -131,45 +132,51 @@ export async function runEmbeddedAgent(
 
   console.log(`[Embedded] System prompt: ${systemPrompt.length} chars`);
 
-  // 4. Try to integrate with pi-coding-agent SDK
+  // 4. Use model router for chat completion
   try {
-    const { createAgentSession } = await import('@mariozechner/pi-coding-agent').catch(() => ({ createAgentSession: null }));
+    console.log('[Embedded] Using model router');
     
-    if (createAgentSession) {
-      console.log('[Embedded] Using pi-coding-agent SDK');
-      
-      // Create agent session with shared settings
-      const { session } = await createAgentSession({
-        cwd: config.cwd,
-        systemPrompt: systemPrompt,
+    // Determine model to use - default to Ollama with a locally available model
+    const modelToUse = model || 'ollama/minimax-m2.7:cloud';
+    console.log(`[Embedded] Model: ${modelToUse}`);
+    
+    // Call the router
+    const response = await chat({
+      model: modelToUse,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: config.prompt }
+      ],
+      temperature: 0.7,
+    });
+    
+    const duration = Date.now() - startTime;
+    const result = response.content || 'No response';
+    
+    console.log(`[Embedded] Response received in ${duration}ms`);
+    
+    return {
+      text: result,
+      toolCalls: [],
+      metadata: {
+        duration,
+        tokens: response.usage?.totalTokens || systemPrompt.length / 4,
+        model: modelToUse,
         extensions: extensions.length > 0 ? extensions : undefined,
-        model: model, // Pass model preference
-        settings: {
-          ...piConfig.settings,
-          '0xkobold.embedded': true,
-          '0xkobold.mode': config.mode || 'default',
+      },
+      // Gateway compatibility
+      output: result,
+      stats: {
+        tokens: { 
+          total: response.usage?.totalTokens || Math.floor(systemPrompt.length / 4),
+          input: response.usage?.inputTokens,
+          output: response.usage?.outputTokens,
         },
-      });
-      
-      // Run the prompt
-      const maxIterations = config.mode === 'build' ? 30 : 15;
-      const result = await session.prompt(config.prompt, maxIterations);
-      
-      const duration = Date.now() - startTime;
-      
-      return {
-        text: result || 'No response',
-        toolCalls: [],
-        metadata: {
-          duration,
-          tokens: systemPrompt.length / 4,
-          model,
-          extensions: extensions.length > 0 ? extensions : undefined,
-        },
-      };
-    }
-  } catch (sdkError) {
-    console.log('[Embedded] SDK integration failed, falling back to simulation:', (sdkError as Error).message);
+        duration,
+      },
+    };
+  } catch (routerError: any) { console.error("[Embedded] Router error details:", routerError);
+    console.log('[Embedded] Router failed, falling back to simulation:', (routerError as Error).message);
   }
 
   // Fallback: Simulate the structure
@@ -192,6 +199,12 @@ export async function runEmbeddedAgent(
       tokens: systemPrompt.length / 4,
       model,
       extensions: extensions.length > 0 ? extensions : undefined,
+    },
+    // Gateway compatibility
+    output: `[Embedded mode simulation]`,
+    stats: {
+      tokens: { total: Math.floor(systemPrompt.length / 4) },
+      duration: Date.now() - startTime,
     },
   };
 

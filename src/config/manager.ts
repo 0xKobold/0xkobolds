@@ -53,7 +53,14 @@ export interface ConfigSchema {
   
   // Channels
   channels: {
-    discord?: { enabled: boolean; token?: string };
+    discord?: { 
+      enabled: boolean; 
+      token?: string;
+      requireMention?: boolean;  // Default true - need @mention to trigger
+      createThreads?: boolean;   // Default true - create thread on response
+      allowedChannels?: string[]; // Optional - restrict to these channels
+      homeChannel?: string;       // Channel for proactive messages
+    };
     whatsapp?: { enabled: boolean; sessionPath: string };
     telegram?: { enabled: boolean; token?: string; mode: "polling" | "webhook" };
     slack?: { enabled: boolean; webhookUrl?: string };
@@ -116,7 +123,11 @@ const DEFAULT_CONFIG: ConfigSchema = {
   },
   
   channels: {
-    discord: { enabled: false },
+    discord: { 
+      enabled: false,
+      requireMention: true,
+      createThreads: true,
+    },
     whatsapp: { enabled: false, sessionPath: "~/.0xkobold/whatsapp-session" },
     telegram: { enabled: false, mode: "polling" },
     slack: { enabled: false },

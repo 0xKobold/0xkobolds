@@ -50,6 +50,9 @@ import { createTailscaleCommand } from "./commands/tailscale.js";
 // v0.2.0: Embedded mode
 import { createEmbeddedCommand } from "./commands/embedded.js";
 
+// v0.5.0: Agent Body
+import { createBodyCommand } from "../body/cli.js";
+
 export function createCli(): Command {
   const program = new Command("0xkobold")
     .version(version || "1.0.0")
@@ -90,6 +93,9 @@ export function createCli(): Command {
 
   // v0.4.0: Cron jobs
   program.addCommand(cronCommand);
+
+  // v0.5.0: Agent Body commands
+  program.addCommand(createBodyCommand());
 
   // Extension CLIs
   registerDiscordCli(program);

@@ -161,6 +161,45 @@ export class CronScheduler extends EventEmitter {
   }
 
   /**
+   * Check if scheduler is running
+   */
+  isRunning(): boolean {
+    return this.running;
+  }
+
+  /**
+   * Get all jobs (alias for listJobs)
+   */
+  getAllJobs(): CronJob[] {
+    return this.listJobs();
+  }
+
+  /**
+   * Manually trigger a job by ID
+   */
+  async runJob(jobId: string): Promise<{ success: boolean; tokensUsed?: number; error?: string; output?: string }> {
+    const job = this.getJob(jobId);
+    if (!job) {
+      return { success: false, error: `Job not found: ${jobId}` };
+    }
+    
+    try {
+      // Import runner dynamically
+      const { runJobRunner } = await import("./runner.js");
+      const result = await runJobRunner(job);
+      return { 
+        success: result.success, 
+        tokensUsed: result.tokensUsed, 
+        output: result.output,
+        error: result.error 
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
    * Check for and run due jobs
    */
   private async checkAndRunJobs(): Promise<void> {

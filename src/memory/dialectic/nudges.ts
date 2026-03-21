@@ -448,6 +448,153 @@ Answer based on the representation. If you don't have enough information, say so
       return "Unable to answer at this time";
     }
   }
+
+  // ─────────────────────────────────────────────────────────────────
+  // MESSAGE OUTCOME TRACKING (for Autonomy)
+  // ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Messages tracked for learning optimal timing and templates.
+   * Used by autonomy system to improve proactive outreach.
+   */
+  private messageOutcomes: Array<{
+    timestamp: Date;
+    desireType: string;
+    template: string;
+    result: "success" | "ignored" | "negative";
+    timeOfDay: number;
+    dayOfWeek: number;
+    responseLag?: number;
+  }> = [];
+
+  /**
+   * Record the outcome of a proactive message.
+   * Tracks timing success rates and template performance.
+   */
+  recordMessageOutcome(params: {
+    desireType: string;
+    template: string;
+    result: "success" | "ignored" | "negative";
+    responseLag?: number;
+  }): void {
+    const now = new Date();
+    this.messageOutcomes.push({
+      timestamp: now,
+      desireType: params.desireType,
+      template: params.template,
+      result: params.result,
+      timeOfDay: now.getHours(),
+      dayOfWeek: now.getDay(),
+      responseLag: params.responseLag,
+    });
+
+    // Keep only last 500 outcomes
+    if (this.messageOutcomes.length > 500) {
+      this.messageOutcomes = this.messageOutcomes.slice(-500);
+    }
+
+    // Also record as learning observation
+    this.recordEvent("message_outcome", {
+      desire: params.desireType,
+      template: params.template,
+      result: params.result,
+    });
+
+    console.log(`[NudgeEngine] Recorded ${params.result} for ${params.desireType} message`);
+  }
+
+  /**
+   * Get best time to send proactive messages.
+   * Returns hour (0-23) and day (0-6) with highest success rate.
+   */
+  getBestTiming(): { hour: number; dayOfWeek: number; successRate: number } | null {
+    if (this.messageOutcomes.length < 10) {
+      return null; // Not enough data
+    }
+
+    // Group by hour of week
+    const hourOfWeek: Map<number, { success: number; total: number }> = new Map();
+    
+    for (const outcome of this.messageOutcomes) {
+      const how = outcome.dayOfWeek * 24 + outcome.timeOfDay;
+      const entry = hourOfWeek.get(how) || { success: 0, total: 0 };
+      entry.total++;
+      if (outcome.result === "success") entry.success++;
+      hourOfWeek.set(how, entry);
+    }
+
+    // Find best hour
+    let bestHow = 0;
+    let bestRate = 0;
+    for (const [how, stats] of hourOfWeek) {
+      if (stats.total >= 3) {
+        const rate = stats.success / stats.total;
+        if (rate > bestRate) {
+          bestRate = rate;
+          bestHow = how;
+        }
+      }
+    }
+
+    return {
+      hour: bestHow % 24,
+      dayOfWeek: Math.floor(bestHow / 24),
+      successRate: bestRate,
+    };
+  }
+
+  /**
+   * Get best performing message templates.
+   */
+  getBestTemplates(limit = 5): Array<{ template: string; successRate: number; total: number }> {
+    if (this.messageOutcomes.length < 5) {
+      return [];
+    }
+
+    // Group by template
+    const templates: Map<string, { success: number; total: number }> = new Map();
+    
+    for (const outcome of this.messageOutcomes) {
+      const entry = templates.get(outcome.template) || { success: 0, total: 0 };
+      entry.total++;
+      if (outcome.result === "success") entry.success++;
+      templates.set(outcome.template, entry);
+    }
+
+    // Sort by success rate
+    return Array.from(templates.entries())
+      .filter(([_, stats]) => stats.total >= 3)
+      .map(([template, stats]) => ({
+        template,
+        successRate: stats.success / stats.total,
+        total: stats.total,
+      }))
+      .sort((a, b) => b.successRate - a.successRate)
+      .slice(0, limit);
+  }
+
+  /**
+   * Get success rate by desire type.
+   */
+  getDesireSuccessRates(): Record<string, number> {
+    const byDesire: Map<string, { success: number; total: number }> = new Map();
+
+    for (const outcome of this.messageOutcomes) {
+      const entry = byDesire.get(outcome.desireType) || { success: 0, total: 0 };
+      entry.total++;
+      if (outcome.result === "success") entry.success++;
+      byDesire.set(outcome.desireType, entry);
+    }
+
+    const rates: Record<string, number> = {};
+    for (const [desire, stats] of byDesire) {
+      if (stats.total >= 5) {
+        rates[desire] = stats.success / stats.total;
+      }
+    }
+
+    return rates;
+  }
 }
 
 // Singleton

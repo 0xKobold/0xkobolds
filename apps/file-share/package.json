@@ -1,0 +1,16 @@
+{
+  "name": "file-share",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "mime-types": "^3.0.2",
+    "ws": "^8.19.0"
+  }
+}
