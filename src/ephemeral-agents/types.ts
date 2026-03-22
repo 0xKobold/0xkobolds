@@ -35,9 +35,20 @@ export interface TokenMetrics {
 
 export interface RegistryStats {
   active: number;
-  finished: number;
-  avgDuration: number;
-  byStatus: Record<string, number>;
+  totalSpawned: number;
+  totalCompleted: number;
+  totalFailed: number;
+  maxTtlMs: number;
+  lruCapacity: number;
+  activeAgents: Array<{
+    id: string;
+    type: string;
+    task: string;
+    status: string;
+    startedAt: number;
+    parentId?: string;
+    workspace?: string;
+  }>;
 }
 
 export interface SpawnEphemeralParams {
@@ -56,4 +67,6 @@ export interface SubAgentConfig {
   maxSpawnDepth: number;      // Nesting limit (default: 2)
   defaultTimeoutMs: number;   // Default: 5 min
   archiveAfterMs: number;     // Cleanup finished (default: 30 min)
+  maxTtlMs: number;           // Max TTL for any agent (default: 30 min)
+  maxFinished: number;        // Max finished to keep (LRU eviction, default: 64)
 }

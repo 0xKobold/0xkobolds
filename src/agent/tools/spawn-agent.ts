@@ -1,286 +1,162 @@
 /**
- * Spawn Agent Tool - v1.0
+ * Spawn Agent Tool - Delegates to Ephemeral Agent System
  * 
- * Now uses ephemeral agent system for actual spawning.
- * Based on OpenClaw/Hermes patterns.
- * 
- * Changes from v0.3.0:
- * - Uses runEmbeddedAgent for actual execution
- * - Isolated workspaces per sub-agent
- * - TTL-based cleanup
- * - Structured results with tokens/duration
+ * Provides spawning of ephemeral sub-agents with full tool execution
+ * via the pi CLI RPC protocol.
  */
 
-import { getAgentType, AgentType } from "../types/index.js";
+import { spawnEphemeral, spawnEphemeralFanOut } from '../../ephemeral-agents/spawner.js';
 
-import { trackAgentSpawn, trackAgentComplete } from "../../telemetry/integration";
-import { spawnEphemeral, ephemeralRegistry } from "../../ephemeral-agents/index.js";
+export const SpawnAgentParams = {
+  task: String,
+  agentType: String,
+  model: String,
+  timeoutMs: Number,
+  // Gateway-specific fields
+  extraSystemPrompt: String,
+  parentRunId: String,
+  sessionKey: String,
+  // Real-workers specific
+  autoRoute: Boolean,
+};
 
-export interface SpawnAgentParams {
+export type SpawnAgentParams = {
   task: string;
   agentType?: string;
-  autoRoute?: boolean;
-  context?: string;
-  priority?: "low" | "normal" | "high";
-  maxIterations?: number;
   model?: string;
-  parentRunId?: string;
-  extraSystemPrompt?: string;
-  sessionKey?: string;
-  // Ephemeral options
-  ephemeral?: boolean;
   timeoutMs?: number;
-}
+  extraSystemPrompt?: string;
+  parentRunId?: string;
+  sessionKey?: string;
+  autoRoute?: boolean;
+};
 
 export interface SpawnAgentResult {
-  success: boolean;
   agentId: string;
-  agentType: AgentType;
-  task: string;
-  systemPrompt?: string;
-  maxIterations: number;
-
+  agentType?: string;
+  success: boolean;
+  text: string;
   error?: string;
   runId?: string;
-  // Ephemeral results
-  result?: string;
-  durationMs?: number;
-  tokens?: { input: number; output: number; total: number };
+  tokens: { input: number; output: number; total: number };
+  durationMs: number;
+  status: 'running' | 'completed' | 'failed';
+}
+
+export interface SpawnAgentsParams {
+  tasks: string[];
+  agentType?: string;
+  maxConcurrent?: number;
 }
 
 /**
- * Auto-route task to best agent type
- */
-function autoRouteTask(task: string): AgentType {
-  // Simple heuristic routing
-  const t = task.toLowerCase();
-  
-  if (t.includes('research') || t.includes('find') || t.includes('search')) {
-    return getAgentType('researcher');
-  }
-  if (t.includes('review') || t.includes('check') || t.includes('validate')) {
-    return getAgentType('reviewer');
-  }
-  if (t.includes('plan') || t.includes('coordinate') || t.includes('organize')) {
-    return getAgentType('coordinator');
-  }
-  if (t.includes('expert') || t.includes('optimize') || t.includes('architecture')) {
-    return getAgentType('specialist');
-  }
-  
-  return getAgentType('worker');
-}
-
-/**
- * Spawn a sub-agent (now actually works!)
+ * Spawn a single ephemeral agent
  */
 export async function spawnAgent(params: SpawnAgentParams): Promise<SpawnAgentResult> {
   const startTime = Date.now();
-  
-  // Determine agent type
-  const agentType = params.autoRoute !== false
-    ? autoRouteTask(params.task)
-    : (params.agentType ? getAgentType(params.agentType) : getAgentType('worker'));
+  const agentId = 'eph-' + Math.random().toString(36).slice(2, 10);
 
-  console.log(`[SpawnAgent] Spawning ${agentType.name} (ephemeral: ${params.ephemeral !== false})`);
-  console.log(`[SpawnAgent] Task: ${params.task.slice(0, 100)}...`);
-
-  // Track spawn
-  const runId = crypto.randomUUID();
-  trackAgentSpawn(runId, agentType.id);
-
-  // Check if ephemeral spawning is requested
-  if (params.ephemeral !== false) {
-    try {
-      const result = await spawnEphemeral({
-        task: params.task,
-        agentType: agentType.id,
-        model: params.model,
-        timeoutMs: params.timeoutMs || 5 * 60 * 1000,
-        parentId: params.parentRunId,
-        extraSystemPrompt: params.extraSystemPrompt,
-      });
-
-      const durationMs = Date.now() - startTime;
-
-      if (result.success) {
-        trackAgentComplete(runId, durationMs, true);
-      } else {
-        trackAgentComplete(runId, durationMs, false);
-      }
-
-      return {
-        success: result.success,
-        agentId: runId,
-        agentType,
-        task: params.task,
-        result: result.text,
-        durationMs,
-        tokens: result.tokens,
-        maxIterations: params.maxIterations || 100,
-        runId,
-      };
-    } catch (error) {
-      const durationMs = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      trackAgentComplete(runId, durationMs, false);
-      
-      return {
-        success: false,
-        agentId: runId,
-        agentType,
-        task: params.task,
-        error: errorMessage,
-        durationMs,
-        maxIterations: params.maxIterations || 100,
-        runId,
-      };
-    }
+  // Build task with system prompt if provided
+  let task = params.task;
+  if (params.extraSystemPrompt) {
+    task = `${params.extraSystemPrompt}\n\nTask: ${params.task}`;
   }
 
-  // Legacy mode (non-ephemeral) - just return config
+  const result = await spawnEphemeral({
+    task,
+    agentType: params.agentType,
+    model: params.model,
+    timeoutMs: params.timeoutMs,
+    parentId: params.parentRunId,
+  });
+
   return {
-    success: true,
-    agentId: runId,
-    agentType,
-    task: params.task,
-    maxIterations: params.maxIterations || 100,
-    runId,
+    agentId,
+    agentType: params.agentType,
+    success: result.success,
+    text: result.text,
+    runId: agentId,
+    tokens: result.tokens,
+    durationMs: result.durationMs,
+    status: result.status === 'completed' ? 'completed' : result.status === 'failed' ? 'failed' : 'running',
   };
 }
 
 /**
- * Spawn multiple agents in parallel
+ * Spawn multiple ephemeral agents in parallel
  */
-export async function spawnAgents(
-  tasks: Array<{ task: string; agentType?: string }>
-): Promise<SpawnAgentResult[]> {
-  const results = await Promise.all(
-    tasks.map(t => spawnAgent({
-      task: t.task,
-      agentType: t.agentType,
-      autoRoute: !t.agentType,
-    }))
+export async function spawnAgents(params: SpawnAgentsParams): Promise<{
+  results: SpawnAgentResult[];
+  totalDurationMs: number;
+}> {
+  const startTime = Date.now();
+
+  const results = await spawnEphemeralFanOut(
+    params.tasks,
+    params.agentType || 'worker',
+    params.maxConcurrent || 4
   );
-  
-  return results;
-}
-
-/**
- * Fan-out pattern: spawn multiple, collect results
- */
-export async function spawnFanOut(
-  tasks: string[],
-  agentType: string = 'worker',
-  maxConcurrent: number = 4
-): Promise<{ success: number; failed: number; results: SpawnAgentResult[] }> {
-  const { spawnEphemeralFanOut } = await import('../../ephemeral-agents/index.js');
-  
-  const ephemeralResults = await spawnEphemeralFanOut(tasks, agentType, maxConcurrent);
-  
-  const spawnResults: SpawnAgentResult[] = ephemeralResults.map((r, i) => ({
-    success: r.success,
-    agentId: crypto.randomUUID(),
-    agentType: getAgentType(agentType),
-    task: tasks[i],
-    result: r.text,
-    durationMs: r.durationMs,
-    tokens: r.tokens,
-    maxIterations: 100,
-  }));
 
   return {
-    success: ephemeralResults.filter(r => r.success).length,
-    failed: ephemeralResults.filter(r => !r.success).length,
-    results: spawnResults,
+    results: results.map((r, i) => ({
+      agentId: `eph-${i}`,
+      success: r.success,
+      text: r.text,
+      tokens: r.tokens,
+      durationMs: r.durationMs,
+      status: r.status === 'completed' ? 'completed' : r.status === 'failed' ? 'failed' : 'running',
+    })),
+    totalDurationMs: Date.now() - startTime,
   };
 }
 
 /**
- * Get spawn agent tool definition
+ * Get spawn agent tool configuration for AI SDK
  */
 export function getSpawnAgentToolConfig() {
   return {
-    name: "spawn_agent",
-    description: `Spawn a sub-agent to handle a task.
-
-Uses ephemeral agents with isolated workspaces:
-- Each agent gets its own /tmp/0xkobold/ephemeral/<uuid>/ workspace
-- No context pollution - fresh start for each agent
-- Auto-cleanup after completion (30min TTL)
-- Returns actual results, not just configs
-
-Agent types:
-- worker: Implement and execute tasks
-- researcher: Research and gather information
-- reviewer: Review and validate work
-- specialist: Deep domain expertise
-- coordinator: Plan and coordinate complex tasks`,
+    description: 'Spawn an ephemeral sub-agent to execute a task with full tool execution.',
     parameters: {
-      type: "object",
+      type: 'object',
       properties: {
-        task: {
-          type: "string",
-          description: "The task for the sub-agent. Be specific and clear.",
-        },
-        agentType: {
-          type: "string",
-          enum: ["worker", "researcher", "reviewer", "specialist", "coordinator"],
-          description: "Type of agent (auto-selected if not specified)",
-        },
-        autoRoute: {
-          type: "boolean",
-          description: "Auto-select best agent type based on task",
-          default: true,
-        },
-        model: {
-          type: "string",
-          description: "Model override (optional)",
-        },
-        timeoutMs: {
-          type: "number",
-          description: "Timeout in milliseconds (default: 300000 = 5 min)",
-          default: 300000,
-        },
-        ephemeral: {
-          type: "boolean",
-          description: "Use ephemeral agent (default: true)",
-          default: true,
-        },
+        task: { type: 'string', description: 'The task to execute' },
+        agentType: { type: 'string', description: 'Type of agent' },
+        model: { type: 'string', description: 'Model to use' },
+        timeoutMs: { type: 'number', description: 'Timeout in ms' },
       },
-      required: ["task"],
+      required: ['task'],
     },
   };
 }
 
 /**
- * Execute spawn agent tool (for agent tool calling)
+ * Execute spawn agent tool
  */
-export async function executeSpawnAgent(args: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const result = await spawnAgent({
-    task: args.task as string,
-    agentType: args.agentType as string | undefined,
-    autoRoute: args.autoRoute !== false,
-    model: args.model as string | undefined,
-    timeoutMs: args.timeoutMs as number | undefined,
-    ephemeral: args.ephemeral !== false,
-  });
-
-  if (!result.success) {
-    return {
-      success: false,
-      content: [{ type: 'text' as const, text: `Failed: ${result.error}` }],
-    };
+export async function executeSpawnAgent(params: SpawnAgentParams): Promise<string> {
+  const result = await spawnAgent(params);
+  
+  if (result.success) {
+    return `✅ Agent completed in ${result.durationMs}ms\n\n${result.text}`;
+  } else {
+    return `❌ Agent failed: ${result.text}`;
   }
+}
 
-  return {
-    success: true,
-    content: [{ type: 'text' as const, text: result.result || 'Agent completed' }],
-    metadata: {
-      agentType: result.agentType.id,
-      durationMs: result.durationMs,
-      tokens: result.tokens,
-    },
-  };
+// CLI interface
+export async function main(args: string[]) {
+  const task = args[0] || 'What is 2+2?';
+  
+  console.log(`Spawning ephemeral agent for: ${task.slice(0, 50)}...`);
+  
+  const result = await spawnAgent({ task });
+  
+  console.log('\n=== Result ===');
+  console.log(`Status: ${result.success ? '✅' : '❌'} ${result.status}`);
+  console.log(`Duration: ${result.durationMs}ms`);
+  console.log(`\n${result.text}`);
+}
+
+// Run if executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main(process.argv.slice(2)).catch(console.error);
 }

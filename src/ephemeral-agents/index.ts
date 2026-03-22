@@ -1,11 +1,10 @@
 /**
- * Ephemeral Agent System
+ * Ephemeral Agent System - v1.0
  * 
- * Based on OpenClaw/Hermes patterns:
- * - Spawn → work → report → die
- * - Isolated workspaces per agent
- * - TTL-based cleanup
- * - Telemetry integration
+ * Uses RpcClient from pi-coding-agent SDK for:
+ * - Actual tool execution (read, bash, edit, write)
+ * - Full agent capabilities
+ * - Proper event handling
  */
 
 export { ephemeralRegistry, EphemeralRegistry, DEFAULT_CONFIG } from './registry.js';

@@ -19,6 +19,8 @@ const DEFAULT_CONFIG: SubAgentConfig = {
   maxSpawnDepth: 2,
   defaultTimeoutMs: 5 * 60 * 1000, // 5 minutes
   archiveAfterMs: 30 * 60 * 1000,  // 30 minutes
+  maxTtlMs: 30 * 60 * 1000,        // 30 minutes
+  maxFinished: 64,                   // LRU capacity
 };
 
 class EphemeralRegistry {
@@ -28,6 +30,9 @@ class EphemeralRegistry {
   private finished = new Map<string, EphemeralAgent>();
   private timers = new Map<string, NodeJS.Timeout>();
   private config: SubAgentConfig;
+  private totalSpawned = 0;
+  private totalCompleted = 0;
+  private totalFailed = 0;
 
   static getInstance(): EphemeralRegistry {
     if (!EphemeralRegistry.instance) {
@@ -76,6 +81,8 @@ class EphemeralRegistry {
       children: [],
       ttlMs,
     };
+    
+    this.totalSpawned++;
 
     this.agents.set(id, agent);
     
@@ -182,6 +189,13 @@ class EphemeralRegistry {
     this.finished.set(id, agent);
     this.clearTimer(id);
     this.enforceLimits();
+    
+    // Update counters
+    if (success) {
+      this.totalCompleted++;
+    } else {
+      this.totalFailed++;
+    }
 
     // Schedule archive
     const archiveTimer = setTimeout(() => {
@@ -258,27 +272,6 @@ class EphemeralRegistry {
   }
 
   /**
-   * Get registry stats
-   */
-  stats(): RegistryStats {
-    const active = this.getActive();
-    const finished = Array.from(this.finished.values());
-    const durations = finished.filter(a => a.completedAt).map(a => (a.completedAt || 0) - a.startedAt);
-
-    const byStatus: Record<string, number> = {};
-    for (const agent of active) {
-      byStatus[agent.status] = (byStatus[agent.status] || 0) + 1;
-    }
-
-    return {
-      active: active.length,
-      finished: finished.length,
-      avgDuration: durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0,
-      byStatus,
-    };
-  }
-
-  /**
    * Get active count
    */
   getActiveCount(): number {
@@ -301,15 +294,42 @@ class EphemeralRegistry {
   }
 
   private enforceLimits(): void {
-    if (this.finished.size <= 64) return;
+    if (this.finished.size <= this.config.maxFinished) return;
     const sorted = Array.from(this.finished.entries())
       .sort((a, b) => (a[1].completedAt || 0) - (b[1].completedAt || 0));
-    for (const [id] of sorted.slice(0, this.finished.size - 64)) {
+    for (const [id] of sorted.slice(0, this.finished.size - this.config.maxFinished)) {
       this.finished.delete(id);
       this.clearTimer(`archive-${id}`);
     }
+  }
+
+  /**
+   * Get registry statistics
+   */
+  public getStats(): RegistryStats {
+    const activeAgents = Array.from(this.agents.values()).map((a) => ({
+      id: a.id,
+      type: a.type,
+      task: a.task,
+      status: a.status,
+      startedAt: a.startedAt,
+      parentId: a.parentId,
+      workspace: a.workspace,
+    }));
+
+    return {
+      active: this.agents.size,
+      totalSpawned: this.totalSpawned,
+      totalCompleted: this.totalCompleted,
+      totalFailed: this.totalFailed,
+      maxTtlMs: this.config.maxTtlMs,
+      lruCapacity: this.config.maxChildrenPerAgent,
+      activeAgents,
+    };
   }
 }
 
 export const ephemeralRegistry = EphemeralRegistry.getInstance();
 export { EphemeralRegistry, DEFAULT_CONFIG };
+
+// Add getStats method - need to modify the class
