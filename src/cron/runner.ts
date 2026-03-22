@@ -12,6 +12,7 @@ import { getMultiProviderRouter, chat } from "../llm/index.js";
 import type { LLMProvider, Message } from "../llm/types.js";
 import { sendNotification } from "./notifications.js";
 import { eventBus } from "../event-bus/index.js";
+import { trackLLMRequest } from "../telemetry/integration.js";
 
 /**
  * Run a job based on its session type
@@ -90,11 +91,15 @@ async function runIsolatedSession(job: CronJob): Promise<JobResult> {
     });
     
     const duration = Date.now() - startTime;
+    const tokensUsed = response.usage?.inputTokens || 0 + (response.usage?.outputTokens || 0);
+    
+    // Track LLM telemetry
+    trackLLMRequest(model, duration, tokensUsed, true);
     
     return {
       success: true,
       output: response.content,
-      tokensUsed: response.usage?.inputTokens || 0 + (response.usage?.outputTokens || 0),
+      tokensUsed,
       duration,
     };
     
@@ -103,6 +108,9 @@ async function runIsolatedSession(job: CronJob): Promise<JobResult> {
     const errorMsg = error instanceof Error ? error.message : String(error);
     
     console.error(`[CronRunner] Isolated session error: ${errorMsg}`);
+    
+    // Track failed LLM telemetry
+    trackLLMRequest(model, duration, 0, false);
     
     return {
       success: false,

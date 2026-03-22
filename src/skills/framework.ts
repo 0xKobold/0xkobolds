@@ -8,6 +8,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { existsSync } from "node:fs";
+import { trackSkillExecution, trackSkillInvoke } from "../telemetry/integration";
 
 export interface Skill {
   id: string;
@@ -158,15 +159,32 @@ class SkillRegistry {
     args: Record<string, unknown> = {},
     context: SkillContext
   ): Promise<SkillResult> {
+    const startTime = Date.now();
+    let success = true;
+
+    // Track skill invocation
+    trackSkillInvoke(skillId);
+
     // Check built-in skills first
     const builtin = this.builtinSkills.get(skillId);
     if (builtin) {
-      return builtin(args, context);
+      try {
+        const result = await builtin(args, context);
+        trackSkillExecution(skillId, Date.now() - startTime, true);
+        return result;
+      } catch (error) {
+        trackSkillExecution(skillId, Date.now() - startTime, false, String(error));
+        return {
+          success: false,
+          error: `Skill execution failed: ${error}`,
+        };
+      }
     }
 
     // Check loaded skills
     const skill = this.skills.get(skillId);
     if (!skill) {
+      trackSkillExecution(skillId, Date.now() - startTime, false, "Skill not found");
       return {
         success: false,
         error: `Skill not found: ${skillId}`,
@@ -174,6 +192,7 @@ class SkillRegistry {
     }
 
     if (!skill.loaded || !skill.handler) {
+      trackSkillExecution(skillId, Date.now() - startTime, false, "Skill not loaded");
       return {
         success: false,
         error: `Skill not loaded: ${skillId}${skill.loadError ? ` (${skill.loadError})` : ""}`,
@@ -181,8 +200,12 @@ class SkillRegistry {
     }
 
     try {
-      return await skill.handler(args, context);
+      const result = await skill.handler(args, context);
+      success = result.success !== false;
+      trackSkillExecution(skillId, Date.now() - startTime, success, result.error);
+      return result;
     } catch (error) {
+      trackSkillExecution(skillId, Date.now() - startTime, false, String(error));
       return {
         success: false,
         error: `Skill execution failed: ${error}`,

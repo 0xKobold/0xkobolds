@@ -19,6 +19,7 @@ import { homedir } from 'os';
 import type { Skill, SkillEntry, SkillModule } from './types';
 import { eventBus, createEventEmitter } from '../event-bus';
 import { getConditionalSkillRegistry, type SkillFilterOptions } from './conditional-skills.js';
+import { trackSkillExecution, trackSkillInvoke } from '../telemetry/integration';
 
 const emit = createEventEmitter('skills');
 

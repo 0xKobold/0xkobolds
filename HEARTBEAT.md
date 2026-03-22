@@ -69,6 +69,9 @@ Maintain 0xKobold health: update packages, fix security vulnerabilities, complet
 | **System Monitor Skill** | src/skills/builtin/system-monitor.ts | ✅ DONE | Built-in health & diagnostics skill |
 | **Orchestrate Skill** | src/skills/builtin/orchestrate.ts | ✅ DONE | Multi-agent orchestration strategies |
 | **Twitch Extension** | src/extensions/core/twitch-extension.ts | ✅ DONE | Twitch IRC chat integration |
+| **Community Analytics CLI** | src/cli/commands/community.ts | ✅ DONE | Enable/disable, sync, publish, link-eth, trust-stats, export, merge |
+| **Wallet CLI** | src/cli/commands/wallet.ts | ✅ DONE | Status, import (key/mnemonic/address), address, chains, help-import |
+| **Telemetry v2** | src/telemetry/ | ✅ DONE | Unified tracker: gateway, llm, session, skill, agent, storage, websocket, channel, cron, system |
 
 ### 🐛 Known Bugs
 
@@ -185,7 +188,7 @@ The Moltube skill now has the required `description` field in its SKILL.md front
 ### Quarterly Tasks
 
 - [ ] Full security audit
-- [ ] Performance profiling
+- ~~Performance profiling~~ | ✅ DONE | Incremental builds: 22s → 7.3s (67% faster)
 - [ ] Dependency cleanup (remove unused)
 - [ ] Update documentation
 
@@ -241,53 +244,42 @@ The Moltube skill now has the required `description` field in its SKILL.md front
 
 ## 📝 Notes
 
-### 2026-03-17 Session Notes
+### 2026-03-21 Session Notes
 
-1. Reviewed HEARTBEAT status - consolidation phases complete
-2. Identified extension loading issues at startup - NOW RESOLVED
-3. Created Kobold Desktop Pet package with Pokemon-style dragon sprite
-4. Installed pixel-art, game-engine, browser-use skills
-5. Mission Control dashboard complete with all views
-6. **Added historical charts** - recharts with 1min/10min/1hr/1day ranges
-7. **Implemented metrics persistence** - JSON file at ~/.0xkobold/metrics.json
-8. **Enhanced agent animations** - 10 states (idle, working, thinking, processing, sleeping, typing, reading, executing, error, success)
-9. **Added smart task search** - Natural language parsing for "high priority tasks from yesterday"
-10. **Added advanced filters** - Status, priority, date range filtering
-11. Installed `jq` for better JSON parsing in shell commands
-12. **Fixed Desktop Pet TypeScript errors** - parseAnimationClips, private client access
-13. **Created Desktop Pet test suite** - Unit, integration, e2e tests (vitest has compatibility issue)
-14. **Ran security audit** - Found 21 vulnerabilities (1 critical, 8 high)
-15. **Checked package updates** - pi-coding-agent, commander, zod need updating
-16. **SECURITY FIXES** - Upgraded packages, added overrides, reduced from 21 → 4 vulnerabilities
-17. **PACKAGE UPDATES** - Updated all packages: commander 14.0.3, glob 13.0.6, sharp 0.34.5, zod 4.3.6, @types/node 25.5.0
-18. **TMUX TERMINAL NODE** - Created new package with TmuxManager, TmuxNode, Electron app. Core implementation complete.
-19. **SECURITY AUDIT** - Reviewed env vars, API key storage, Discord tokens, SQL injection. All clean except plaintext key storage.
-20. **AGENT ACTIVITY WEBSOCKET** - Wired useGateway hook to AgentActivityView for real-time agent events. Added connection status.
-21. **TMUX TERMINAL ON PI** - Node runs on Dasua (100.75.97.120), connects to Pi gateway (100.65.167.97:7777) via Tailscale. Fixed WebSocket URL format.
-22. **AGENT BODY INTERFACE** - Implemented all 5 phases:
-    - Phase 1: Sensors (CPU temp, load, memory, disk, network, uptime) + platform detection
-    - Phase 2: Gateway integration - broadcasts body-state every 30s
-    - Phase 3: Proactive messaging - daily reflection, morning briefing, health alerts
-    - Phase 4: Environment scanner - Tailscale peers, services, temporal awareness
-    - Phase 5: CLI commands (`body health`, `body feel`, `body scan`, `body sensors`, `body platform`)
-    - Integrated into CLI (`src/cli/program.ts`) and gateway startup (`src/index.ts`)
-    - Created `/api/body-state` endpoint for Mission Control
-    - Works on Raspberry Pi: 56.75°C CPU, 2.14 load, 75.4% memory, 2d 6h uptime
-23. **BUILTIN SKILLS ADDED** - Created `system-monitor` and `orchestrate` skills:
-    - `system-monitor`: Health checks, diagnostics, metrics, logs, actions (restart, cleanup)
-    - `orchestrate`: Multi-agent strategies (research swarm, epic parallel build, sequential pipeline, parallel sweep, multi-dimensional audit, full lifecycle)
-24. **WAL PROTOCOL & WORKING BUFFER** - Integrated proactive-agent patterns into Agent Body:
-    - Write-Ahead Logging: Critical information logged before responding
-    - Working Buffer: Captures exchanges during context transitions
-    - Compaction Recovery: Recovery procedures after context loss
-25. **TWITCH INTEGRATION** - Created Twitch IRC extension:
-    - `src/twitch/irc-client.ts` - Twitch IRC client with rate limiting
-    - `src/twitch/config.ts` - Configuration loading and validation
-    - `src/extensions/core/twitch-extension.ts` - 0xKobold extension
-    - Commands: `twitch:connect`, `twitch:disconnect`, `twitch:say`, `twitch:status`
-    - Tools: `twitch_say`, `twitch_whisper`, `twitch_status` for agent use
-    - Rate limited (20 msg/30s for non-mod, 100/30s for mods)
-    - Event bus integration for messages, whispers, commands
+26. **COMMUNITY ANALYTICS STRENGTHENING** - Enhanced spam protection in `src/llm/community-analytics.ts`:
+    - Added reputation system with 8-point spam detection
+    - Outlier filtering (Z-score >2.5 std dev)
+    - Reputation-weighted contributions (max 30% influence per contributor)
+    - Minimum thresholds: 3+ contributors, 3+ usage for inclusion
+    - Trust scores calculated from: account age, validation ratio, model diversity, consistency
+
+27. **ERC-8004 CRYPTECONOMIC BRIDGE** - Created `src/llm/erc8004-community-bridge.ts` (v2 - PRIVACY-PRESERVING):
+    - Privacy-preserving: Nostr pubkey stays anonymous, no addresses published
+    - Trust claims in Nostr tags: `['trust', 'gold'], ['verified', '1'], ['nonce', 'xyz']`
+    - Server-side verification: claims verified against on-chain data without address exposure
+    - Fraudulent claims detected and penalized (weight → 0.01)
+    - Trust levels: none/bronze/silver/gold/platinum
+    - Max weight capped at 35% per contributor
+    - Configuration: `erc8004Enabled`, `erc8004MinTrust`, `erc8004Chain`
+
+28. **COMMUNITY CLI COMMANDS** - Created `src/cli/commands/community.ts`:
+    - `community enable [--erc8004] [--min-trust bronze]` - Enable sharing
+    - `community disable` - Disable sharing
+    - `community status` - Show status and trust level
+    - `community sync [--nostr|--github]` - Sync from Nostr or GitHub
+    - `community publish` - Publish stats to Nostr
+    - `community link-eth <address>` - Link Ethereum address
+    - `community trust-stats` - Show trust statistics
+    - `community export` - Export for manual sharing
+    - `community merge` - Show merged community + local stats
+
+29. **WALLET CLI COMMANDS** - Created `src/cli/commands/wallet.ts`:
+    - `wallet status` - Show current wallet config
+    - `wallet import --type ethers --key 0x...` - Import from private key
+    - `wallet import --type ethers --mnemonic "..."` - Import from recovery phrase
+    - `wallet import --type readonly --address 0x...` - Read-only watch wallet
+    - `wallet address` - Show active address
+    - `wallet chains` - List supported chains
 
 ### Priorities Next Session
 
@@ -356,6 +348,13 @@ bun run cli body platform   # Show platform information
 # System Monitor Skill (builtin)
 bun run cli system status   # Overview of all systems
 bun run cli system health   # Detailed health check
+
+# Telemetry v2
+bun run cli telemetry summary     # 7-day dashboard summary
+bun run cli telemetry stats <metric>  # Detailed stats
+bun run cli telemetry benchmark   # Generate anonymous payload
+bun run cli telemetry cleanup     # Remove old data
+bun run cli system health   # Detailed health check
 bun run cli system diagnose "why is my agent slow?"  # Diagnose issues
 
 # Twitch Integration (requires config in ~/.0xkobold/config.json)
@@ -364,11 +363,55 @@ bun run cli twitch:connect    # Connect to Twitch IRC
 bun run cli twitch:disconnect # Disconnect from Twitch
 bun run cli twitch:status     # Show connection status
 bun run cli twitch:say channel="#channel" message="Hello!" # Send message
+
+# Community Analytics (ERC-8004 privacy-preserving trust)
+bun run cli community status        # Show sharing status and trust level
+bun run cli community enable        # Enable anonymous stats sharing
+bun run cli community enable --erc8004 --min-trust bronze  # Enable with ERC-8004
+bun run cli community sync          # Sync from Nostr
+bun run cli community publish       # Publish your stats to Nostr
+bun run cli community link-eth 0x...  # Link Ethereum for trust
+bun run cli community trust-stats   # View trust statistics
+bun run cli community merge         # Show merged community + local stats
+
+# Wallet Management
+bun run cli wallet status          # Show wallet status
+bun run cli wallet address         # Show active wallet address
+bun run cli wallet import --type readonly --address 0x...  # Watch-only
+bun run cli wallet chains          # List supported chains
+bun run cli wallet help-import     # Show import guide
+
+# In pi-coding-agent (for secure key import):
+# /wallet-import --type ethers --key 0x...     # From private key
+# /wallet-import --type ethers --mnemonic "..." # From recovery phrase
 ```
 
 ---
 
-*Last Updated: 2026-03-18 EDT*
+## Note 30: Telemetry v2 Wired to Infrastructure (2026-03-22)
+
+Telemetry v2 is now integrated across key infrastructure components:
+
+### Components Instrumented
+- **Gateway** (`src/gateway/gateway-server.ts`): connect, disconnect, request (latency, method)
+- **LLM Router** (`src/llm/multi-provider.ts`): request (latency, tokens, success, provider)
+- **Sessions** (`src/sessions/SessionManager.ts`): create, resume, fork, complete
+- **Skills** (`src/skills/framework.ts`): invoke, execution (duration, success)
+- **Agents** (`src/agent/tools/spawn-agent.ts`): spawn (id, type, parentRunId)
+
+### Usage
+```bash
+bun run src/telemetry/cli.ts summary  # Dashboard summary
+bun run src/telemetry/cli.ts stats    # Detailed stats
+bun run src/telemetry/cli.ts benchmark # Generate anonymous payload
+```
+
+### 10 Tracker Categories
+gateway, llm, session, skill, agent, storage, websocket, channel, cron, system
+
+---
+
+*Last Updated: 2026-03-22 EDT*
 ---
 Check interval: 30m
 Delivery target: none

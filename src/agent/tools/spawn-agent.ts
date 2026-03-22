@@ -15,6 +15,7 @@ import {
   formatBootstrapForPrompt,
   BootstrapFile 
 } from "../bootstrap-loader.js";
+import { trackAgentSpawn } from "../../telemetry/integration";
 
 export interface SpawnAgentParams {
   task: string;
@@ -85,6 +86,9 @@ export async function spawnAgent(params: SpawnAgentParams): Promise<SpawnAgentRe
   }
 
   const agentId = generateAgentId(agentType.id);
+
+  // Track agent spawn
+  trackAgentSpawn(agentId, agentType.id);
 
   // Build system prompt with per-agent bootstrap
   let systemPrompt: string;
@@ -229,7 +233,16 @@ export async function spawnAgents(
     })
   );
 
-  return Promise.all(promises);
+  const results = await Promise.all(promises);
+  
+  // Track each successful spawn
+  for (const result of results) {
+    if (result.success) {
+      trackAgentSpawn(result.agentId, result.agentType.id);
+    }
+  }
+
+  return results;
 }
 
 /**

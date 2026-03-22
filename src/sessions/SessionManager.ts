@@ -21,6 +21,7 @@ import type {
   SessionFilter,
   SessionSummary,
 } from "./types.js";
+import { trackSessionCreate, trackSessionResume, trackSessionFork, trackSessionAbandon } from "../telemetry/integration";
 
 // ============================================================================
 // Configuration
@@ -186,7 +187,20 @@ export class SessionManager {
     piSessionId: string,
     data?: Partial<UnifiedSession>
   ): Promise<{ session: UnifiedSession; created: boolean }> {
-    return this.store.getOrCreateSession(piSessionId, data);
+    const result = await this.store.getOrCreateSession(piSessionId, data);
+    
+    // Track session creation
+    if (result.created) {
+      trackSessionCreate(result.session.id, data?.mode || 'unknown');
+    } else {
+      // Calculate age if we have createdAt
+      const ageHours = result.session.createdAt 
+        ? (Date.now() - result.session.createdAt) / (1000 * 60 * 60) 
+        : undefined;
+      trackSessionResume(result.session.id, ageHours);
+    }
+    
+    return result;
   }
 
   /**
@@ -245,6 +259,9 @@ export class SessionManager {
       spawnedBy,
     });
 
+    // Track session fork
+    trackSessionFork(parentId, child.id);
+
     return child;
   }
 
@@ -302,6 +319,9 @@ export class SessionManager {
     });
 
     await this.store.setState(sessionId, "completed", { summary });
+    
+    // Track session completion
+    trackSessionCreate(sessionId, 'completed');
   }
 
   /**

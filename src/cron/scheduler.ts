@@ -27,6 +27,9 @@ import {
   parseAt,
 } from "./parser.js";
 
+// Telemetry integration
+import { trackCronJob, trackLLMRequest } from "../telemetry/integration.js";
+
 const DEFAULT_CONFIG: SchedulerConfig = {
   defaultTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   maxConcurrent: 5,
@@ -183,10 +186,18 @@ export class CronScheduler extends EventEmitter {
       return { success: false, error: `Job not found: ${jobId}` };
     }
     
+    const startTime = Date.now();
+    
     try {
       // Import runner dynamically
       const { runJobRunner } = await import("./runner.js");
       const result = await runJobRunner(job);
+      const duration = Date.now() - startTime;
+      
+      // Track telemetry
+      const jobName = job.name || job.id;
+      trackCronJob(jobName, duration, result.success, result.error);
+      
       return { 
         success: result.success, 
         tokensUsed: result.tokensUsed, 
@@ -194,7 +205,12 @@ export class CronScheduler extends EventEmitter {
         error: result.error 
       };
     } catch (error) {
+      const duration = Date.now() - startTime;
       const errorMsg = error instanceof Error ? error.message : String(error);
+      
+      // Track telemetry for errors
+      trackCronJob(job.name || jobId, duration, false, errorMsg);
+      
       return { success: false, error: errorMsg };
     }
   }
@@ -289,6 +305,10 @@ export class CronScheduler extends EventEmitter {
       
       // Log completion
       this.logJobComplete(runId, result, duration);
+      
+      // Track telemetry
+      const jobName = job.name || job.id;
+      trackCronJob(jobName, duration, result.success, result.error);
       
       // Update job stats
       this.updateJobAfterRun(job, result, duration);
