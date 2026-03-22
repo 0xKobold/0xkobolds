@@ -415,6 +415,12 @@ Centralized system monitoring with auto-polling:
 - **Interval:** 60s (configurable)
 - **CLI:** `collector start|stop|poll|history`
 
+### Mission Control Telemetry History (NEW!)
+Historical metrics visible in UI:
+- **API:** `/api/telemetry` - reads from telemetry.db
+- **Page:** System → Telemetry History
+- **Shows:** Memory trends, CPU load, events by category, recent events
+
 ### 10 Tracker Categories
 gateway, llm, session, skill, agent, storage, websocket, channel, cron, system
 
