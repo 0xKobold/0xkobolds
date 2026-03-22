@@ -16,10 +16,11 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "clean": "rm -rf dist/",
-    "build": "tsc",
+    "clean": "rm -rf dist/ .tsbuildinfo",
+    "build": "tsc -p tsconfig.build.json",
     "build:clean": "npm run clean && npm run build",
-    "dev": "tsc --watch",
+    "build:watch": "tsc -p tsconfig.build.json --watch",
+    "typecheck": "tsc --noEmit",
     "start": "bun run src/index.ts",
     "cli": "bun run src/cli/index.ts",
     "tui": "bun run src/index.ts",
