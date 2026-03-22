@@ -73,6 +73,8 @@ Maintain 0xKobold health: update packages, fix security vulnerabilities, complet
 | **Wallet CLI** | src/cli/commands/wallet.ts | ✅ DONE | Status, import (key/mnemonic/address), address, chains, help-import |
 | **Telemetry v2** | src/telemetry/ | ✅ DONE | Unified tracker: gateway, llm, session, skill, agent, storage, websocket, channel, cron, system |
 | **DB SDK** | src/db/ | ✅ DONE | Unified DAOs: telemetry, cron, cross-DB queries |
+| ~~**Systemd Services**~~ | systemd/ | ✅ DONE | Gateway + MC auto-start via systemd user services |
+| **Ephemeral Agent System** | src/ephemeral-agents/ | ✅ INTEGRATED | Full: spawner + workspace + fan-out + cascade stop + telemetry |
 
 ### 🐛 Known Bugs
 
@@ -284,10 +286,36 @@ The Moltube skill now has the required `description` field in its SKILL.md front
 
 ### Priorities Next Session
 
-1. **Create systemd service** - Auto-start Mission Control on boot
+1. **~~Create systemd service~~** - ✅ COMPLETED - Both Gateway and MC now run via systemd
 2. **Tmux Terminal on Dasua** - Run `connect-dasua.ts` to connect to Pi gateway
 3. **Continue Desktop Pet** - Sprite refinement
 4. **Fix Desktop Pet vitest** - Resolve test runner compatibility issue
+
+### 2026-03-22 Session Notes
+
+30. **SYSTEMD SERVICES (GATEWAY + MC)** - Created systemd user services for auto-start:
+    - `/home/moikapy/.config/systemd/user/0xkobold-gateway.service` - Gateway on port 7777
+    - `/home/moikapy/.config/systemd/user/0xkobold-mc.service` - Mission Control on port 5173
+    - `/home/moikapy/.config/systemd/user/0xkobold.target` - Target unit for soft dependencies
+    - Wrapper scripts: `scripts/start-gateway.sh`, `scripts/start-mc.sh`
+    - MC required `Type=exec` for proper PID tracking with Next.js/Bun
+    - Gateway used wrapper script with PID tracking via pidfile
+    - Both services now managed by systemd: `systemctl --user start|stop|restart 0xkobold.target`
+    - Docs: `docs/systemd-services.md`, `docs/0xkobold-gateway.service`, `docs/0xkobold-mc.service`
+
+31. **TELEMETRY COLLECTOR** - Created `src/telemetry/collector.ts`:
+    - Auto-polls system metrics: CPU (osutil), memory, disk
+    - Wired to gateway start/stop lifecycle
+    - 60s collection interval
+    - CLI commands: `telemetry summary`, `telemetry history`, `telemetry jobs`
+
+32. **CRON SCHEDULER FIX** - Fixed cron job execution (2026-03-22):
+    - Root cause: Two separate cron systems that don't sync
+      - Gateway cron (`src/gateway/cron-scheduler.ts`) uses `~/.0xkobold/cron/jobs.json`
+      - MC cron (`src/cron/scheduler.ts`) uses `cron.db`
+    - Solution: Added jobs directly to `~/.0xkobold/cron/jobs.json`
+    - Jobs now running via systemd: System Healthcheck (`*/5 * * * *`), Gateway Heartbeat (`*/30 * * * *`)
+    - Note: Jobs added via CLI go to `cron.db` (different scheduler)
 
 ### Open Questions
 
@@ -478,3 +506,131 @@ const stats = db().queries().dashboardStats(7);
 ---
 Check interval: 30m
 Delivery target: none
+
+### Activity Tracker SDK (2026-03-22)
+
+Track agent engagement across external platforms. **Separated from Telemetry** to keep concerns clear.
+
+**Location:** `src/activity/`
+
+| File | Purpose |
+|------|---------|
+| `types.ts` | Extensible - any platform/event string works |
+| `db.ts` | SQLite database (`~/.0xkobold/activity.db`) |
+| `tracker.ts` | Core: `track()`, `getSummary()`, `getRecent()` |
+| `platforms.ts` | Helper functions per platform |
+| `healthcheck.ts` | **NEW** - Correlate activity with heartbeat health |
+| `cli.ts` | CLI for querying activity |
+
+**Tracked Platforms:**
+- clawfm: Music generation
+- moltx: X-style social
+- molbook: Social feed
+- clawchemy: Element discovery
+- 4claw: Imageboard
+- moltlaunch: Task marketplace
+
+**CLI Commands:**
+```bash
+bun run src/activity/cli.ts summary   # 7-day summary
+bun run src/activity/cli.ts recent   # Recent events
+bun run src/activity/cli.ts health   # Heartbeat health check ⚠️
+bun run src/activity/cli.ts platform <name>  # Platform stats
+```
+
+**Health Check (`bun run src/activity/cli.ts health`):**
+- Shows which platforms have recent activity
+- Flags platforms with no activity (possible silent failure)
+- Run via cron to detect cron ran-but-nothing-happened issues
+
+**Separation from Telemetry:**
+| System | Focus | Example |
+|--------|-------|---------|
+| Telemetry | Infrastructure health | Latency, errors, memory |
+| Activity | External engagement | Posts, likes, discoveries |
+
+**Bridge:** `healthcheck.ts` - detects "cron succeeded but no activity" scenarios.
+
+
+---
+
+## Note 32: Ephemeral Agent System (2026-03-22)
+
+Based on OpenClaw/Hermes agent patterns. **Separate from existing DraconicRunRegistry**.
+
+### Structure
+```
+src/ephemeral-agents/
+  types.ts      # EphemeralAgent, EphemeralResult, RegistryStats
+  registry.ts   # Singleton registry with TTL cleanup
+  cli.ts        # CLI: status, cleanup
+  index.ts      # Exports
+```
+
+### Key Features
+- **Isolated workspaces:** `/tmp/0xkobold/ephemeral/<uuid>/`
+- **TTL cleanup:** 30 minutes (configurable)
+- **LRU eviction:** Max 64 finished agents retained
+- **Telemetry integration:** `trackAgentSpawn`, `trackAgentComplete`, `trackAgentTimeout`
+- **Fan-out pattern:** `spawnEphemeralFanOut()` for parallel tasks
+
+### Usage
+```bash
+bun run src/ephemeral-agents/cli.ts status   # Show registry
+bun run src/ephemeral-agents/cli.ts cleanup  # Clean expired
+```
+
+### Telemetry Events
+- `agent.spawn` - When agent created
+- `agent.complete` - When agent finishes (success/fail)
+- `agent.timeout` - When agent exceeds TTL
+
+### Backwards Compatibility
+- Existing `DraconicRunRegistry` unchanged
+- Existing `spawn-agent.ts` unchanged
+- New system is additive only
+- Can wire together later if needed
+
+---
+
+## Note 33: Ephemeral Sub-Agent System (2026-03-22)
+
+**COMPLETED** - Full implementation with working spawning.
+
+### Structure
+```
+src/ephemeral-agents/
+├── types.ts      # Types: EphemeralAgent, EphemeralResult, SpawnEphemeralParams
+├── registry.ts   # Singleton registry (TTL 30min, LRU 64, cascade stop)
+├── workspace.ts  # Isolated /tmp/0xkobold/ephemeral/<id>/ directories
+├── spawner.ts    # Core: spawnEphemeral(), spawnEphemeralFanOut()
+├── cli.ts        # CLI: status, spawn, fanout, cleanup
+└── index.ts      # Exports
+```
+
+### Verified Working
+```bash
+# Single agent - returns actual result
+bun run src/ephemeral-agents/cli.ts spawn "What is 2+2?"
+# → "4" in ~10s
+
+# Fan-out - parallel agents
+bun run src/ephemeral-agents/cli.ts fanout "1+1?|2+2?|3+3?"
+# → 3/3 succeeded in 6s
+```
+
+### Integration
+- `src/agent/tools/spawn-agent.ts` now uses ephemeral system
+- Telemetry: `agent.spawn`, `agent.complete`, `agent.timeout`
+- Workspaces cleaned up after completion
+
+### Key Features
+| Feature | Status |
+|---------|--------|
+| Isolated workspaces | ✅ /tmp/0xkobold/ephemeral/<uuid>/ |
+| TTL cleanup | ✅ 30 min default |
+| LRU eviction | ✅ Max 64 finished |
+| Cascade stop | ✅ Stop parent → stops children |
+| Fan-out | ✅ Promise.all() parallel |
+| Telemetry | ✅ TrackAgent* functions |
+| Model routing | ✅ Uses embedded-runner |

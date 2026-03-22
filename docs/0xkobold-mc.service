@@ -1,0 +1,14 @@
+[Unit]
+Description=0xKobold Mission Control Dashboard
+After=network.target
+Wants=0xkobold-gateway.service
+
+[Service]
+Type=exec
+ExecStartPre=/bin/sleep 3
+ExecStart=/home/moikapy/code/0xkobolds/scripts/start-mc.sh
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=0xkobold.target

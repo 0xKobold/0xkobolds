@@ -1,0 +1,12 @@
+[Unit]
+Description=0xKobold Gateway Server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/moikapy/code/0xkobolds/scripts/start-gateway.sh
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=0xkobold.target
