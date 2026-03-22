@@ -11,7 +11,7 @@
  */
 
 import { telemetry } from './index.js';
-import { cpus, totalmem, freemem } from 'os';
+import { cpus, loadavg, totalmem, freemem } from 'os';
 
 // ============================================================================
 // Types
@@ -163,12 +163,12 @@ class TelemetryCollector {
     // CPU metrics
     let cpu: SystemMetrics['cpu'] | null = null;
     if (this.config.cpu) {
-      const loadAvg = (cpus() as unknown as number[]);
+      const avg = loadavg();
       cpu = {
-        loadAvg1m: Math.round((loadAvg[0] || 0) * 100) / 100,
-        loadAvg5m: Math.round((loadAvg[1] || 0) * 100) / 100,
-        loadAvg15m: Math.round((loadAvg[2] || 0) * 100) / 100,
-        coreCount: loadAvg.length,
+        loadAvg1m: Math.round((avg[0] || 0) * 100) / 100,
+        loadAvg5m: Math.round((avg[1] || 0) * 100) / 100,
+        loadAvg15m: Math.round((avg[2] || 0) * 100) / 100,
+        coreCount: (cpus() as unknown as any[]).length,
       };
     }
 
@@ -202,6 +202,12 @@ class TelemetryCollector {
 
     // CPU telemetry
     if (metrics.cpu) {
+      // Record as metric (raw load average - more useful than fake percentage)
+      telemetry().system.cpu({
+        usage_percent: metrics.cpu.loadAvg1m, // Raw load, not %
+      });
+      
+      // Also log to event for historical tracking
       telemetry().event('system', 'cpu.snapshot', {
         properties: {
           load_1m: metrics.cpu.loadAvg1m,

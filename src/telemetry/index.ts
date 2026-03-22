@@ -479,7 +479,7 @@ class Telemetry {
       this.gauge('system.memory.heap_total', data.heap_total_mb, 'mb');
     },
     cpu: (data: { usage_percent: number }) => {
-      this.gauge('system.cpu.usage', data.usage_percent, 'percent');
+      this.gauge('system.cpu.load_1m', data.usage_percent, 'load');
     },
     error: (data: { error_type: string; message: string }) => {
       this.increment('system.errors.total', 1, { type: data.error_type });
