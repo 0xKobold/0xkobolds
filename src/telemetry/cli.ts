@@ -55,6 +55,21 @@ function showSummary() {
   console.log(`  Completed:   ${summary.agent.completed}`);
   console.log(`  Timeouts:    ${summary.agent.timeouts}`);
   
+  // System (includes collector metrics)
+  const memoryStats = t.getStats('system.memory.heap_used', 7);
+  const cpuStats = t.getStats('system.cpu.load_1m', 7);
+  console.log("\n💻 System");
+  if (memoryStats && memoryStats.count > 0) {
+    console.log(`  Heap Used:   avg ${memoryStats.avg.toFixed(0)}MB, max ${memoryStats.max.toFixed(0)}MB`);
+  } else {
+    console.log(`  Heap Used:   No data (start collector for system metrics)`);
+  }
+  if (cpuStats && cpuStats.count > 0) {
+    console.log(`  CPU Load:    avg ${cpuStats.avg.toFixed(2)}, max ${cpuStats.max.toFixed(2)}`);
+  } else {
+    console.log(`  CPU Load:    No data (start collector for system metrics)`);
+  }
+
   t.close();
   console.log("");
 }

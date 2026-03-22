@@ -644,3 +644,6 @@ export const telemetry = (): Telemetry => {
 // Also export the class for testing
 export { Telemetry };
 export type { TelemetryEvent };
+
+// Re-export collector
+export { collector, TelemetryCollector, showCollectorStatus, type CollectorConfig, type SystemMetrics } from './collector.js';

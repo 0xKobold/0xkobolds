@@ -16,6 +16,7 @@ import { nodeRegistry } from "./methods/node";
 import { getHeartbeatScheduler, startHeartbeatScheduler, stopHeartbeatScheduler, HeartbeatScheduler } from "./heartbeat-scheduler";
 import { getCronScheduler, startCronScheduler, stopCronScheduler, CronScheduler } from "./cron-scheduler";
 import { trackGatewayConnect, trackGatewayDisconnect, trackGatewayRequest } from "../telemetry/integration";
+import { collector } from "../telemetry/collector";
 
 const GATEWAY_VERSION = "2";
 
@@ -117,6 +118,9 @@ class RealGatewayServer extends EventEmitter {
   async start(): Promise<void> {
     if (this.running) return;
 
+    // Start telemetry collector (system metrics polling)
+    collector.start({ autoStart: true, intervalMs: 60_000 });
+    
     const self = this;
 
     this.server = Bun.serve({
@@ -553,6 +557,7 @@ class RealGatewayServer extends EventEmitter {
     this.running = false;
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.stopSchedulers();
+    collector.stop();
     this.server?.stop();
     this.emit("stopped");
     console.log("[Gateway] Server stopped");
