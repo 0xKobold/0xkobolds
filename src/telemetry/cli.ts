@@ -169,6 +169,54 @@ function showCronJobs() {
   console.log("");
 }
 
+function showHistory(days = 7) {
+  const t = telemetry();
+  const since = Math.floor(Date.now() / 1000) - (days * 24 * 60 * 60);
+  
+  // Get memory metrics
+  const heapUsed = t.getStats('system.memory.heap_used', days);
+  const heapTotal = t.getStats('system.memory.heap_total', days);
+  const cpuLoad = t.getStats('system.cpu.load_1m', days);
+  
+  console.log(`\n📊 System Metrics History (${days} days)\n`);
+  console.log("─".repeat(50));
+  
+  if (heapUsed) {
+    console.log("\n🧠 Memory Heap:");
+    console.log(`  Samples: ${heapUsed.count}`);
+    console.log(`  Average: ${heapUsed.avg.toFixed(1)} MB`);
+    console.log(`  Min:     ${heapUsed.min.toFixed(1)} MB`);
+    console.log(`  Max:     ${heapUsed.max.toFixed(1)} MB`);
+    console.log(`  P50:     ${heapUsed.p50.toFixed(1)} MB`);
+    console.log(`  P95:     ${heapUsed.p95.toFixed(1)} MB`);
+  } else {
+    console.log("\n🧠 Memory Heap: No data");
+  }
+  
+  if (heapTotal) {
+    console.log("\n🧠 Memory Heap Total:");
+    console.log(`  Average: ${heapTotal.avg.toFixed(1)} MB`);
+    console.log(`  Max:     ${heapTotal.max.toFixed(1)} MB`);
+  }
+  
+  if (cpuLoad) {
+    console.log("\n💻 CPU Load (1m avg):");
+    console.log(`  Samples: ${cpuLoad.count}`);
+    console.log(`  Average: ${cpuLoad.avg.toFixed(2)}`);
+    console.log(`  Min:     ${cpuLoad.min.toFixed(2)}`);
+    console.log(`  Max:     ${cpuLoad.max.toFixed(2)}`);
+  } else {
+    console.log("\n💻 CPU Load: No data");
+  }
+  
+  // Get system events count
+  const events = t.queryEvents('system', 100).filter(e => e.timestamp > since);
+  console.log(`\n📈 System Events: ${events.length}`);
+  
+  t.close();
+  console.log("");
+}
+
 function showBenchmark() {
   const t = telemetry();
   const payload = t.generateBenchmarkPayload(7);
@@ -191,6 +239,7 @@ Commands:
   summary, s      Show 7-day dashboard summary
   stats           Show detailed stats for a metric
   jobs, cron      Show cron job history with metadata
+  history, h       Show system metrics history (memory, CPU trends)
   benchmark, b    Generate anonymous benchmark payload
   cleanup         Remove old data (keeps 30 days)
   enable          Enable telemetry collection
@@ -200,6 +249,8 @@ Examples:
   bun run src/telemetry/cli.ts summary
   bun run src/telemetry/cli.ts stats llm.request.latency
   bun run src/telemetry/cli.ts jobs
+  bun run src/telemetry/cli.ts history
+  bun run src/telemetry/cli.ts history 30
   bun run src/telemetry/cli.ts benchmark
 `);
 }
@@ -221,6 +272,10 @@ async function runCli() {
     case "jobs":
     case "cron":
       showCronJobs();
+      break;
+    case "history":
+    case "h":
+      showHistory(parseInt(args[1]) || 7);
       break;
     case "benchmark":
     case "b":

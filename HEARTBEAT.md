@@ -388,6 +388,9 @@ bun run cli wallet help-import     # Show import guide
 
 # DB SDK (new!)
 bun run src/db/index.ts stats  # Cross-DB dashboard stats
+
+# Telemetry History (new!)
+bun run src/telemetry/cli.ts history   # Show system metrics history
 ```
 
 ---
