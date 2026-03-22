@@ -72,6 +72,7 @@ Maintain 0xKobold health: update packages, fix security vulnerabilities, complet
 | **Community Analytics CLI** | src/cli/commands/community.ts | ✅ DONE | Enable/disable, sync, publish, link-eth, trust-stats, export, merge |
 | **Wallet CLI** | src/cli/commands/wallet.ts | ✅ DONE | Status, import (key/mnemonic/address), address, chains, help-import |
 | **Telemetry v2** | src/telemetry/ | ✅ DONE | Unified tracker: gateway, llm, session, skill, agent, storage, websocket, channel, cron, system |
+| **DB SDK** | src/db/ | ✅ DONE | Unified DAOs: telemetry, cron, cross-DB queries |
 
 ### 🐛 Known Bugs
 
@@ -384,6 +385,9 @@ bun run cli wallet help-import     # Show import guide
 # In pi-coding-agent (for secure key import):
 # /wallet-import --type ethers --key 0x...     # From private key
 # /wallet-import --type ethers --mnemonic "..." # From recovery phrase
+
+# DB SDK (new!)
+bun run src/db/index.ts stats  # Cross-DB dashboard stats
 ```
 
 ---
@@ -398,16 +402,66 @@ Telemetry v2 is now integrated across key infrastructure components:
 - **Sessions** (`src/sessions/SessionManager.ts`): create, resume, fork, complete
 - **Skills** (`src/skills/framework.ts`): invoke, execution (duration, success)
 - **Agents** (`src/agent/tools/spawn-agent.ts`): spawn (id, type, parentRunId)
+- **Cron** (`src/cron/scheduler.ts`): job (name, job_id, cron_expression, triggered_by)
 
-### Usage
+### Telemetry CLI
 ```bash
 bun run src/telemetry/cli.ts summary  # Dashboard summary
-bun run src/telemetry/cli.ts stats    # Detailed stats
+bun run src/telemetry/cli.ts jobs    # Cron job history with metadata
+bun run src/telemetry/cli.ts stats   # Detailed stats
 bun run src/telemetry/cli.ts benchmark # Generate anonymous payload
 ```
 
 ### 10 Tracker Categories
 gateway, llm, session, skill, agent, storage, websocket, channel, cron, system
+
+### Cron Tracking Enhancements
+- Added job_id, cron_expression, triggered_by metadata to cron events
+- CLI now shows which cron job ran and whether manual/scheduled
+
+---
+
+## Note 31: DB SDK (2026-03-22)
+
+Centralized database SDK unifying all 0xKobold databases:
+
+### Structure
+```
+src/db/
+  index.ts         # Main SDK export (db singleton)
+  daos/
+    telemetry.ts   # TelemetryDAO
+    cron.ts        # CronDAO
+  queries/
+    index.ts      # Cross-DB queries
+```
+
+### Usage
+```typescript
+import { db } from './db';
+
+// DAO access
+db().telemetry().trackCronJob({ name: 'Moltx', duration: 1000 });
+db().cron().getAllJobs();
+
+// Cross-DB query
+const perf = db().queries().cronJobPerformance(7);
+const stats = db().queries().dashboardStats(7);
+```
+
+### Key Feature: Cross-DB Queries
+```typescript
+// Correlate cron job names with telemetry
+const perf = db().queries().cronJobPerformance(7);
+// Returns: name, job_id, total_runs, success_rate, avg_duration_ms, cron_expression
+
+// Dashboard stats
+const stats = db().queries().dashboardStats(7);
+// Returns: total_events, by_category, by_success, top_events, avg_latency_by_category
+```
+
+### Status
+- ✅ COMPLETE - Basic SDK with telemetry/cron DAOs and cross-DB queries
 
 ---
 

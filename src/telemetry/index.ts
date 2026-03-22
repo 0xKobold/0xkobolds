@@ -601,6 +601,24 @@ class Telemetry {
     return result.changes;
   }
 
+  /**
+   * Query raw events (for CLI reporting)
+   */
+  queryEvents(category?: string, limit = 100): any[] {
+    let sql = `SELECT * FROM events`;
+    const params: any[] = [];
+    
+    if (category) {
+      sql += ` WHERE category = ?`;
+      params.push(category);
+    }
+    
+    sql += ` ORDER BY timestamp DESC LIMIT ?`;
+    params.push(limit);
+    
+    return this.db.query(sql).all(...params) as any[];
+  }
+
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
   }

@@ -176,9 +176,15 @@ export function trackCronJob(
   name: string,
   latency_ms: number,
   success: boolean,
-  error?: string
+  error?: string,
+  metadata?: {
+    job_id?: string;
+    cron_expression?: string;
+    schedule_type?: 'recurring' | 'one-shot';
+    triggered_by?: 'schedule' | 'manual';
+  }
 ): void {
-  telemetry().cron.job({ name, latency_ms, success, error });
+  telemetry().cron.job({ name, latency_ms, success, error, ...metadata });
 }
 
 // ============================================================================
