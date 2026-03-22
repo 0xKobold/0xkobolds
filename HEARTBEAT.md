@@ -392,9 +392,9 @@ bun run src/db/index.ts stats  # Cross-DB dashboard stats
 
 ---
 
-## Note 30: Telemetry v2 Wired to Infrastructure (2026-03-22)
+## Note 30: Telemetry v2 + Collector (2026-03-22)
 
-Telemetry v2 is now integrated across key infrastructure components:
+Telemetry v2 is integrated across key infrastructure components:
 
 ### Components Instrumented
 - **Gateway** (`src/gateway/gateway-server.ts`): connect, disconnect, request (latency, method)
@@ -404,13 +404,13 @@ Telemetry v2 is now integrated across key infrastructure components:
 - **Agents** (`src/agent/tools/spawn-agent.ts`): spawn (id, type, parentRunId)
 - **Cron** (`src/cron/scheduler.ts`): job (name, job_id, cron_expression, triggered_by)
 
-### Telemetry CLI
-```bash
-bun run src/telemetry/cli.ts summary  # Dashboard summary
-bun run src/telemetry/cli.ts jobs    # Cron job history with metadata
-bun run src/telemetry/cli.ts stats   # Detailed stats
-bun run src/telemetry/cli.ts benchmark # Generate anonymous payload
-```
+### TelemetryCollector (NEW!)
+Centralized system monitoring with auto-polling:
+- **Location:** `src/telemetry/collector.ts`
+- **Wired to:** Gateway start/stop
+- **Tracks:** Memory (heap, RSS, system %), CPU (load averages)
+- **Interval:** 60s (configurable)
+- **CLI:** `collector start|stop|poll|history`
 
 ### 10 Tracker Categories
 gateway, llm, session, skill, agent, storage, websocket, channel, cron, system
