@@ -208,7 +208,6 @@ function verifyExtensions(): string[] {
     // Memory & Learning (via pi-learn npm package)
     '--extension', findPiLearnExtension(),
     // Legacy memory (to be deprecated)
-    '--extension', ext('perennial-memory-extension'),
     '--extension', ext('diagnostics-extension'),
     '--extension', ext('memory-synthesis-extension'),
     '--extension', ext('workspace-footer-extension'),

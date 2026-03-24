@@ -259,6 +259,13 @@ The Moltube skill now has the required `description` field in its SKILL.md front
     - **NOTE:** Run `npm publish` in pi-learn repo to publish 0.2.0 to npm
     - Then run `bun install` in 0xkobolds to get npm version
 
+35. **DEPRECATE PERENNIAL MEMORY** - Removed in favor of pi-learn:
+    - Removed `perennial-memory-extension` from `src/index.ts`
+    - pi-learn provides peer mental models via LLM reasoning
+    - Perennial memory's fact storage was overlapping, now removed
+    - pi-learn is native bun:sqlite, perennial used deprecated better-sqlite3
+    - Reasoning approach (deductive/inductive/abductive) is superior
+
 ### 2026-03-21 Session Notes
 
 26. **COMMUNITY ANALYTICS STRENGTHENING** - Enhanced spam protection in `src/llm/community-analytics.ts`:
