@@ -77,6 +77,7 @@ Maintain 0xKobold health: update packages, fix security vulnerabilities, complet
 | **Ephemeral Agent System** | src/ephemeral-agents/ | ✅ INTEGRATED | Full: spawner + workspace + fan-out + cascade stop + telemetry |
 | **PI-LEARN Memory** | @0xkobold/pi-learn | ✅ INTEGRATED | Peer mental models, LLM reasoning, dreaming (replaces perennial-memory) |
 | **Obsidian Bridge** | @0xkobold/pi-obsidian-bridge | ✅ INTEGRATED | Vault sync, /obsidian_poll, /obsidian_tasks, /obsidian_done, /obsidian_status |
+| **Cloudflare Browser** | @0xkobold/pi-cloudflare-browser | ✅ INTEGRATED | Screenshots, PDF, crawling - /cf_crawl, /cf_screenshot, /cf_pdf, /cf_fetch |
 
 ### 🐛 Known Bugs
 
@@ -281,6 +282,19 @@ The Moltube skill now has the required `description` field in its SKILL.md front
     - Vault at: ~/.0xkobold/obsidian_vault
     - Tools: /obsidian_poll, /obsidian_tasks, /obsidian_done, /obsidian_status
     - Tasks tagged #kobold in Obsidian sync to agent
+
+38. **CLOUDFLARE BROWSER INTEGRATION** - Added @0xkobold/pi-cloudflare-browser:
+    - Browser rendering via Cloudflare Browser Rendering API
+    - Screenshots, PDF generation, web crawling
+    - Tools: /cf_crawl, /cf_screenshot, /cf_pdf, /cf_fetch
+    - Credentials from CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID
+
+39. **NPM PACKAGE STANDARDIZATION** - All pi-* packages now from npm:
+    - @0xkobold/pi-learn: ^0.1.0 (need 0.2.0 publish - bun:sqlite)
+    - @0xkobold/pi-obsidian-bridge: ^0.1.0
+    - @0xkobold/pi-cloudflare-browser: ^0.1.0
+    - @0xkobold/pi-ollama: ^0.2.0
+    - All from npm for proper versioning and updates
 
 ### 2026-03-21 Session Notes
 
