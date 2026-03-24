@@ -40,9 +40,9 @@ Maintain 0xKobold health: update packages, fix security vulnerabilities, complet
 
 | Package | Current | Latest | Status | Notes |
 |---------|---------|--------|--------|-------|
-| ~~@mariozechner/pi-coding-agent~~ | ~~0.57.1~~ → **0.61.1** | 0.61.1 | ✅ UPDATED | Core framework |
-| ~~@mariozechner/pi-tui~~ | ~~0.57.1~~ → **0.61.1** | 0.61.1 | ✅ UPDATED | Terminal UI |
-| ~~@mariozechner/pi-agent-core~~ | ~~0.57.1~~ → **0.61.1** | 0.61.1 | ✅ UPDATED | Agent core |
+| ~~@mariozechner/pi-coding-agent~~ | ~~0.57.1~~ → **0.61.1** → **0.62.0** | 0.62.0 | ✅ UPDATED | Core framework |
+| ~~@mariozechner/pi-tui~~ | ~~0.57.1~~ → **0.61.1** → **0.62.0** | 0.62.0 | ✅ UPDATED | Terminal UI |
+| ~~@mariozechner/pi-agent-core~~ | ~~0.57.1~~ → **0.61.1** → **0.62.0** | 0.62.0 | ✅ UPDATED | Agent core |
 | ~~undici~~ | ~~6.21.3~~ | 7.24.4 | ✅ OVERRIDDEN | Fixed 6 CVEs |
 | ~~file-type~~ | ~~<21.3.1~~ | 21.3.1 | ✅ OVERRIDDEN | Fixed ASF/ZIP vulns |
 | ~~fast-xml-parser~~ | ~~<=5.5.5~~ | 5.5.6 | ✅ OVERRIDDEN | Fixed entity expansion |

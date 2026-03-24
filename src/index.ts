@@ -58,6 +58,24 @@ function findOllamaExtension(): string {
     return resolve(packageRoot, 'node_modules/@0xkobold/pi-ollama/dist/index.js');
   }
 }
+
+// Find @0xkobold/pi-learn from wherever it's installed
+function findPiLearnExtension(): string {
+  try {
+    const resolved = import.meta.resolve('@0xkobold/pi-learn');
+    const packagePath = fileURLToPath(resolved);
+    if (packagePath.includes('dist/index.js') || packagePath.includes('dist/index.ts')) {
+      return packagePath;
+    }
+    return resolve(packagePath, 'dist/index.js');
+  } catch {
+    if (isRunningFromDist) {
+      const globalModulesRoot = resolve(__dirname, '../../../..');
+      return resolve(globalModulesRoot, '@0xkobold/pi-learn/dist/index.js');
+    }
+    return resolve(packageRoot, 'node_modules/@0xkobold/pi-learn/dist/index.js');
+  }
+}
 // For dist: __dirname is .../dist/src, packageRoot is .../dist
 // So we just need src/extensions/core from packageRoot
 const extensionDir = isRunningFromDist 
@@ -187,6 +205,9 @@ function verifyExtensions(): string[] {
     // '--extension', ext('agent-registry-extension'),
     '--extension', ext('websearch-enhanced-extension'),
     '--extension', ext('memory-extension'),
+    // Memory & Learning (via pi-learn npm package)
+    '--extension', findPiLearnExtension(),
+    // Legacy memory (to be deprecated)
     '--extension', ext('perennial-memory-extension'),
     '--extension', ext('diagnostics-extension'),
     '--extension', ext('memory-synthesis-extension'),

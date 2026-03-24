@@ -63,8 +63,8 @@ export const config: Config = {
     './src/extensions/core/wallet-extension.ts',         // 🪙 CDP Agentic + Ethers.js (legacy - published as @0xkobold/pi-wallet)
     './src/extensions/core/update-extension.ts',           // Framework update functionality
     './src/extensions/core/self-update-extension.ts',      // 0xKobold self-update
-    './src/extensions/core/perennial-memory-extension.ts', // Long-term memory
-    './src/extensions/core/learning-extension.ts', // 📚 Memory stream, reflection, planning (renamed from generative-agents)
+    // Memory & Learning (via pi-learn)
+    './node_modules/@0xkobold/pi-learn/dist/index.js',  // Open-source memory infrastructure (peer representations, reasoning, context)
     
     // 🐉 Community Extensions (PI Ecosystem Wrappers)
     './src/extensions/community/draconic-subagents-wrapper.ts',  // pi-subagents bridge
