@@ -5,6 +5,7 @@
     "": {
       "name": "0xkobold",
       "dependencies": {
+        "@0xkobold/pi-bridge": "./packages/pi-bridge",
         "@0xkobold/pi-cloudflare-browser": "^0.1.0",
         "@0xkobold/pi-learn": "^0.1.0",
         "@0xkobold/pi-obsidian-bridge": "^0.1.0",
@@ -56,6 +57,8 @@
     "undici": "^7.24.4",
   },
   "packages": {
+    "@0xkobold/pi-bridge": ["@0xkobold/pi-bridge@file:packages/pi-bridge", { "devDependencies": { "@types/bun": "latest", "typescript": "^5.0.0" }, "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.62.0", "@sinclair/typebox": ">=0.32.0" } }],
+
     "@0xkobold/pi-cloudflare-browser": ["@0xkobold/pi-cloudflare-browser@0.1.0", "", { "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.57.0", "@sinclair/typebox": ">=0.32.0" } }, "sha512-KwpuurJ5luCb/m1p3Q9SFTypEJ29aAaNJvWjC9wSVvC2ZZWFN62umAPD5byudpE91MjhABNCflsBmSJCEwYAXw=="],
 
     "@0xkobold/pi-learn": ["@0xkobold/pi-learn@0.1.0", "", { "dependencies": { "@0xkobold/pi-ollama": "^0.2.0", "better-sqlite3": "^12.8.0" }, "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.6.0", "@sinclair/typebox": ">=0.32.0" } }, "sha512-0BjRHigg0oMMDvQET9OUYK5Hb4Xz3HDlMrHOT1mLUShmWBwC1h9nUpqUmnXWLnGufiAzC2suYadRR0w0BLgd6Q=="],

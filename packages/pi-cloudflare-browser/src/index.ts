@@ -4,12 +4,14 @@
  * Provides browser rendering capabilities via Cloudflare Browser Rendering API
  * Features: web crawling, screenshots, PDF generation, content extraction
  * 
+ * Supports both ~/.pi and ~/.0xkobold paths for compatibility
+ * 
  * Setup:
  * 1. Get API token from Cloudflare dashboard (Browser Rendering - Edit permission)
- * 2. Set environment variables or add to ~/.0xkobold/.env:
+ * 2. Set environment variables or add to ~/.0xkobold/.env or ~/.pi/.env:
  *    CLOUDFLARE_API_TOKEN=your_token
  *    CLOUDFLARE_ACCOUNT_ID=your_account_id
- * 3. Optional: PI_CLOUDFLARE_VAULT=/path/to/obsidian/vault for auto-save
+ * 3. Optional: PI_CLOUDFLARE_OUTPUT for output directory
  * 
  * @module @0xkobold/pi-cloudflare-browser
  */
@@ -30,14 +32,29 @@ interface CloudflareConfig {
   accountId: string | null;
   enabled: boolean;
   outputPath: string;
+  baseDir: string;
+}
+
+/**
+ * Get the base directory for pi/0xkobold data.
+ * Priority: PI_DATA_DIR env > ~/.0xkobold (if exists) > ~/.pi
+ */
+function getBaseDir(): string {
+  if (process.env.PI_DATA_DIR) {
+    return process.env.PI_DATA_DIR;
+  }
+  const koboldDir = join(homedir(), ".0xkobold");
+  if (existsSync(koboldDir)) {
+    return koboldDir;
+  }
+  return join(homedir(), ".pi");
 }
 
 /**
  * Get output directory with priority:
  * 1. PI_CLOUDFLARE_OUTPUT env var
- * 2. PI_OUTPUT_DIR env var
- * 3. ~/.0xkobold/outputs (if .0xkobold exists)
- * 4. ~/.pi/outputs (fallback)
+ * 2. PI_OUTPUT_DIR env var  
+ * 3. <baseDir>/outputs (unified path)
  */
 function getDefaultOutputPath(): string {
   if (process.env.PI_CLOUDFLARE_OUTPUT) {
@@ -46,13 +63,7 @@ function getDefaultOutputPath(): string {
   if (process.env.PI_OUTPUT_DIR) {
     return process.env.PI_OUTPUT_DIR;
   }
-  
-  const koboldDir = join(homedir(), ".0xkobold");
-  if (existsSync(koboldDir)) {
-    return join(koboldDir, "outputs");
-  }
-  
-  return join(homedir(), ".pi", "outputs");
+  return join(getBaseDir(), "outputs");
 }
 
 /**
@@ -65,8 +76,9 @@ async function loadConfig(): Promise<CloudflareConfig> {
 
   // Fallback to .env file in standard locations
   if (!apiToken || !accountId) {
+    const baseDir = getBaseDir();
     const envPaths = [
-      join(homedir(), ".0xkobold", ".env"),
+      join(baseDir, ".env"),
       join(homedir(), ".pi", ".env"),
       ".env"
     ];
@@ -86,9 +98,6 @@ async function loadConfig(): Promise<CloudflareConfig> {
             if (trimmed.startsWith('CLOUDFLARE_ACCOUNT_ID=') && !accountId) {
               accountId = trimmed.slice('CLOUDFLARE_ACCOUNT_ID='.length).replace(/^["']|["']$/g, '');
             }
-            if (trimmed.startsWith('PI_CLOUDFLARE_VAULT=') && !outputPath) {
-              outputPath = trimmed.slice('PI_CLOUDFLARE_VAULT='.length).replace(/^["']|["']$/g, '');
-            }
           }
           
           if (apiToken && accountId) break;
@@ -103,7 +112,8 @@ async function loadConfig(): Promise<CloudflareConfig> {
     apiToken,
     accountId,
     enabled: !!(apiToken && accountId),
-    outputPath
+    outputPath,
+    baseDir: getBaseDir()
   };
 }
 
@@ -300,10 +310,10 @@ async function pollCrawlJob(
 // ============================================================================
 
 function getOutputPath(config: CloudflareConfig, subdir?: string): string {
-  // Priority: env var > pi config > default
+  // Priority: env var > config outputPath > baseDir/outputs
   const basePath = config.outputPath || 
                    process.env.PI_OUTPUT_DIR ||
-                   join(homedir(), '.0xkobold', 'outputs');
+                   join(config.baseDir || getBaseDir(), 'outputs');
   
   const path = subdir ? join(basePath, subdir) : basePath;
   

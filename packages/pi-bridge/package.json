@@ -1,0 +1,48 @@
+{
+  "name": "@0xkobold/pi-bridge",
+  "version": "0.1.0",
+  "description": "Pi ecosystem bridge for 0xKobold - migrates and loads pi extensions",
+  "icon": "🔌",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "pi": {
+    "extensions": ["./dist/index.js"]
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "pi-extension",
+    "bridge",
+    "migration",
+    "compatibility"
+  ],
+  "author": "0xKobold",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0xKobold/pi-bridge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/0xKobold/pi-bridge/issues"
+  },
+  "homepage": "https://github.com/0xKobold/pi-bridge#readme",
+  "files": [
+    "dist/",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@sinclair/typebox": ">=0.32.0",
+    "@mariozechner/pi-coding-agent": ">=0.62.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}

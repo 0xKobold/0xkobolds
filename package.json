@@ -44,6 +44,7 @@
   "author": "0xKobold Team",
   "license": "MIT",
   "dependencies": {
+    "@0xkobold/pi-bridge": "./packages/pi-bridge",
     "@0xkobold/pi-cloudflare-browser": "^0.1.0",
     "@0xkobold/pi-learn": "^0.1.0",
     "@0xkobold/pi-obsidian-bridge": "^0.1.0",

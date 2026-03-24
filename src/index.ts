@@ -110,6 +110,23 @@ function findCloudflareBrowserExtension(): string {
     return resolve(packageRoot, 'node_modules/@0xkobold/pi-cloudflare-browser/dist/index.js');
   }
 }
+
+function findPiBridgeExtension(): string {
+  try {
+    const resolved = import.meta.resolve('@0xkobold/pi-bridge');
+    const packagePath = fileURLToPath(resolved);
+    if (packagePath.includes('dist/index.js') || packagePath.includes('dist/index.ts')) {
+      return packagePath;
+    }
+    return resolve(packagePath, 'dist/index.js');
+  } catch {
+    if (isRunningFromDist) {
+      const globalModulesRoot = resolve(__dirname, '../../../..');
+      return resolve(globalModulesRoot, '@0xkobold/pi-bridge/dist/index.js');
+    }
+    return resolve(packageRoot, 'node_modules/@0xkobold/pi-bridge/dist/index.js');
+  }
+}
 // For dist: __dirname is .../dist/src, packageRoot is .../dist
 // So we just need src/extensions/core from packageRoot
 const extensionDir = isRunningFromDist 
@@ -245,6 +262,8 @@ function verifyExtensions(): string[] {
     '--extension', findObsidianBridgeExtension(),
     // 🌐 Cloudflare Browser (screenshots, PDF, crawling)
     '--extension', findCloudflareBrowserExtension(),
+    // 🔌 Pi Bridge (migrate ~/.pi to ~/.0xkobold, load pi extensions)
+    '--extension', findPiBridgeExtension(),
     // Legacy memory (to be deprecated)
     '--extension', ext('diagnostics-extension'),
     '--extension', ext('memory-synthesis-extension'),

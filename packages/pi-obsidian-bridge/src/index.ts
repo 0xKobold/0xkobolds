@@ -9,15 +9,15 @@
  * - Creates vault structure if not exists
  * - Completes tasks back to Obsidian when done
  * 
+ * Supports both ~/.pi and ~/.0xkobold paths for compatibility
+ * 
  * Storage Priority:
  * 1. PI_OBSIDIAN_STORAGE env var
- * 2. PI session directory (when used with pi)
- * 3. ~/.0xkobold (if exists)
- * 4. ~/.pi (fallback)
+ * 2. PI_DATA_DIR env > ~/.0xkobold (if exists) > ~/.pi
  * 
  * Setup:
  * 1. Set PI_OBSIDIAN_VAULT to your vault path (optional)
- *    Or extension creates vault at ~/.0xkobold/obsidian_vault
+ *    Or extension creates vault at ~/.0xkobold/obsidian_vault or ~/.pi/obsidian_vault
  * 2. Tag tasks with #kobold in Obsidian
  * 3. Use /obsidian_poll or integrate with your scheduler
  * 
@@ -43,31 +43,42 @@ interface ObsidianBridgeConfig {
 }
 
 /**
+ * Get the base directory for pi/0xkobold data.
+ * Priority: PI_DATA_DIR env > PI_OBSIDIAN_STORAGE env > ~/.0xkobold (if exists) > ~/.pi
+ */
+function getBaseDir(): string {
+  if (process.env.PI_DATA_DIR) {
+    return process.env.PI_DATA_DIR;
+  }
+  if (process.env.PI_OBSIDIAN_STORAGE) {
+    return process.env.PI_OBSIDIAN_STORAGE;
+  }
+  const koboldDir = join(homedir(), ".0xkobold");
+  if (existsSync(koboldDir)) return koboldDir;
+  return join(homedir(), ".pi");
+}
+
+/**
  * Get storage directory with priority:
  * 1. PI_OBSIDIAN_STORAGE env var
- * 2. ~/.0xkobold (if exists)
- * 3. ~/.pi (fallback)
+ * 2. PI_DATA_DIR env > ~/.0xkobold (if exists) > ~/.pi
  */
 function getDefaultStorage(): string {
   if (process.env.PI_OBSIDIAN_STORAGE) {
     return process.env.PI_OBSIDIAN_STORAGE;
   }
-  
-  const koboldDir = join(homedir(), ".0xkobold");
-  if (existsSync(koboldDir)) return koboldDir;
-  
-  return join(homedir(), ".pi");
+  return getBaseDir();
 }
 
 function loadConfig(): ObsidianBridgeConfig {
-  const storagePath = getDefaultStorage();
-  const defaultVault = join(storagePath, "obsidian_vault");
+  const baseDir = getBaseDir();
+  const defaultVault = join(baseDir, "obsidian_vault");
 
   return {
     enabled: process.env.PI_OBSIDIAN_ENABLED !== "false",
     vaultPath: process.env.PI_OBSIDIAN_VAULT || defaultVault,
     tasksFilePath: process.env.PI_OBSIDIAN_TASKS_FILE || "10-Action/Tasks.md",
-    storagePath,
+    storagePath: baseDir,
   };
 }
 

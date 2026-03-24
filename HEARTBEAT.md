@@ -78,6 +78,7 @@ Maintain 0xKobold health: update packages, fix security vulnerabilities, complet
 | **PI-LEARN Memory** | @0xkobold/pi-learn | ✅ INTEGRATED | Peer mental models, LLM reasoning, dreaming (replaces perennial-memory) |
 | **Obsidian Bridge** | @0xkobold/pi-obsidian-bridge | ✅ INTEGRATED | Vault sync, /obsidian_poll, /obsidian_tasks, /obsidian_done, /obsidian_status |
 | **Cloudflare Browser** | @0xkobold/pi-cloudflare-browser | ✅ INTEGRATED | Screenshots, PDF, crawling - /cf_crawl, /cf_screenshot, /cf_pdf, /cf_fetch |
+| **Pi Bridge** | @0xkobold/pi-bridge | ✅ INTEGRATED | ~/.pi → ~/.0xkobold migration, pi extension loader |
 
 ### 🐛 Known Bugs
 
@@ -295,6 +296,17 @@ The Moltube skill now has the required `description` field in its SKILL.md front
     - @0xkobold/pi-cloudflare-browser: ^0.1.0
     - @0xkobold/pi-ollama: ^0.2.0
     - All from npm for proper versioning and updates
+
+40. **PI-BRIDGE EXTENSION** - Created @0xkobold/pi-bridge:
+    - Migrates ~/.pi data to ~/.0xkobold
+    - Loads pi extensions in 0xkobold
+    - Tools: /pi_bridge_status, /pi_bridge_migrate, /pi_bridge_list
+    - Supports both .pi and .0xkobold paths
+
+41. **UNIFIED PATH SYSTEM** - All extensions support both ~/.pi and ~/.0xkobold:
+    - Priority: PI_DATA_DIR env > ~/.0xkobold (if exists) > ~/.pi
+    - Updated: pi-learn, pi-obsidian-bridge, pi-cloudflare-browser
+    - Consistent behavior across pi ecosystem and 0xkobold
 
 ### 2026-03-21 Session Notes
 
