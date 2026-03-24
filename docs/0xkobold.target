@@ -1,0 +1,7 @@
+[Unit]
+Description=0xKobold Services (Gateway + Mission Control)
+Documentation=https://github.com/moikapy/0xkobold
+Wants=0xkobold-gateway.service 0xkobold-mc.service
+
+[Install]
+WantedBy=multi-user.target

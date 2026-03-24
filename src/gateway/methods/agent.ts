@@ -27,10 +27,10 @@ interface AgentParams {
   deliver?: boolean;
   timeout?: number;
   idempotencyKey?: string;
-  extraSystemPrompt?: string;
   workspaceDir?: string;
-  resumeSession?: boolean;       // Phase 5: resume from memory thread
-  memoryThreadId?: string;       // Phase 5: explicit memory thread
+  resumeSession?: boolean;
+  memoryThreadId?: string;
+  extraSystemPrompt?: string;    // Additional context for the agent
 }
 
 function validateAgentParams(data: unknown): data is AgentParams {

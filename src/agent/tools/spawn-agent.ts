@@ -1,336 +1,162 @@
 /**
- * Spawn Agent Tool - v0.3.0
- *
- * Spawns a subagent of a specific type with appropriate configuration.
- * Part of the Unified Agent Orchestration system.
+ * Spawn Agent Tool - Delegates to Ephemeral Agent System
  * 
- * HERMES-STYLE: Subagents share instance-level identity from KOBOLD_HOME.
- * No per-agent SOUL/IDENTITY - personality overlays via /personality command.
+ * Provides spawning of ephemeral sub-agents with full tool execution
+ * via the pi CLI RPC protocol.
  */
 
-import { getAgentType, AgentType } from "../types/index.js";
-import { routeTask, TaskRequest, TaskRouterResult } from "../task-router.js";
-import { 
-  loadInstanceFiles,
-  formatBootstrapForPrompt,
-  BootstrapFile 
-} from "../bootstrap-loader.js";
+import { spawnEphemeral, spawnEphemeralFanOut } from '../../ephemeral-agents/spawner.js';
 
-export interface SpawnAgentParams {
+export const SpawnAgentParams = {
+  task: String,
+  agentType: String,
+  model: String,
+  timeoutMs: Number,
+  // Gateway-specific fields
+  extraSystemPrompt: String,
+  parentRunId: String,
+  sessionKey: String,
+  // Real-workers specific
+  autoRoute: Boolean,
+};
+
+export type SpawnAgentParams = {
   task: string;
-  agentType?: string; // "coordinator" | "specialist" | "researcher" | "worker" | "reviewer"
-  autoRoute?: boolean; // If true, automatically determine agent type
-  context?: string;
-  priority?: "low" | "normal" | "high";
-  maxIterations?: number; // Override default
-  model?: string; // Override model preference
-  // Gateway compatibility
-  parentRunId?: string;
+  agentType?: string;
+  model?: string;
+  timeoutMs?: number;
   extraSystemPrompt?: string;
+  parentRunId?: string;
   sessionKey?: string;
-}
+  autoRoute?: boolean;
+};
 
 export interface SpawnAgentResult {
-  success: boolean;
   agentId: string;
-  agentType: AgentType;
-  task: string;
-  systemPrompt: string;
-  maxIterations: number;
-  routingInfo?: TaskRouterResult;
+  agentType?: string;
+  success: boolean;
+  text: string;
   error?: string;
-  // Gateway compatibility
   runId?: string;
+  tokens: { input: number; output: number; total: number };
+  durationMs: number;
+  status: 'running' | 'completed' | 'failed';
+}
+
+export interface SpawnAgentsParams {
+  tasks: string[];
+  agentType?: string;
+  maxConcurrent?: number;
 }
 
 /**
- * Generate unique agent ID
- */
-function generateAgentId(type: string): string {
-  const timestamp = Date.now().toString(36).slice(-4);
-  const random = Math.random().toString(36).slice(2, 6);
-  return `${type}-${timestamp}-${random}`;
-}
-
-/**
- * Spawn a specialized agent
+ * Spawn a single ephemeral agent
  */
 export async function spawnAgent(params: SpawnAgentParams): Promise<SpawnAgentResult> {
-  let agentType: AgentType;
-  let routingInfo: TaskRouterResult | undefined;
+  const startTime = Date.now();
+  const agentId = 'eph-' + Math.random().toString(36).slice(2, 10);
 
-  // Auto-route if requested or no type specified
-  if (params.autoRoute || !params.agentType) {
-    const taskRequest: TaskRequest = {
-      task: params.task,
-      context: params.context,
-      priority: params.priority,
-    };
-    routingInfo = routeTask(taskRequest);
-    agentType = routingInfo.recommendedAgent;
-  } else {
-    const found = getAgentType(params.agentType);
-    if (!found) {
-      return {
-        success: false,
-        agentId: "",
-        agentType: getAgentType("worker")!, // fallback
-        task: params.task,
-        systemPrompt: "",
-        maxIterations: 0,
-        error: `Unknown agent type: ${params.agentType}. Valid types: coordinator, specialist, researcher, worker, reviewer`,
-      };
-    }
-    agentType = found;
+  // Build task with system prompt if provided
+  let task = params.task;
+  if (params.extraSystemPrompt) {
+    task = `${params.extraSystemPrompt}\n\nTask: ${params.task}`;
   }
 
-  const agentId = generateAgentId(agentType.id);
-
-  // Build system prompt with per-agent bootstrap
-  let systemPrompt: string;
-  try {
-    const { prompt } = await buildAgentSystemPrompt(agentType, params);
-    systemPrompt = prompt;
-  } catch (error) {
-    // Fallback to sync version if bootstrap loading fails
-    console.warn(`[SpawnAgent] Bootstrap load failed, using fallback: ${error}`);
-    systemPrompt = buildAgentSystemPromptSync(agentType, params);
-  }
-
-  // Override maxIterations if specified
-  const maxIterations = params.maxIterations || agentType.maxIterations;
+  const result = await spawnEphemeral({
+    task,
+    agentType: params.agentType,
+    model: params.model,
+    timeoutMs: params.timeoutMs,
+    parentId: params.parentRunId,
+  });
 
   return {
-    success: true,
     agentId,
-    agentType,
-    task: params.task,
-    systemPrompt,
-    maxIterations,
-    routingInfo,
+    agentType: params.agentType,
+    success: result.success,
+    text: result.text,
+    runId: agentId,
+    tokens: result.tokens,
+    durationMs: result.durationMs,
+    status: result.status === 'completed' ? 'completed' : result.status === 'failed' ? 'failed' : 'running',
   };
 }
 
 /**
- * Build system prompt for the agent (Hermes-style)
- * Loads instance-level identity (shared by all agents)
- * Plus agent-type-specific system prompt
+ * Spawn multiple ephemeral agents in parallel
  */
-async function buildAgentSystemPrompt(
-  agentType: AgentType, 
-  params: SpawnAgentParams,
-  workspaceDir?: string
-): Promise<{ prompt: string; instanceFiles: BootstrapFile[] }> {
-  const parts: string[] = [];
-  const instanceFiles: BootstrapFile[] = [];
-  
-  // 1. Load instance-level identity (Hermes-style: shared by ALL agents)
-  // This is SOUL.md, IDENTITY.md from KOBOLD_HOME - follows you everywhere
-  try {
-    const files = await loadInstanceFiles({
-      homeDir: workspaceDir || process.env.KOBOLD_HOME,
-    });
-    instanceFiles.push(...files.filter(f => f.exists && !f.blocked));
-  } catch (error) {
-    console.warn(`[SpawnAgent] Could not load instance files: ${error}`);
-  }
-  
-  // 2. Agent type definition (specific to this agent type)
-  parts.push(`<!-- Agent Type Definition -->`);
-  parts.push(`${agentType.systemPrompt}`);
-  
-  // 3. Instance-level identity (format directly, Hermes style)
-  if (instanceFiles.length > 0) {
-    parts.push("");
-    for (const file of instanceFiles) {
-      parts.push(file.content);
-    }
-  }
+export async function spawnAgents(params: SpawnAgentsParams): Promise<{
+  results: SpawnAgentResult[];
+  totalDurationMs: number;
+}> {
+  const startTime = Date.now();
 
-  // 4. Task context
-  if (params.context) {
-    parts.push("");
-    parts.push(`<!-- Task Context -->`);
-    parts.push(`Additional context: ${params.context}`);
-  }
-
-  // 5. Priority
-  if (params.priority) {
-    parts.push("");
-    parts.push(`<!-- Priority -->`);
-    parts.push(`Priority: ${params.priority.toUpperCase()}`);
-  }
-
-  // 6. Capabilities
-  parts.push("");
-  parts.push(`<!-- Your Capabilities -->`);
-  parts.push(agentType.capabilities.map(c => `- ${c}`).join("\n"));
-
-  // 7. Available tools
-  parts.push("");
-  parts.push(`<!-- Available Tools -->`);
-  parts.push(agentType.tools.map(t => `- ${t}`).join("\n"));
-
-  return {
-    prompt: parts.join("\n\n"),
-    instanceFiles,
-  };
-}
-
-/**
- * Build system prompt synchronously (for backwards compatibility)
- */
-function buildAgentSystemPromptSync(agentType: AgentType, params: SpawnAgentParams): string {
-  const parts: string[] = [];
-
-  // Agent identity
-  parts.push(`${agentType.systemPrompt}`);
-
-  // Task context
-  if (params.context) {
-    parts.push("");
-    parts.push(`<!-- Task Context -->`);
-    parts.push(`Additional context: ${params.context}`);
-  }
-
-  // Priority
-  if (params.priority) {
-    parts.push("");
-    parts.push(`<!-- Priority -->`);
-    parts.push(`Priority: ${params.priority.toUpperCase()}`);
-  }
-
-  // Capabilities reminder
-  parts.push("");
-  parts.push(`<!-- Your Capabilities -->`);
-  parts.push(agentType.capabilities.map(c => `- ${c}`).join("\n"));
-
-  // Available tools
-  parts.push("");
-  parts.push(`<!-- Available Tools -->`);
-  parts.push(agentType.tools.map(t => `- ${t}`).join("\n"));
-
-  return parts.join("\n\n");
-}
-
-/**
- * Spawn multiple agents in parallel
- */
-export async function spawnAgents(
-  tasks: Array<{ task: string; agentType?: string; context?: string }
->
-): Promise<SpawnAgentResult[]> {
-  const promises = tasks.map((t) =>
-    spawnAgent({
-      task: t.task,
-      agentType: t.agentType,
-      context: t.context,
-      autoRoute: !t.agentType,
-    })
+  const results = await spawnEphemeralFanOut(
+    params.tasks,
+    params.agentType || 'worker',
+    params.maxConcurrent || 4
   );
 
-  return Promise.all(promises);
+  return {
+    results: results.map((r, i) => ({
+      agentId: `eph-${i}`,
+      success: r.success,
+      text: r.text,
+      tokens: r.tokens,
+      durationMs: r.durationMs,
+      status: r.status === 'completed' ? 'completed' : r.status === 'failed' ? 'failed' : 'running',
+    })),
+    totalDurationMs: Date.now() - startTime,
+  };
 }
 
 /**
- * Get agent spawn configuration for tool registration
+ * Get spawn agent tool configuration for AI SDK
  */
 export function getSpawnAgentToolConfig() {
   return {
-    name: "spawn_agent",
-    description: `Spawn a specialized subagent to handle a task.
-
-This tool creates a subagent of a specific type:
-- coordinator (🎯): Plans and delegates complex tasks
-- specialist (🧠): Deep domain expertise
-- researcher (🔍): Gathers information and synthesizes findings  
-- worker (⚒️): Implements code and executes tasks
-- reviewer (👁️): Reviews code and validates quality
-
-Use autoRoute: true to let the system choose the best agent type.`,
+    description: 'Spawn an ephemeral sub-agent to execute a task with full tool execution.',
     parameters: {
-      type: "object",
+      type: 'object',
       properties: {
-        task: {
-          type: "string",
-          description: "The task to assign to the subagent. Be specific and clear.",
-        },
-        agentType: {
-          type: "string",
-          enum: ["coordinator", "specialist", "researcher", "worker", "reviewer"],
-          description: "Type of agent to spawn. Use autoRoute: true to let system choose.",
-        },
-        autoRoute: {
-          type: "boolean",
-          description: "If true, automatically determine best agent type",
-          default: true,
-        },
-        context: {
-          type: "string",
-          description: "Additional context for the agent",
-        },
-        priority: {
-          type: "string",
-          enum: ["low", "normal", "high"],
-          default: "normal",
-        },
+        task: { type: 'string', description: 'The task to execute' },
+        agentType: { type: 'string', description: 'Type of agent' },
+        model: { type: 'string', description: 'Model to use' },
+        timeoutMs: { type: 'number', description: 'Timeout in ms' },
       },
-      required: ["task"],
+      required: ['task'],
     },
   };
 }
 
 /**
- * Spawn agent tool for ExtensionAPI
+ * Execute spawn agent tool
  */
-export async function executeSpawnAgent(args: Record<string, unknown>) {
-  const result = await spawnAgent({
-    task: args.task as string,
-    agentType: args.agentType as string | undefined,
-    autoRoute: (args.autoRoute as boolean) ?? true,
-    context: args.context as string | undefined,
-    priority: (args.priority as "low" | "normal" | "high") ?? "normal",
-    maxIterations: args.maxIterations as number | undefined,
-    model: args.model as string | undefined,
-  });
-
-  if (!result.success) {
-    return {
-      success: false,
-      error: result.error,
-      content: [
-        {
-          type: "text",
-          text: `Failed to spawn agent: ${result.error}`,
-        },
-      ],
-      details: { error: result.error },
-    };
+export async function executeSpawnAgent(params: SpawnAgentParams): Promise<string> {
+  const result = await spawnAgent(params);
+  
+  if (result.success) {
+    return `✅ Agent completed in ${result.durationMs}ms\n\n${result.text}`;
+  } else {
+    return `❌ Agent failed: ${result.text}`;
   }
+}
 
-  const routingText = result.routingInfo
-    ? `\n\nAuto-routing analysis:\n${result.routingInfo.reasoning}\n\nConfidence: ${
-        Math.round(result.routingInfo.confidence * 100)
-      }%\n\nAlternative agents: ${result.routingInfo.alternativeAgents
-        .map((a) => `${a.emoji} ${a.name}`)
-        .join(", ") || "none"}`
-    : "";
+// CLI interface
+export async function main(args: string[]) {
+  const task = args[0] || 'What is 2+2?';
+  
+  console.log(`Spawning ephemeral agent for: ${task.slice(0, 50)}...`);
+  
+  const result = await spawnAgent({ task });
+  
+  console.log('\n=== Result ===');
+  console.log(`Status: ${result.success ? '✅' : '❌'} ${result.status}`);
+  console.log(`Duration: ${result.durationMs}ms`);
+  console.log(`\n${result.text}`);
+}
 
-  return {
-    success: true,
-    content: [
-      {
-        type: "text",
-        text: `Spawned ${result.agentType.emoji} ${result.agentType.name}\n\nID: ${result.agentId}\nTask: ${result.task}\nMax iterations: ${result.maxIterations}${routingText}`,
-      },
-    ],
-    details: {
-      agentId: result.agentId,
-      agentType: result.agentType.id,
-      task: result.task,
-      systemPrompt: result.systemPrompt,
-      maxIterations: result.maxIterations,
-      routingInfo: result.routingInfo,
-    },
-  };
+// Run if executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main(process.argv.slice(2)).catch(console.error);
 }

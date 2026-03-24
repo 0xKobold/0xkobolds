@@ -27,6 +27,9 @@ import {
   parseAt,
 } from "./parser.js";
 
+// Telemetry integration
+import { trackCronJob, trackLLMRequest } from "../telemetry/integration.js";
+
 const DEFAULT_CONFIG: SchedulerConfig = {
   defaultTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   maxConcurrent: 5,
@@ -183,10 +186,23 @@ export class CronScheduler extends EventEmitter {
       return { success: false, error: `Job not found: ${jobId}` };
     }
     
+    const startTime = Date.now();
+    
     try {
       // Import runner dynamically
       const { runJobRunner } = await import("./runner.js");
       const result = await runJobRunner(job);
+      const duration = Date.now() - startTime;
+      
+      // Track telemetry with full metadata
+      const jobName = job.name || job.id;
+      trackCronJob(jobName, duration, result.success, result.error, {
+        job_id: job.id,
+        cron_expression: job.cronExpression,
+        schedule_type: job.cronExpression ? 'recurring' : 'one-shot',
+        triggered_by: 'manual',
+      });
+      
       return { 
         success: result.success, 
         tokensUsed: result.tokensUsed, 
@@ -194,7 +210,17 @@ export class CronScheduler extends EventEmitter {
         error: result.error 
       };
     } catch (error) {
+      const duration = Date.now() - startTime;
       const errorMsg = error instanceof Error ? error.message : String(error);
+      
+      // Track telemetry for errors
+      trackCronJob(job.name || jobId, duration, false, errorMsg, {
+        job_id: job.id,
+        cron_expression: job.cronExpression,
+        schedule_type: job.cronExpression ? 'recurring' : 'one-shot',
+        triggered_by: 'manual',
+      });
+      
       return { success: false, error: errorMsg };
     }
   }
@@ -290,6 +316,15 @@ export class CronScheduler extends EventEmitter {
       // Log completion
       this.logJobComplete(runId, result, duration);
       
+      // Track telemetry with full metadata
+      const jobName = job.name || job.id;
+      trackCronJob(jobName, duration, result.success, result.error, {
+        job_id: job.id,
+        cron_expression: job.cronExpression,
+        schedule_type: job.cronExpression ? 'recurring' : 'one-shot',
+        triggered_by: 'schedule',
+      });
+      
       // Update job stats
       this.updateJobAfterRun(job, result, duration);
       
@@ -309,6 +344,14 @@ export class CronScheduler extends EventEmitter {
     } catch (error) {
       const duration = Date.now() - startTime;
       const errorMsg = error instanceof Error ? error.message : String(error);
+      
+      // Track telemetry for errors with metadata
+      trackCronJob(job.name || job.id, duration, false, errorMsg, {
+        job_id: job.id,
+        cron_expression: job.cronExpression,
+        schedule_type: job.cronExpression ? 'recurring' : 'one-shot',
+        triggered_by: 'schedule',
+      });
       
       this.logJobError(runId, errorMsg);
       this.updateJobError(job, errorMsg);

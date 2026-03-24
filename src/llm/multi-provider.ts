@@ -19,6 +19,7 @@ import { AdaptiveModelRouter, createRouter } from './router-core';
 import { getOllamaProvider, OllamaProvider } from './ollama';
 import { AnthropicProvider, createAnthropicProvider } from './anthropic';
 import { getModelDiscoveryService } from './model-discovery';
+import { trackLLMRequest, trackLLMFallback } from '../telemetry/integration';
 
 // ============================================================================
 // Types
@@ -204,11 +205,21 @@ export class MultiProviderRouter implements LLMProvider {
 
     // Track timing for performance
     const startTime = Date.now();
+    let success = false;
+    let tokensUsed = 0;
+    let errorMsg: string | undefined;
+
     try {
       const response = await provider.chat(providerOptions);
       const duration = Date.now() - startTime;
 
+      success = true;
+      tokensUsed = (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0);
+
       console.log(`[MultiProvider] ${providerName}/${modelName} completed in ${duration}ms`);
+
+      // Track telemetry
+      trackLLMRequest(modelName, duration, tokensUsed, true, providerName);
 
       // Add provider info to response
       return {
@@ -217,7 +228,12 @@ export class MultiProviderRouter implements LLMProvider {
       };
     } catch (error) {
       const duration = Date.now() - startTime;
+      errorMsg = String(error);
       console.error(`[MultiProvider] ${providerName}/${modelName} failed after ${duration}ms:`, error);
+
+      // Track telemetry
+      trackLLMRequest(modelName, duration, 0, false, providerName, errorMsg);
+
       throw error;
     }
   }

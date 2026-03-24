@@ -40,3 +40,5 @@ plan.md
 .npmrc
 .dead-code-backup
 EOF.npmrc
+kobold.json
+kobold.json.bak

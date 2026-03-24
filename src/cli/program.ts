@@ -53,6 +53,15 @@ import { createEmbeddedCommand } from "./commands/embedded.js";
 // v0.5.0: Agent Body
 import { createBodyCommand } from "../body/cli.js";
 
+// v0.6.0: Community Analytics with ERC-8004
+import { createCommunityCommand } from "./commands/community.js";
+
+// v0.7.0: Wallet management
+import { createWalletCommand } from "./commands/wallet.js";
+
+// v0.8.0: Ephemeral Agents
+import { createEphemeralCommand } from "./commands/ephemeral.js";
+
 export function createCli(): Command {
   const program = new Command("0xkobold")
     .version(version || "1.0.0")
@@ -96,6 +105,13 @@ export function createCli(): Command {
 
   // v0.5.0: Agent Body commands
   program.addCommand(createBodyCommand());
+
+  // v0.6.0: Community Analytics
+  program.addCommand(createCommunityCommand());
+
+  // v0.7.0: Wallet Management
+  program.addCommand(createWalletCommand());
+  program.addCommand(createEphemeralCommand());
 
   // Extension CLIs
   registerDiscordCli(program);

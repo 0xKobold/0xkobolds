@@ -15,6 +15,8 @@ import { loadConfig } from "../config/loader";
 import { nodeRegistry } from "./methods/node";
 import { getHeartbeatScheduler, startHeartbeatScheduler, stopHeartbeatScheduler, HeartbeatScheduler } from "./heartbeat-scheduler";
 import { getCronScheduler, startCronScheduler, stopCronScheduler, CronScheduler } from "./cron-scheduler";
+import { trackGatewayConnect, trackGatewayDisconnect, trackGatewayRequest } from "../telemetry/integration";
+import { collector } from "../telemetry/collector";
 
 const GATEWAY_VERSION = "2";
 
@@ -116,6 +118,9 @@ class RealGatewayServer extends EventEmitter {
   async start(): Promise<void> {
     if (this.running) return;
 
+    // Start telemetry collector (system metrics polling)
+    collector.start({ autoStart: true, intervalMs: 60_000 });
+    
     const self = this;
 
     this.server = Bun.serve({
@@ -171,6 +176,9 @@ class RealGatewayServer extends EventEmitter {
           self.emit("connected", conn);
           console.log(`[Gateway] WebSocket connected: ${id} (${conn.type})`);
 
+          // Track connection
+          trackGatewayConnect(conn.type, conn.nodeId);
+
           // For node connections, send welcome message with role info
           if (connType === "node") {
             const nodeName = ws.data?.name || "unknown";
@@ -196,6 +204,9 @@ class RealGatewayServer extends EventEmitter {
         close(ws: any, code: number, reason: string) {
           const conn = self.findConnectionByWs(ws);
           if (conn) {
+            // Track disconnection
+            trackGatewayDisconnect(conn.type, reason || "unknown");
+
             // Unregister node if this was a node connection
             if (conn.type === "node" && conn.nodeId) {
               nodeRegistry.unregister(conn.nodeId);
@@ -395,8 +406,11 @@ class RealGatewayServer extends EventEmitter {
       });
     };
 
-    // Execute handler with timeout
+    // Execute handler with timeout and timing
     const timeoutMs = this.config.requestTimeoutMs;
+    const startTime = Date.now();
+    let handlerSuccess = true;
+
     const timeoutPromise = new Promise<void>((_, reject) => {
       setTimeout(() => reject(new Error("Request timeout")), timeoutMs);
     });
@@ -412,8 +426,13 @@ class RealGatewayServer extends EventEmitter {
         timeoutPromise,
       ]);
     } catch (err) {
+      handlerSuccess = false;
       console.error(`[Gateway] Handler error for ${frame.method}:`, err);
       this.sendError(conn.id, frame.id, ErrorCodes.INTERNAL_ERROR, String(err));
+    } finally {
+      // Track request timing
+      const latency = Date.now() - startTime;
+      trackGatewayRequest(latency, handlerSuccess, frame.method);
     }
   }
 
@@ -538,6 +557,7 @@ class RealGatewayServer extends EventEmitter {
     this.running = false;
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.stopSchedulers();
+    collector.stop();
     this.server?.stop();
     this.emit("stopped");
     console.log("[Gateway] Server stopped");
