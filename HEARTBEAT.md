@@ -76,6 +76,7 @@ Maintain 0xKobold health: update packages, fix security vulnerabilities, complet
 | ~~**Systemd Services**~~ | systemd/ | ✅ DONE | Gateway + MC auto-start via systemd user services |
 | **Ephemeral Agent System** | src/ephemeral-agents/ | ✅ INTEGRATED | Full: spawner + workspace + fan-out + cascade stop + telemetry |
 | **PI-LEARN Memory** | @0xkobold/pi-learn | ✅ INTEGRATED | Peer mental models, LLM reasoning, dreaming (replaces perennial-memory) |
+| **Obsidian Bridge** | @0xkobold/pi-obsidian-bridge | ✅ INTEGRATED | Vault sync, /obsidian_poll, /obsidian_tasks, /obsidian_done, /obsidian_status |
 
 ### 🐛 Known Bugs
 
@@ -266,6 +267,20 @@ The Moltube skill now has the required `description` field in its SKILL.md front
     - Perennial memory's fact storage was overlapping, now removed
     - pi-learn is native bun:sqlite, perennial used deprecated better-sqlite3
     - Reasoning approach (deductive/inductive/abductive) is superior
+
+36. **DATA MIGRATION** - Perennial → PI-Learn:
+    - Created `scripts/migrate-perennial-to-pilearn.ts`
+    - Migrated 111 memories → observations
+    - Migrated 96 high-importance memories → conclusions
+    - Preserves category as content prefix for searchability
+    - PI-Learn database: ~/.pi/memory/pi-learn.db
+
+37. **OBSIDIAN BRIDGE INTEGRATION** - Added @0xkobold/pi-obsidian-bridge:
+    - Built pi-obsidian-bridge package (already in packages/)
+    - Added `findObsidianBridgeExtension()` to src/index.ts
+    - Vault at: ~/.0xkobold/obsidian_vault
+    - Tools: /obsidian_poll, /obsidian_tasks, /obsidian_done, /obsidian_status
+    - Tasks tagged #kobold in Obsidian sync to agent
 
 ### 2026-03-21 Session Notes
 

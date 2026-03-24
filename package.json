@@ -45,8 +45,8 @@
   "license": "MIT",
   "dependencies": {
     "@0xkobold/pi-cloudflare-browser": "0.1.0",
-    "@0xkobold/pi-learn": "^0.2.0",
-    "@0xkobold/pi-obsidian-bridge": "0.1.0",
+    "@0xkobold/pi-learn": "github:0xKobold/pi-learn#bd78222",
+    "@0xkobold/pi-obsidian-bridge": "./packages/pi-obsidian-bridge",
     "@0xkobold/pi-ollama": "0.2.0",
     "@aliou/pi-processes": "^0.6.3",
     "@mariozechner/pi-agent-core": "0.62.0",

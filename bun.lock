@@ -6,8 +6,8 @@
       "name": "0xkobold",
       "dependencies": {
         "@0xkobold/pi-cloudflare-browser": "0.1.0",
-        "@0xkobold/pi-learn": "github:0xKobold/pi-learn",
-        "@0xkobold/pi-obsidian-bridge": "0.1.0",
+        "@0xkobold/pi-learn": "github:0xKobold/pi-learn#bd78222",
+        "@0xkobold/pi-obsidian-bridge": "./packages/pi-obsidian-bridge",
         "@0xkobold/pi-ollama": "0.2.0",
         "@aliou/pi-processes": "^0.6.3",
         "@mariozechner/pi-agent-core": "0.62.0",
@@ -60,7 +60,7 @@
 
     "@0xkobold/pi-learn": ["@0xkobold/pi-learn@github:0xKobold/pi-learn#bd78222", { "dependencies": { "@0xkobold/pi-ollama": "^0.2.0" }, "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.62.0", "@sinclair/typebox": ">=0.32.0" } }, "0xKobold-pi-learn-bd78222", "sha512-BY7d/GdS+0Lx9qKFTtDJhB5odeDqPdTL3GbYoIztu4oPTtqoLdKDY6txKjNumCYN0R743gyTUs+ZS+5jyxjreA=="],
 
-    "@0xkobold/pi-obsidian-bridge": ["@0xkobold/pi-obsidian-bridge@0.1.0", "", { "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.57.0", "@sinclair/typebox": ">=0.32.0" } }, "sha512-oopXdQdfm0O9th9JfD+CxomOefQ+FYnrgLU/pyDzoOsGiPPAvNe+PXgH9jb3bPAiusDAhDte1vmjQc88V0Y00Q=="],
+    "@0xkobold/pi-obsidian-bridge": ["@0xkobold/pi-obsidian-bridge@file:packages/pi-obsidian-bridge", { "devDependencies": { "@types/bun": "latest", "typescript": "^5.0.0" }, "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.57.0", "@sinclair/typebox": ">=0.32.0" } }],
 
     "@0xkobold/pi-ollama": ["@0xkobold/pi-ollama@0.2.0", "", { "peerDependencies": { "@mariozechner/pi-coding-agent": ">=0.6.0", "@sinclair/typebox": ">=0.32.0" } }, "sha512-RgqDy+zPe5X9wNpaqOzgMo4D/KmoAW0Ld1XPvIZcI979n8NifWlzNOjcP0xYmd2ql9qlcFl3jwAud1M9IN3eyw=="],
 
@@ -1306,8 +1306,6 @@
 
     "@isaacs/cliui/wrap-ansi/ansi-styles": ["ansi-styles@6.2.3", "", {}, ""],
 
-    "@isaacs/cliui/wrap-ansi/string-width": ["string-width@5.1.2", "", { "dependencies": { "eastasianwidth": "^0.2.0", "emoji-regex": "^9.2.2", "strip-ansi": "^7.0.1" } }, ""],
-
     "@types/blessed/@types/node/undici-types": ["undici-types@6.21.0", "", {}, ""],
 
     "@types/ws/@types/node/undici-types": ["undici-types@6.21.0", "", {}, ""],
@@ -1341,8 +1339,6 @@
     "@aws-crypto/sha256-browser/@smithy/util-utf8/@smithy/util-buffer-from/@smithy/is-array-buffer": ["@smithy/is-array-buffer@2.2.0", "", { "dependencies": { "tslib": "^2.6.2" } }, ""],
 
     "@aws-crypto/util/@smithy/util-utf8/@smithy/util-buffer-from/@smithy/is-array-buffer": ["@smithy/is-array-buffer@2.2.0", "", { "dependencies": { "tslib": "^2.6.2" } }, ""],
-
-    "@isaacs/cliui/wrap-ansi/string-width/emoji-regex": ["emoji-regex@9.2.2", "", {}, ""],
 
     "rimraf/glob/minimatch/brace-expansion": ["brace-expansion@2.0.2", "", { "dependencies": { "balanced-match": "^1.0.0" } }, ""],
 

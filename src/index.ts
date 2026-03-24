@@ -76,6 +76,23 @@ function findPiLearnExtension(): string {
     return resolve(packageRoot, 'node_modules/@0xkobold/pi-learn/dist/index.js');
   }
 }
+
+function findObsidianBridgeExtension(): string {
+  try {
+    const resolved = import.meta.resolve('@0xkobold/pi-obsidian-bridge');
+    const packagePath = fileURLToPath(resolved);
+    if (packagePath.includes('dist/index.js') || packagePath.includes('dist/index.ts')) {
+      return packagePath;
+    }
+    return resolve(packagePath, 'dist/index.js');
+  } catch {
+    if (isRunningFromDist) {
+      const globalModulesRoot = resolve(__dirname, '../../../..');
+      return resolve(globalModulesRoot, '@0xkobold/pi-obsidian-bridge/dist/index.js');
+    }
+    return resolve(packageRoot, 'node_modules/@0xkobold/pi-obsidian-bridge/dist/index.js');
+  }
+}
 // For dist: __dirname is .../dist/src, packageRoot is .../dist
 // So we just need src/extensions/core from packageRoot
 const extensionDir = isRunningFromDist 
@@ -207,6 +224,8 @@ function verifyExtensions(): string[] {
     '--extension', ext('memory-extension'),
     // Memory & Learning (via pi-learn npm package)
     '--extension', findPiLearnExtension(),
+    // 📓 Obsidian Bridge (local vault sync)
+    '--extension', findObsidianBridgeExtension(),
     // Legacy memory (to be deprecated)
     '--extension', ext('diagnostics-extension'),
     '--extension', ext('memory-synthesis-extension'),

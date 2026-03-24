@@ -7,7 +7,9 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "pi": {
-    "extensions": ["./dist/index.js"]
+    "extensions": [
+      "./dist/index.js"
+    ]
   },
   "scripts": {
     "build": "tsc",
@@ -37,8 +39,8 @@
     "README.md"
   ],
   "peerDependencies": {
-    "@sinclair/typebox": ">=0.32.0",
-    "@mariozechner/pi-coding-agent": ">=0.57.0"
+    "@mariozechner/pi-coding-agent": ">=0.62.0",
+    "@sinclair/typebox": ">=0.32.0"
   },
   "devDependencies": {
     "@types/bun": "latest",
