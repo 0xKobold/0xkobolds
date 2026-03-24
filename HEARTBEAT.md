@@ -75,6 +75,7 @@ Maintain 0xKobold health: update packages, fix security vulnerabilities, complet
 | **DB SDK** | src/db/ | ✅ DONE | Unified DAOs: telemetry, cron, cross-DB queries |
 | ~~**Systemd Services**~~ | systemd/ | ✅ DONE | Gateway + MC auto-start via systemd user services |
 | **Ephemeral Agent System** | src/ephemeral-agents/ | ✅ INTEGRATED | Full: spawner + workspace + fan-out + cascade stop + telemetry |
+| **PI-LEARN Memory** | @0xkobold/pi-learn | ✅ INTEGRATED | Peer mental models, LLM reasoning, dreaming (replaces perennial-memory) |
 
 ### 🐛 Known Bugs
 
