@@ -247,6 +247,18 @@ The Moltube skill now has the required `description` field in its SKILL.md front
 
 ## 📝 Notes
 
+### 2026-03-24 Session Notes
+
+34. **PI-LEARN INTEGRATION** - Integrated @0xkobold/pi-learn as native npm package:
+    - Updated pi-learn to use `bun:sqlite` instead of `better-sqlite3` (native Bun support)
+    - Changed `Database.Database` type → `Database`
+    - Changed `db.pragma()` → `db.exec("PRAGMA ...")`
+    - Version bumped to 0.2.0 in pi-learn repo
+    - Added `findPiLearnExtension()` function in `src/index.ts`
+    - Updated `src/pi-config.ts` to load pi-learn from npm
+    - **NOTE:** Run `npm publish` in pi-learn repo to publish 0.2.0 to npm
+    - Then run `bun install` in 0xkobolds to get npm version
+
 ### 2026-03-21 Session Notes
 
 26. **COMMUNITY ANALYTICS STRENGTHENING** - Enhanced spam protection in `src/llm/community-analytics.ts`:
